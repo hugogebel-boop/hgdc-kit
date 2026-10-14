@@ -1,0 +1,54 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Preset Renovate des produits de la H family.",
+  "extends": ["config:recommended", ":semanticCommitTypeAll(chore)", "helpers:pinGitHubActionDigests"],
+  "timezone": "Europe/Zurich",
+  "schedule": ["before 6am on monday"],
+  "minimumReleaseAge": "3 days",
+  "rangeStrategy": "pin",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true
+  },
+  "packageRules": [
+    {
+      "description": "Kit et stack commune : propagés par hgdc-kit (propagate.yml), pas par Renovate.",
+      "matchPackageNames": [
+        "@hgdc/*",
+        "@changesets/cli",
+        "@convex-dev/better-auth",
+        "@convex-dev/react-query",
+        "@tailwindcss/vite",
+        "@tanstack/react-query",
+        "@tanstack/react-router",
+        "@tanstack/react-router-ssr-query",
+        "@tanstack/react-start",
+        "@types/bun",
+        "@types/node",
+        "@types/react",
+        "@types/react-dom",
+        "@vitejs/plugin-react",
+        "better-auth",
+        "convex",
+        "nitro",
+        "oxfmt",
+        "oxlint",
+        "oxlint-tsgolint",
+        "react",
+        "react-dom",
+        "tailwindcss",
+        "typescript",
+        "vite",
+        "vitest",
+        "zod"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "Mineurs et correctifs d'une dépendance stable : fusion automatique si la CI passe.",
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+      "matchCurrentVersion": "!/^v?0\\./",
+      "automerge": true
+    }
+  ]
+}

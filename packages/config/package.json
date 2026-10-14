@@ -1,0 +1,47 @@
+{
+  "name": "@hgdc/config",
+  "version": "0.1.0",
+  "description": "Config partagée de la H family : tsconfig, oxlint, oxfmt, Renovate, versions exactes de la stack.",
+  "license": "UNLICENSED",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hugogebel-boop/hgdc-kit.git",
+    "directory": "packages/config"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "tsconfig",
+    "renovate",
+    "stack.json"
+  ],
+  "bin": {
+    "hgdc-stack": "./dist/cli.js"
+  },
+  "exports": {
+    "./oxlint": {
+      "types": "./dist/oxlint.d.ts",
+      "default": "./dist/oxlint.js"
+    },
+    "./oxfmt": {
+      "types": "./dist/oxfmt.d.ts",
+      "default": "./dist/oxfmt.js"
+    },
+    "./stack": {
+      "types": "./dist/stack.d.ts",
+      "default": "./dist/stack.js"
+    },
+    "./stack.json": "./stack.json",
+    "./tsconfig/*": "./tsconfig/*",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  }
+}

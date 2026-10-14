@@ -1,0 +1,9 @@
+{
+  "extends": "./packages/config/tsconfig/base.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM"],
+    "jsx": "react-jsx",
+    "types": ["node", "bun"]
+  },
+  "include": ["packages/*/src", "scripts", "*.config.ts"]
+}

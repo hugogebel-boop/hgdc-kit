@@ -1,0 +1,12 @@
+node_modules
+dist
+.pack
+*.tgz
+*.log
+.DS_Store
+.env
+.env.*
+
+# Ne jamais versionner : codes de récupération, exports de comptes.
+*recovery*
+*.txt
