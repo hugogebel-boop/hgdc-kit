@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "description": "Interface de la H family : jetons de la DA, thèmes, polices et composants.",
   "license": "UNLICENSED",
+  "homepage": "https://github.com/hugogebel-boop/hgdc-kit/tree/main/packages/ui#readme",
+  "bugs": "https://github.com/hugogebel-boop/hgdc-kit/security/advisories/new",
   "type": "module",
   "repository": {
     "type": "git",
