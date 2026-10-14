@@ -1,5 +1,11 @@
 # @hgdc/config
 
+## 0.1.2
+
+### Patch Changes
+
+- 7ac87eb: `hgdc-stack --help` (ou `-h`) affiche l'aide au lieu d'échouer sur une option inconnue.
+
 ## 0.1.1
 
 ### Patch Changes
