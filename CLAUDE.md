@@ -8,4 +8,5 @@ Code commun de la H family, publié sur npm (`@hgdc/*`). Vue d'ensemble : `READM
 - Le code publié est compilé (`dist/`, Node 22.18+) : oxlint charge `oxlint.config.ts` avec Node, qui ne retire pas les types dans `node_modules`.
 - Toute modification d'un paquet publié s'accompagne d'un changeset (`bun changeset`). Jamais de CHANGELOG ni de version écrits à la main.
 - Le nom du fichier `release.yml` est déclaré comme trusted publisher sur npm : le renommer casse la publication.
+- changesets/action v2 : entrées et sorties en kebab-case (`publish-script`, `published-packages`). Une sortie mal nommée vaut une chaîne vide, sans erreur.
 - Avant de livrer : `bun run check`.
