@@ -42,7 +42,9 @@ jobs:
           commit-message: "chore: release"
           pr-title: "chore: release"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Jeton du bot et non GITHUB_TOKEN : une PR ouverte par GITHUB_TOKEN ne lance pas la CI,
+          # que la règle de main exige. Contents et Pull requests en écriture sur ce dépôt.
+          GITHUB_TOKEN: ${{ secrets.HGDC_BOT_TOKEN }}
       - id: config
         if: steps.changesets.outputs.published == 'true'
         env:
