@@ -47,6 +47,10 @@ const hgdc: OxlintConfig = defineConfig({
     ],
     // Focus automatique voulu sur les écrans à une seule tâche (connexion, code à usage unique).
     "jsx-a11y/no-autofocus": "off",
+    // Vitest accepte un message en second argument : `expect(valeur, "contexte")`.
+    "vitest/valid-expect": ["error", { maxArgs: 2 }],
+    // Défauts Vitest, plus les assertions partagées d'un fichier de test nommées `expect…` (`expectExited`).
+    "vitest/expect-expect": ["error", { assertFunctionNames: ["expect*", "assert", "assertType"] }],
   },
   overrides: [
     {

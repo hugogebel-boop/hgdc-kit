@@ -55,6 +55,17 @@ Une exception propre au produit va dans `overrides` de sa config, avec la raison
 
 Adopter oxfmt reformate tout le dépôt : le faire dans un commit à part, puis ajouter son SHA à `.git-blame-ignore-revs`.
 
+oxfmt exige des fins de ligne LF. Sous Windows (`core.autocrlf=true`), git rend les fichiers en CRLF et `format:check` échoue sur tout le dépôt : poser un `.gitattributes` avant le formatage.
+
+```gitattributes
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.woff2 binary
+```
+
+Côté tests, le preset accepte `expect(valeur, "message")` et compte comme assertion toute fonction `expect…` (une aide partagée comme `expectExited`), en plus de `assert` et `assertType`.
+
 ## 4. Scripts et CI
 
 ```json
