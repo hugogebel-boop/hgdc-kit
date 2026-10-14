@@ -3,7 +3,7 @@ import CheckmarkCircle02Icon from "@hugeicons/core-free-icons/CheckmarkCircle02I
 import InformationCircleIcon from "@hugeicons/core-free-icons/InformationCircleIcon"
 import MultiplicationSignCircleIcon from "@hugeicons/core-free-icons/MultiplicationSignCircleIcon"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Toaster as Sonner, type ToasterProps } from "sonner"
+import { Toaster as Sonner, toast, type ToasterProps } from "sonner"
 
 import { Spinner } from "./spinner.tsx"
 import { useTheme } from "./theme.tsx"
@@ -52,4 +52,59 @@ function Toaster(props: ToasterProps): React.JSX.Element {
   )
 }
 
-export { Toaster }
+/**
+ * Retour d'une action réversible, avec « Annuler » pendant quelques secondes : on agit tout de
+ * suite (mise à jour optimiste), sans boîte de confirmation, et on laisse revenir en arrière.
+ * Une action qui ne se rattrape pas passe par `DestructiveDialog`.
+ *
+ * `onUndo` défait l'action. `onCommit`, s'il est donné, part quand le toast se ferme sans
+ * annulation (délai écoulé, fermé à la main) : pour une action différée, envoyée seulement
+ * une fois le délai passé. Rend l'identifiant du toast (`toast.dismiss(id)`).
+ */
+function toastUndo(
+  message: React.ReactNode,
+  {
+    onUndo,
+    onCommit,
+    description,
+    duration = 6000,
+    undoLabel = "Annuler",
+  }: {
+    onUndo: () => unknown
+    onCommit?: () => unknown
+    description?: React.ReactNode
+    /** En millisecondes ; Sonner met le délai en pause au survol et quand l'onglet est caché. */
+    duration?: number
+    undoLabel?: string
+  },
+): string | number {
+  let settled = false
+  const commit = () => {
+    if (settled) return
+    settled = true
+    void onCommit?.()
+  }
+  return toast(message, {
+    description,
+    duration,
+    action: {
+      label: undoLabel,
+      onClick: () => {
+        if (settled) return
+        settled = true
+        void onUndo()
+      },
+    },
+    onAutoClose: commit,
+    onDismiss: commit,
+  })
+}
+
+/** Le message d'une erreur, lisible : celui de l'`Error`, sinon une phrase générique. */
+function errorMessage(error: unknown, fallback = "Quelque chose n'a pas marché. Réessaie."): string {
+  if (error instanceof Error && error.message.trim() !== "") return error.message
+  if (typeof error === "string" && error.trim() !== "") return error
+  return fallback
+}
+
+export { Toaster, toastUndo, errorMessage }

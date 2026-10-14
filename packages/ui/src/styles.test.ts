@@ -60,7 +60,7 @@ describe("styles.css", () => {
       for (const m of text.matchAll(/(?:var\(|\()(--[\w-]+)/g)) if (m[1]) used.add(m[1])
     }
     // Variables posées à l'exécution par Base UI (positionnement, glissement des feuilles).
-    const runtime = /^--(active-tab-|anchor-|available-|bleed|drawer-|transform-origin)/
+    const runtime = /^--(active-tab-|anchor-|available-|bleed|collapsible-|drawer-|transform-origin)/
     const unknown = [...used].filter((v) => !runtime.test(v) && !light.has(v) && !theme.has(v))
     expect(unknown).toEqual([])
   })
