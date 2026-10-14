@@ -9,7 +9,7 @@ last_reviewed: 2026-10-14
 
 1. Chaque PR qui touche un paquet ajoute un changeset (`bun changeset`).
 2. Après fusion, `release.yml` ouvre ou met à jour la PR « chore: release » (versions, CHANGELOG).
-3. Fusionner cette PR, avec le droit d'admin (`gh pr merge <n> --squash --admin`) : ouverte par le jeton de l'action, elle ne déclenche pas la CI, que la règle de `main` exige. Elle ne touche que les versions et les CHANGELOG, et la publication refait une installation et un build stricts. Ensuite : `release.yml` publie sur npm par OIDC, avec provenance, crée les tags et les releases GitHub, puis `propagate.yml` ouvre une PR dans chaque produit si `@hgdc/config` a changé.
+3. Attendre la CI de cette PR, puis la fusionner (`gh pr merge <n> --squash`). Elle est ouverte avec `HGDC_BOT_TOKEN`, qui doit couvrir `hgdc-kit` lui-même (_Contents_ et _Pull requests_ en écriture) : ouverte avec le `GITHUB_TOKEN` de l'action, elle ne lancerait pas la CI, et la règle de `main` bloquerait la fusion. Ensuite : `release.yml` publie sur npm par OIDC, avec provenance, crée les tags et les releases GitHub, puis `propagate.yml` ouvre une PR dans chaque produit si `@hgdc/config` a changé.
 
 Vérifier : `npm view @hgdc/config version` et le badge « Provenance » sur npmjs.com.
 
