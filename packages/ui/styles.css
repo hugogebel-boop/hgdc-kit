@@ -55,7 +55,6 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-surface-hover: var(--surface-hover);
   --color-shell: var(--shell);
   --color-shell-foreground: var(--shell-foreground);
   --color-shell-muted: var(--shell-muted-foreground);
@@ -66,6 +65,10 @@
   --color-status-active: var(--status-active);
   --color-status-paused: var(--status-paused);
   --color-status-done: var(--status-done);
+  --color-status-active-ink: var(--status-active-ink);
+  --color-status-paused-ink: var(--status-paused-ink);
+  --color-info: var(--info);
+  --color-info-ink: var(--info-ink);
   --color-chart-1: var(--chart-1);
   --color-inverse: var(--inverse);
   --color-inverse-foreground: var(--inverse-foreground);
@@ -87,26 +90,27 @@
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
+  /* Synonymes gardés pour les primitives shadcn : ils suivent leur jeton de rôle. */
+  --popover: var(--card);
+  --popover-foreground: var(--card-foreground);
   /* Menus et sélecteurs (`floating.ts`) : fond opaque, un cran au-dessus de la carte en sombre. */
   --floating: oklch(1 0 0);
   --floating-muted: oklch(0.97 0 0);
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
+  --secondary: var(--muted);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
   /* L=0.52 : 4,5:1 sur `muted`. */
   --muted-foreground: oklch(0.52 0 0);
-  --accent: oklch(0.55 0.25 296);
-  --accent-foreground: oklch(0.985 0 0);
+  /* `--brand-accent*` : couleur d’un client posée par le produit, sans toucher au kit. */
+  --accent: var(--brand-accent, oklch(0.55 0.25 296));
+  --accent-foreground: var(--brand-accent-foreground, oklch(0.985 0 0));
   --accent-soft: color-mix(in oklch, var(--accent) 10%, transparent);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: var(--accent);
-  --surface-hover: oklch(0.945 0 0);
   /* Coque de l'application : barre latérale et en-tête. */
   --shell: oklch(0.955 0 0);
   --shell-foreground: oklch(0.145 0 0);
@@ -117,6 +121,12 @@
   --status-active: oklch(0.55 0.15 156);
   --status-paused: oklch(0.62 0.14 75);
   --status-done: oklch(0.52 0.2 293);
+  /* Encres : le texte d'un statut sur son lavis (4,5:1), la couleur vive restant aux pastilles. */
+  --status-active-ink: oklch(0.45 0.12 155);
+  --status-paused-ink: oklch(0.5 0.12 70);
+  /* Information : bleu, pour que le violet reste l'accent. */
+  --info: oklch(0.62 0.19 256);
+  --info-ink: oklch(0.48 0.17 256);
   --success: oklch(0.58 0.15 152);
   --success-foreground: oklch(0.985 0 0);
   /* Panneau inversé de la vitrine : encre sombre dans les deux thèmes. */
@@ -133,22 +143,18 @@
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
   --floating: oklch(0.255 0 0);
   --floating-muted: oklch(0.315 0 0);
   --primary: oklch(0.922 0 0);
   --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.74 0.19 296);
-  --accent-foreground: oklch(0.205 0 0);
+  --accent: var(--brand-accent-dark, oklch(0.74 0.19 296));
+  --accent-foreground: var(--brand-accent-dark-foreground, oklch(0.205 0 0));
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --surface-hover: oklch(0.25 0 0);
   --shell: oklch(0.08 0 0);
   --shell-foreground: oklch(0.985 0 0);
   --shell-muted-foreground: oklch(0.708 0 0);
@@ -158,6 +164,10 @@
   --status-active: oklch(0.74 0.14 156);
   --status-paused: oklch(0.82 0.15 86);
   --status-done: oklch(0.68 0.17 293);
+  --status-active-ink: var(--status-active);
+  --status-paused-ink: var(--status-paused);
+  --info: oklch(0.7 0.16 256);
+  --info-ink: var(--info);
   --success: oklch(0.7 0.15 152);
   --success-foreground: oklch(0.16 0.02 152);
   --inverse: oklch(0.1 0 0);
@@ -209,15 +219,11 @@
 
 /* ── Surfaces ──────────────────────────────────────────────────────────── */
 
-/* Niveau 1 de la DA : une teinte, ni ombre ni bordure. `muted` en clair, `card` en sombre.
-   Dans la surface, un élément `muted` devient blanc au lieu de disparaître, sans carte dans
-   la carte. En utilitaire pour qu'un `hover:` posé sur la carte garde la main. */
+/* Niveau 1 de la DA : une teinte, ni ombre ni bordure. `muted` en clair, `card` en sombre
+   (un cran plus clair que la page). */
 @utility surface {
   background-color: var(--muted);
-  & > * {
-    --muted: var(--background);
-  }
-  .dark & {
+  :where(.dark) & {
     background-color: var(--card);
   }
 }
@@ -227,12 +233,12 @@
   background-color: var(--muted);
   transition: background-color var(--duration-fast) var(--ease-out);
   &:hover {
-    background-color: var(--surface-hover);
+    background-color: oklch(0.94 0 0);
   }
-  .dark & {
+  :where(.dark) & {
     background-color: var(--card);
   }
-  .dark &:hover {
+  :where(.dark) &:hover {
     background-color: var(--muted);
   }
 }

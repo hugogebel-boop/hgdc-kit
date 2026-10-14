@@ -14,6 +14,8 @@ function declared(body: string): Set<string> {
 }
 
 const light = declared(block(":root"))
+// Un jeton défini par un autre (`--popover: var(--card)`) suit ce jeton dans les deux thèmes.
+const aliases = new Set([...block(":root").matchAll(/^\s*(--[\w-]+): var\(--[\w-]+\);/gm)].map((m) => m[1] ?? ""))
 const dark = declared(block(".dark"))
 const theme = new Set([...declared(block("@theme")), ...declared(block("@theme inline"))])
 
@@ -22,7 +24,6 @@ const THEME_INVARIANT = new Set([
   "--radius",
   "--scrollbar-thumb",
   "--accent-soft",
-  "--ring",
   // Panneau inversé : encre sombre dans les deux thèmes, seul `--inverse` fonce en sombre.
   "--inverse-foreground",
   "--inverse-muted",
@@ -30,8 +31,15 @@ const THEME_INVARIANT = new Set([
 ])
 
 describe("styles.css", () => {
+  it("garde le violet pour l’accent : l’information est bleue", () => {
+    const hue = (token: string) =>
+      Number(new RegExp(`\\n  ${token}: oklch\\([\\d.]+ [\\d.]+ ([\\d.]+)\\)`).exec(block(":root"))?.[1])
+    const accent = Number(/--accent: var\(--brand-accent, oklch\([\d.]+ [\d.]+ ([\d.]+)\)/.exec(css)?.[1])
+    expect(Math.abs(hue("--info") - accent)).toBeGreaterThan(30)
+  })
+
   it("donne au thème sombre chaque couleur du thème clair", () => {
-    const missing = [...light].filter((token) => !dark.has(token) && !THEME_INVARIANT.has(token))
+    const missing = [...light].filter((token) => !dark.has(token) && !THEME_INVARIANT.has(token) && !aliases.has(token))
     expect(missing).toEqual([])
   })
 

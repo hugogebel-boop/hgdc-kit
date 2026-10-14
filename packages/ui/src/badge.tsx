@@ -11,9 +11,9 @@ const badgeVariants: Variants<{ tone: BadgeTone }> = cva(
     variants: {
       tone: {
         neutral: "bg-muted text-muted-foreground",
-        success: "bg-status-active/15 text-status-active",
-        warning: "bg-status-paused/15 text-status-paused",
-        info: "bg-status-done/15 text-status-done",
+        success: "bg-status-active/15 text-status-active-ink",
+        warning: "bg-status-paused/15 text-status-paused-ink",
+        info: "bg-info/12 text-info-ink",
         destructive: "bg-destructive/10 text-destructive",
       },
     },
