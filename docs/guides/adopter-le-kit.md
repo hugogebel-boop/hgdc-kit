@@ -140,4 +140,8 @@ grep -rlE '@/components/ui/|@/components/(spinner|theme-provider)|@/lib/hooks/us
 
 Puis retirer `src/components/ui/`, `spinner.tsx`, `theme-provider.tsx`, `use-media-query.ts`, `lib/utils.ts`, réduire `styles.css` à ses ajouts, et lancer `check` et `build`.
 
-Écarts à connaître : `SegmentedControl` est teinté (`bg-muted`), sans contour ; une grille sans colonnes déclarées ne déborde plus sur téléphone (`.grid` en `minmax(0, 1fr)`) ; un `Button` rendu en lien n'a plus `role="button"`.
+Le kit suit l'interface de Host. Écarts à connaître : un bouton ne grossit plus au survol, seule sa couleur change ; un `Button` rendu en lien n'a plus `role="button"` ; une grille sans colonnes déclarées ne déborde plus sur téléphone (`.grid` en `minmax(0, 1fr)`). Pour Mail en plus : `SegmentedControl` reprend son contour, et `surface` ne repeint plus `--muted` dans ses enfants.
+
+Texte d'un statut : `text-status-active-ink`, `text-status-paused-ink` ou `text-info-ink` sur un lavis (`bg-status-active/15`), jamais la couleur vive en texte : elle reste aux pastilles et aux graphiques. L'information est bleue (`--info`), le violet reste l'accent. Chargement : `<Spinner />` dans un bouton ou une ligne, `<Spinner size={8} tone="accent" />` seul sur une page.
+
+Couleur d'un client : poser `--brand-accent` et `--brand-accent-foreground` (et leurs variantes `-dark`). L'accent, l'anneau de focus et `--accent-soft` suivent.
