@@ -1,35 +1,42 @@
-import Loading03Icon from "@hugeicons/core-free-icons/Loading03Icon"
-import { HugeiconsIcon } from "@hugeicons/react"
-
 import { cn } from "./cn.ts"
 
+const SIZES = { 3: "size-3", 4: "size-4", 5: "size-5", 6: "size-6", 8: "size-8" } as const
+
 /**
- * Inline spinner - Hugeicons `Loading03Icon` + animate-spin.
- * Hugeicons gardent l'identite DA, contrairement a un raw SVG ou un Tailwind border-spin.
+ * L'anneau d'attente de la DA : un arc arrondi qui tourne sur une piste à peine visible, le
+ * même que la page d'attente du portail. Dans un bouton ou une ligne, il prend la couleur du
+ * texte (`tone="current"`) ; seul sur une page, il prend l'accent (`tone="accent"`).
+ * Mouvement réduit : l'arc ne tourne plus, il respire.
  */
 export function Spinner({
   className,
   label,
   size = 4,
+  tone = "current",
 }: {
   className?: string
   label?: string
-  size?: 3 | 4 | 5 | 6
+  size?: keyof typeof SIZES
+  tone?: "current" | "accent"
 }): React.JSX.Element {
   return (
-    <span className={cn("inline-flex items-center gap-2", className)}>
-      <HugeiconsIcon
-        icon={Loading03Icon}
-        strokeWidth={2}
-        className={cn(
-          "animate-spin",
-          size === 3 && "size-3",
-          size === 4 && "size-4",
-          size === 5 && "size-5",
-          size === 6 && "size-6",
-        )}
-      />
-      {label ? <span>{label}</span> : null}
+    <span role="status" className={cn("inline-flex items-center gap-2", className)}>
+      <svg viewBox="0 0 32 32" fill="none" aria-hidden className={cn("shrink-0", SIZES[size])}>
+        <circle cx="16" cy="16" r="13" strokeWidth="4" className="stroke-current opacity-15" />
+        <circle
+          cx="16"
+          cy="16"
+          r="13"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray="22 60"
+          className={cn(
+            "origin-center animate-spin motion-reduce:animate-pulse",
+            tone === "accent" ? "stroke-accent" : "stroke-current",
+          )}
+        />
+      </svg>
+      {label ? <span>{label}</span> : <span className="sr-only">Chargement</span>}
     </span>
   )
 }

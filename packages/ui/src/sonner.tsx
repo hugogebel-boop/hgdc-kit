@@ -1,11 +1,11 @@
 import Alert02Icon from "@hugeicons/core-free-icons/Alert02Icon"
 import CheckmarkCircle02Icon from "@hugeicons/core-free-icons/CheckmarkCircle02Icon"
 import InformationCircleIcon from "@hugeicons/core-free-icons/InformationCircleIcon"
-import Loading03Icon from "@hugeicons/core-free-icons/Loading03Icon"
 import MultiplicationSignCircleIcon from "@hugeicons/core-free-icons/MultiplicationSignCircleIcon"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 
+import { Spinner } from "./spinner.tsx"
 import { useTheme } from "./theme.tsx"
 
 function Toaster(props: ToasterProps): React.JSX.Element {
@@ -28,7 +28,11 @@ function Toaster(props: ToasterProps): React.JSX.Element {
         info: <HugeiconsIcon icon={InformationCircleIcon} strokeWidth={2} className="size-4" />,
         warning: <HugeiconsIcon icon={Alert02Icon} strokeWidth={2} className="size-4" />,
         error: <HugeiconsIcon icon={MultiplicationSignCircleIcon} strokeWidth={2} className="size-4" />,
-        loading: <HugeiconsIcon icon={Loading03Icon} strokeWidth={2} className="size-4 animate-spin" />,
+        loading: (
+          <span aria-hidden>
+            <Spinner />
+          </span>
+        ),
       }}
       style={
         {
