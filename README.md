@@ -28,7 +28,7 @@ Bun 1.3 et Node 24.
 
 1. Branche `feat/…` ou `fix/…`, modification, `bun run check`.
 2. `bun changeset` : paquets touchés, niveau (patch, minor, major), une phrase pour le CHANGELOG.
-3. PR sur `main`. Une fois fusionnée, la PR « chore: release » regroupe les changesets ; sa fusion publie sur npm et ouvre dans chaque produit une PR de mise à jour, fusionnée seule si sa CI passe.
+3. PR sur `main`. Une fois fusionnée, la PR « chore: release » regroupe les changesets ; sa fusion (`--admin`, elle n'a pas de CI, voir le [runbook](docs/runbooks/publier.md)) publie sur npm et ouvre dans chaque produit une PR de mise à jour, fusionnée seule si sa CI passe.
 
 ## Documentation
 
