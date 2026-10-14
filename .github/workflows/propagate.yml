@@ -47,7 +47,14 @@ jobs:
           bun-version-file: package.json
       - name: Aligner sur le kit
         run: |
-          bun add --dev --exact "@hgdc/config@$VERSION"
+          # Juste après la publication, le CDN de npm sert encore l'ancienne liste de versions :
+          # on réessaie jusqu'à 5 minutes avant d'abandonner.
+          for attempt in $(seq 1 10); do
+            bun add --dev --exact "@hgdc/config@$VERSION" && break
+            [ "$attempt" -eq 10 ] && exit 1
+            echo "@hgdc/config@$VERSION pas encore visible sur le registre, nouvel essai dans 30 s ($attempt/10)"
+            sleep 30
+          done
           bunx hgdc-stack sync
           bun install
       - id: pr
