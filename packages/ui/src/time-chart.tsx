@@ -1,5 +1,6 @@
 import { useState, type KeyboardEvent, type PointerEvent } from "react"
 
+import { areaPath, linePath } from "./chart-path.ts"
 import { cn } from "./cn.ts"
 
 export type TimeSeries = {
@@ -35,43 +36,6 @@ export function niceScale(max: number, ticks = 4): { max: number; step: number }
   const nice = residual <= 1 ? 1 : residual <= 2 ? 2 : residual <= 2.5 ? 2.5 : residual <= 5 ? 5 : 10
   const step = nice * magnitude
   return { max: Math.ceil(max / step) * step, step }
-}
-
-function linePath(values: Array<number | null>, max: number): string {
-  let d = ""
-  let open = false
-  values.forEach((v, i) => {
-    if (v === null) {
-      open = false
-      return
-    }
-    const x = i + 0.5
-    const y = 100 - (v / max) * 100
-    d += `${open ? "L" : "M"}${x} ${y}`
-    open = true
-  })
-  return d
-}
-
-function areaPath(values: Array<number | null>, max: number): string {
-  // Une aire par segment continu, fermée sur l'axe.
-  const parts: Array<string> = []
-  let start = -1
-  const close = (end: number) => {
-    if (start < 0) return
-    const segment = values.slice(start, end)
-    const top = segment
-      .map((v, j) => `${j === 0 ? "M" : "L"}${start + j + 0.5} ${100 - ((v ?? 0) / max) * 100}`)
-      .join("")
-    parts.push(`${top}L${end - 1 + 0.5} 100L${start + 0.5} 100Z`)
-    start = -1
-  }
-  values.forEach((v, i) => {
-    if (v === null) close(i)
-    else if (start < 0) start = i
-  })
-  close(values.length)
-  return parts.join("")
 }
 
 /**
