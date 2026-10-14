@@ -1,5 +1,11 @@
 # @hgdc/config
 
+## 0.1.3
+
+### Patch Changes
+
+- b94fdc2: oxlint : `expect(valeur, message)` accepté (`vitest/valid-expect` à deux arguments) et toute fonction `expect…` comptée comme assertion par `vitest/expect-expect`, en plus de `assert` et `assertType`.
+
 ## 0.1.2
 
 ### Patch Changes
