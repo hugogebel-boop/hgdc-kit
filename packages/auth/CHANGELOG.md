@@ -1,5 +1,11 @@
 # @hgdc/auth
 
+## 0.3.0
+
+### Minor Changes
+
+- 3f52deb: `organizationsFromIdToken` lit les organisations d'un id_token de HGDC Account et `planOrganizationSync` calcule ce qu'un produit doit écrire pour garder sa copie à jour à chaque connexion.
+
 ## 0.2.0
 
 ### Minor Changes
