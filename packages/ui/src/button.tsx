@@ -26,17 +26,18 @@ const buttonVariants: Variants<{ variant: ButtonVariant; size: ButtonSize }> = c
   // regarde à cet instant précis ; la relâche revient en 300 ms avec un petit
   // rebond (`--ease-bounce`, révision du 2026-09-24).
   //
-  // Au survol d'un vrai pointeur (`hover:` ne s'applique qu'aux pointeurs
-  // fins en Tailwind v4), le bouton s'avance d'un rien (1.02), comme sur le
-  // site ; aucune ombre, jamais : ce qui répond au survol est la couleur et
-  // l'échelle.
+  // Au survol, seule la couleur change : ni ombre, ni échelle. Le zoom de
+  // 1.02 faisait clignoter le libellé (le texte passe sur un calque GPU au
+  // lissage différent pendant l'animation, puis revient), et la couleur, qui
+  // suivait la courbe à rebond, dépassait sa cible : un éclair sur `ghost`.
+  // La couleur suit donc `--ease-out` en 150 ms ; le rebond reste à l'échelle.
   //
   // Ni bordure transparente ni `bg-clip-padding` (retirés le 2026-09-27) : le
   // fond s'arrêtait un pixel avant le bord, et dans une feuille du bas posée à
   // une coordonnée fractionnaire (hauteur en `svh`, glissement), iOS laissait
   // voir ce pixel comme un filet sombre en haut de la pilule, en thème sombre.
   // Le focus et l'erreur passent par l'anneau seul.
-  "group/button touch-target inline-flex shrink-0 items-center justify-center rounded-full text-sm font-medium whitespace-nowrap [transition-property:color,background-color,opacity,scale,box-shadow] duration-(--duration-slow) ease-(--ease-bounce) outline-none select-none focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.96] active:duration-(--duration-instant) active:ease-out disabled:pointer-events-none disabled:opacity-50 aria-invalid:ring-3 aria-invalid:ring-destructive/40 data-[pressed]:scale-[0.96] data-[pressed]:duration-(--duration-instant) data-[pressed]:ease-out motion-safe:hover:scale-[1.02] dark:aria-invalid:ring-destructive/50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button touch-target inline-flex shrink-0 items-center justify-center rounded-full text-sm font-medium whitespace-nowrap [transition:color_var(--duration-fast)_var(--ease-out),background-color_var(--duration-fast)_var(--ease-out),box-shadow_var(--duration-fast)_var(--ease-out),opacity_var(--duration-fast)_var(--ease-out),scale_var(--duration-slow)_var(--ease-bounce)] outline-none select-none focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.96] active:duration-(--duration-instant) active:ease-out disabled:pointer-events-none disabled:opacity-50 aria-invalid:ring-3 aria-invalid:ring-destructive/40 data-[pressed]:scale-[0.96] data-[pressed]:duration-(--duration-instant) data-[pressed]:ease-out dark:aria-invalid:ring-destructive/50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {

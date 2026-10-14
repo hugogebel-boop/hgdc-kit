@@ -2,8 +2,10 @@
 import { act, cleanup, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
+import { Badge } from "./badge.tsx"
 import { Button } from "./button.tsx"
 import { FieldError } from "./field.tsx"
+import { Spinner } from "./spinner.tsx"
 import { ThemeProvider, useTheme } from "./theme.tsx"
 
 afterEach(cleanup)
@@ -20,11 +22,32 @@ describe("Button", () => {
     expect(button.hasAttribute("disabled")).toBe(true)
   })
 
+  it("ne change que de couleur au survol, sans zoom ni rebond sur la couleur", () => {
+    render(<Button variant="ghost">Journal</Button>)
+    const classes = screen.getByRole("button", { name: "Journal" }).className
+    expect(classes).not.toMatch(/hover:scale/)
+    expect(classes).toContain("background-color_var(--duration-fast)_var(--ease-out)")
+  })
+
   it("laisse à un lien sa sémantique de lien", () => {
     render(<Button render={<a href="/docs" />}>Documentation</Button>)
     const link = screen.getByRole("link", { name: "Documentation" })
     expect(link.getAttribute("role")).toBeNull()
     expect(link.getAttribute("type")).toBeNull()
+  })
+})
+
+describe("Badge", () => {
+  it("écrit les statuts avec leur encre, pas avec la couleur vive", () => {
+    render(<Badge tone="warning">En attente</Badge>)
+    expect(screen.getByText("En attente").className).toContain("text-status-paused-ink")
+  })
+})
+
+describe("Spinner", () => {
+  it("s’annonce aux lecteurs d’écran, avec ou sans libellé", () => {
+    render(<Spinner />)
+    expect(screen.getByRole("status").textContent).toBe("Chargement")
   })
 })
 
