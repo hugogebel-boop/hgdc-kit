@@ -100,3 +100,7 @@ Puis ajouter le dépôt à la variable `HGDC_PRODUCTS` du kit (tableau JSON lu p
 ```sh
 gh variable set HGDC_PRODUCTS --repo hugogebel-boop/hgdc-kit --body '["hugogebel-boop/agenthost"]'
 ```
+
+## 6. Connexion HGDC (`@hgdc/auth`)
+
+Pour un produit qui se connecte par HGDC Account : `bun add @hgdc/auth`, puis suivre le [README du paquet](../../packages/auth/README.md) (fournisseur `hgdc` dans `genericOAuth`, proxy `/api/auth` avec `restoreFetchMode` côté Convex, bouton, gardes avec l'émetteur `CONVEX_SITE_URL`). Le `clientId` et le `clientSecret` sont remis par HGDC à l'enregistrement du produit.
