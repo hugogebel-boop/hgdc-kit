@@ -7,7 +7,7 @@
  *   @import "@hgdc/ui/styles.css";
  *
  * Un produit redéfinit un jeton (`--accent`, `--chart-1`…) dans son propre `:root` ou `.dark`,
- * après cet import. La DA de référence : smartflow/portal-v2/DESIGN.md.
+ * après cet import.
  */
 
 @import "shadcn/tailwind.css";

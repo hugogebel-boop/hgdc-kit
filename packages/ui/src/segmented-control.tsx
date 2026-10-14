@@ -1,4 +1,4 @@
-// Repris de portal-v2 (src/components/ui/segmented-control.tsx), même dessin dans tout l'écosystème.
+// Même dessin dans tout l'écosystème.
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react"
 
 import { cn } from "./cn.ts"
