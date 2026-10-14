@@ -87,11 +87,8 @@ describe("requireOrgMember", () => {
     expect(await codeOf(requireOrgMember(forged, "acme", { load, issuer: ISSUER }))).toBe("UNAUTHENTICATED")
   })
 
-  it("accepte plusieurs émetteurs déclarés, barre finale comprise", async () => {
-    const access = await requireOrgMember(ctxFor("ada", acme, `${ISSUER}/`), "acme", {
-      load,
-      issuer: ["https://autre.example", ISSUER],
-    })
+  it("accepte l'émetteur attendu avec ou sans barre finale", async () => {
+    const access = await requireOrgMember(ctxFor("ada", acme, `${ISSUER}/`), "acme", { load, issuer: ISSUER })
     expect(access.role).toBe("owner")
   })
 

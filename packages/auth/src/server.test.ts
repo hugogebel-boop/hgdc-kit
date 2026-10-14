@@ -85,6 +85,9 @@ describe("hgdcProvider", () => {
     if (!map) throw new Error("mapProfileToUser manquant")
     const user = await map({ sub: "u1", email: "ada@exemple.ch", email_verified: true, name: "Ada" })
     expect(user).toEqual({ email: "ada@exemple.ch", emailVerified: true, name: "Ada", image: null })
+    expect(() => map({ sub: "u1", email: "ada@exemple.ch", email_verified: false, name: "Ada" })).toThrow(
+      /Profil HGDC invalide/,
+    )
     expect(() => map({ sub: "u1", email: "pas-une-adresse", email_verified: true, name: "Ada" })).toThrow(
       /Profil HGDC invalide/,
     )
