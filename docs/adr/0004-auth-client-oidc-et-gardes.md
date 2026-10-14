@@ -1,0 +1,23 @@
+---
+owner: Hugo Gebel
+last_reviewed: 2026-10-14
+status: accepted
+---
+
+# 0004. `@hgdc/auth` : client OIDC générique, proxy maison, gardes à chargeur injecté
+
+## Contexte
+
+HGDC Account est le fournisseur OIDC de la famille. Chaque produit (better-auth, Convex, TanStack Start) doit s'y connecter de la même façon et protéger ses fonctions par organisation, sans lire la base d'Account.
+
+## Décision
+
+- **Client** : `hgdcProvider` rend une entrée du plugin `genericOAuth` de better-auth (découverte OIDC, PKCE, vérification de l'émetteur, profil validé par Zod). Pas de plugin better-auth maison : moins de surface, et `genericOAuth` suit les versions de better-auth.
+- **Pairs facultatifs** : better-auth, convex et React ne sont exigés que par l'import qui les utilise (`/server`, `/convex`, `/react`). better-auth est borné à `<1.7.0` : l'adaptateur Convex ne supporte pas encore 1.7, et `genericOAuth` change en 1.7.
+- **Proxy `/api/auth`** (`createAuthProxy` + `restoreFetchMode`) plutôt que celui de `@convex-dev/better-auth` 0.12 : celui-ci transmet le corps en flux (undici échoue sur une réponse 401, le client reçoit un 500), et le `fetch` de Node impose `sec-fetch-mode: cors`, ce qui fait rendre du JSON à better-auth au lieu d'une redirection. Le mode d'origine voyage dans `x-hgdc-fetch-mode` et est restauré côté Convex.
+- **Gardes** : `requireOrgMember` prend un chargeur d'appartenance injecté. Account lit les tables du plugin `organization` ; un produit lit sa copie synchronisée depuis les claims. La garde exige l'émetteur attendu (un `subject` n'est unique que chez son émetteur, constat de la revue adversariale) et vérifie que l'appartenance rendue concerne bien la personne et l'organisation demandées.
+
+## Conséquences
+
+- Les produits qui utilisent encore le `handler` de `@convex-dev/better-auth` (Host, Mail) ont les deux défauts du proxy : à migrer avec leur passage à Account.
+- Un rôle changé dans Account n'arrive dans un produit qu'à la reconnexion : la synchronisation poussée reste à concevoir.
