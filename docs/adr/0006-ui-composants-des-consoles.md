@@ -26,4 +26,6 @@ Host, Mail et les consoles à venir partagent la même coque (barre latérale, o
 - `--chart-1` change de valeur (bleu validé au lieu de `oklch(0.62 0.19 256)`) : un produit qui comptait sur l'ancienne teinte la redéclare.
 - Un graphique au-delà de six séries regroupe le reste en « Autres » ou se découpe : aucune teinte n'est générée.
 - Les comportements que happy-dom ne reproduit pas (navigation aux flèches dans les onglets, positionnement) sont garantis par Base UI ; les tests du kit vérifient rôles, états `aria` et rendu.
-- Reste à faire dans le kit : `FilterBar`, `DataTable` avec filtres dans l'URL, `ErrorCard`, `DnsRecordTable`, `DestructiveDialog`, toast avec annulation, `LogViewer`, `Sparkline`, `MiddleTruncate`.
+- 0.4 complète la liste : `FilterBar` et `DataTable` contrôlés (l'URL reste au produit, le kit rappelle), `ErrorCard` (détail replié par `Collapsible`), `DnsRecordTable`, `DestructiveDialog`, `toastUndo` sur Sonner, `LogViewer` (fenêtrage maison à hauteur de ligne fixe, `ToggleGroup` pour les niveaux), `Sparkline` (tracés partagés avec `TimeChart` dans `chart-path`), `MiddleTruncate` (pur CSS, texte entier dans la page). Toujours aucune dépendance en plus de Base UI.
+- `UptimeBar` est un seul arrêt de tabulation : flèches, Début et Fin passent d'un jour à l'autre et ouvrent son infobulle.
+- Reste à faire : sélection de lignes dans `DataTable` (actions groupées), `Fieldset` avec son propre bouton Enregistrer, période dans `FilterBar` (un `Select` passé dans `actions` en attendant).
