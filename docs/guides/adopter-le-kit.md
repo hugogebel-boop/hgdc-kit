@@ -104,3 +104,40 @@ gh variable set HGDC_PRODUCTS --repo hugogebel-boop/hgdc-kit --body '["hugogebel
 ## 6. Connexion HGDC (`@hgdc/auth`)
 
 Pour un produit qui se connecte par HGDC Account : `bun add @hgdc/auth`, puis suivre le [README du paquet](../../packages/auth/README.md) (fournisseur `hgdc` dans `genericOAuth`, proxy `/api/auth` avec `restoreFetchMode` côté Convex, bouton, gardes avec l'émetteur `CONVEX_SITE_URL`). Le `clientId` et le `clientSecret` sont remis par HGDC à l'enregistrement du produit.
+
+## 7. Interface
+
+```sh
+bun add @hgdc/ui
+```
+
+```css
+/* src/styles.css : Tailwind, puis le kit, puis ce qui est propre au produit */
+@import "tailwindcss";
+@import "@hgdc/ui/styles.css";
+
+@custom-variant rail (&:where([data-sidebar="rail"] *));
+
+:root {
+  --chart-1: oklch(0.55 0.25 296); /* un écart au jeton du kit */
+}
+```
+
+Le kit apporte les polices (Inter, Geist), `shadcn/tailwind.css`, les jetons clair et sombre et les utilitaires communs (`surface`, `surface-link`, `pressable`, `touch-target`, `soft-in`, `rise`…). Le produit ne garde que ses ajouts : variantes, teintes, animations qui lui sont propres. Ne pas redéclarer un `@utility` du kit.
+
+Le thème : `ThemeProvider` autour de l'application, et `themeInitScript` dans un `<script>` du `<head>`, avant la feuille de styles, pour éviter le flash au chargement.
+
+### Migrer depuis des copies locales
+
+Les primitives de Host et Mail sont celles du kit. Pour basculer :
+
+```sh
+grep -rlE '@/components/ui/|@/components/(spinner|theme-provider)|@/lib/hooks/use-media-query|@/lib/utils"' src \
+  | xargs sed -i -E 's#"@/components/ui/([a-z-]+)"#"@hgdc/ui/\1"#g; s#"@/components/spinner"#"@hgdc/ui/spinner"#g;
+      s#"@/components/theme-provider"#"@hgdc/ui/theme"#g; s#"@/lib/hooks/use-media-query"#"@hgdc/ui/use-media-query"#g;
+      s#"@/lib/utils"#"@hgdc/ui/cn"#g'
+```
+
+Puis retirer `src/components/ui/`, `spinner.tsx`, `theme-provider.tsx`, `use-media-query.ts`, `lib/utils.ts`, réduire `styles.css` à ses ajouts, et lancer `check` et `build`.
+
+Écarts à connaître : `SegmentedControl` est teinté (`bg-muted`), sans contour ; une grille sans colonnes déclarées ne déborde plus sur téléphone (`.grid` en `minmax(0, 1fr)`) ; un `Button` rendu en lien n'a plus `role="button"`.
