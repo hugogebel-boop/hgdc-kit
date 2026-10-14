@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { hasRole, highestRole, parseHgdcProfile } from "./index.ts"
+import { hasRole, highestRole, organizationsFromIdToken, parseHgdcProfile, planOrganizationSync } from "./index.ts"
 
 describe("highestRole", () => {
   it("garde le rôle le plus fort d'une liste better-auth", () => {
@@ -44,5 +44,48 @@ describe("parseHgdcProfile", () => {
     expect(() =>
       parseHgdcProfile({ ...profile, organizations: [{ id: "o1", slug: "acme", name: "Acme", role: "root" }] }),
     ).toThrow(/Profil HGDC invalide/)
+  })
+})
+
+describe("organizationsFromIdToken", () => {
+  const token = (payload: unknown) =>
+    ["e30", Buffer.from(JSON.stringify(payload)).toString("base64url"), "signature"].join(".")
+
+  it("lit le claim organizations, accents compris", () => {
+    const orgs = [{ id: "o1", slug: "cafe", name: "Café Zürich SA", role: "owner" }]
+    expect(organizationsFromIdToken(token({ sub: "u1", organizations: orgs }))).toEqual(orgs)
+  })
+
+  it("rend une liste vide sans la portée", () => {
+    expect(organizationsFromIdToken(token({ sub: "u1" }))).toEqual([])
+  })
+
+  it("refuse un jeton illisible ou un rôle inconnu", () => {
+    expect(() => organizationsFromIdToken("pas-un-jeton")).toThrow(/illisible/)
+    expect(() =>
+      organizationsFromIdToken(token({ organizations: [{ id: "o1", slug: "a", name: "A", role: "superadmin" }] })),
+    ).toThrow(/invalides/)
+  })
+})
+
+describe("planOrganizationSync", () => {
+  const acme = { id: "o1", slug: "acme", name: "Acme SA", role: "admin" } as const
+  const copy = { organizationId: "o1", slug: "acme", name: "Acme SA", role: "admin" } as const
+
+  it("n'écrit rien quand rien ne change", () => {
+    expect(planOrganizationSync([acme], [copy])).toEqual({ upsert: [], remove: [] })
+  })
+
+  it("crée une organisation nouvelle et met à jour un rôle ou un nom changé", () => {
+    const beta = { id: "o2", slug: "beta", name: "Beta", role: "member" } as const
+    expect(planOrganizationSync([{ ...acme, role: "owner" }, beta], [copy]).upsert).toEqual([
+      { ...acme, role: "owner" },
+      beta,
+    ])
+    expect(planOrganizationSync([{ ...acme, name: "Acme Sàrl" }], [copy]).upsert).toHaveLength(1)
+  })
+
+  it("retire une organisation quittée", () => {
+    expect(planOrganizationSync([], [copy])).toEqual({ upsert: [], remove: ["o1"] })
   })
 })

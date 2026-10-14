@@ -4,7 +4,7 @@ Connexion d'un produit HGDC à HGDC Account (OIDC) : bouton « Se connecter avec
 
 | Import              | Contenu                                                                                                |
 | ------------------- | ------------------------------------------------------------------------------------------------------ |
-| `@hgdc/auth`        | `HGDC_ISSUER`, `HGDC_PROVIDER_ID`, `HGDC_SCOPES`, rôles (`highestRole`, `hasRole`), `parseHgdcProfile` |
+| `@hgdc/auth`        | `HGDC_ISSUER`, `HGDC_PROVIDER_ID`, `HGDC_SCOPES`, rôles (`highestRole`, `hasRole`), `parseHgdcProfile`, `organizationsFromIdToken`, `planOrganizationSync` |
 | `@hgdc/auth/server` | `hgdcProvider` (plugin `genericOAuth`), `createAuthProxy`, `restoreFetchMode`                          |
 | `@hgdc/auth/convex` | `requireIdentity`, `requireOrgMember`, `isAuthError`                                                   |
 | `@hgdc/auth/react`  | `HgdcSignInButton`, `startHgdcSignIn`, `HgdcMark`                                                      |
@@ -70,5 +70,22 @@ const { userId, role } = await requireOrgMember(ctx, organizationId, {
 À appeler avant toute lecture ou écriture. L'émetteur est obligatoire : un `subject` n'est unique que chez son émetteur, et sans ce contrôle un autre fournisseur accepté par Convex pourrait se faire passer pour un membre. Sans session ou d'un autre émetteur : `ConvexError({ code: "UNAUTHENTICATED" })`. Personne étrangère à l'organisation ou rôle insuffisant : `FORBIDDEN`. Une appartenance rendue pour une autre personne ou une autre organisation est refusée.
 
 Les organisations arrivent par la portée `organizations` : claim `organizations: [{ id, slug, name, role }]` de l'id_token et de userinfo.
+
+## Synchroniser les organisations
+
+Les organisations vivent dans Account ; le produit en garde une copie (espace par organisation, appartenances) que lit le chargeur de `requireOrgMember`. Elle se met à jour à chaque connexion :
+
+```ts
+import { organizationsFromIdToken, planOrganizationSync } from "@hgdc/auth"
+
+// better-auth : databaseHooks.session.create.after → mutation interne du produit
+const account = /* ligne `account` de la personne avec providerId "hgdc" */
+const claimed = organizationsFromIdToken(account.idToken) // jeton reçu du point de jeton, déjà validé
+const plan = planOrganizationSync(claimed, membershipsOfThisUser)
+// plan.upsert : créer l'espace (index unique sur organizationId) et l'appartenance, ou mettre à jour rôle, nom, slug
+// plan.remove : retirer les appartenances des organisations quittées
+```
+
+Un rôle changé dans Account n'arrive qu'à la connexion suivante : garder des sessions courtes (7 jours au plus).
 
 Tous droits réservés, Hugo Gebel Développement Conseil.

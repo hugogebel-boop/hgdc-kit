@@ -84,3 +84,57 @@ export function parseHgdcProfile(claims: unknown): HgdcProfile {
   if (!result.success) throw new Error(`Profil HGDC invalide : ${z.prettifyError(result.error)}`)
   return result.data
 }
+
+const organizationsClaim = z.object({ organizations: z.array(organizationClaim).optional() })
+
+function decodeBase64Url(segment: string): string {
+  const base64 = segment
+    .replaceAll("-", "+")
+    .replaceAll("_", "/")
+    .padEnd(Math.ceil(segment.length / 4) * 4, "=")
+  const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0))
+  return new TextDecoder().decode(bytes)
+}
+
+/**
+ * Organisations d'un id_token de HGDC Account. À n'appeler que sur un jeton reçu directement
+ * du point de jeton d'Account par le serveur (champ `idToken` de la table `account` de
+ * better-auth) : sa signature n'est pas revérifiée ici (OpenID Connect Core 3.1.3.7, point 6).
+ * Lève une erreur si le jeton est illisible ou si un claim est invalide ; `[]` sans la portée.
+ */
+export function organizationsFromIdToken(idToken: string): HgdcOrganization[] {
+  const payload = idToken.split(".")[1]
+  if (!payload) throw new Error("id_token HGDC illisible")
+  const result = organizationsClaim.safeParse(JSON.parse(decodeBase64Url(payload)))
+  if (!result.success) throw new Error(`Organisations HGDC invalides : ${z.prettifyError(result.error)}`)
+  return result.data.organizations ?? []
+}
+
+/** Appartenance d'une personne telle qu'un produit l'a copiée depuis Account. */
+export type SyncedMembership = { organizationId: string; slug: string; name: string; role: OrgRole }
+
+export type OrganizationSyncPlan = {
+  /** Organisations à créer ou à mettre à jour chez le produit (espace et appartenance). */
+  upsert: HgdcOrganization[]
+  /** Organisations dont la personne ne fait plus partie : appartenance à retirer. */
+  remove: string[]
+}
+
+/**
+ * Écart entre les organisations reçues d'Account et la copie du produit, pour une personne.
+ * Ne renvoie que ce qui change : une connexion sans changement n'écrit rien.
+ */
+export function planOrganizationSync(
+  claimed: readonly HgdcOrganization[],
+  current: readonly SyncedMembership[],
+): OrganizationSyncPlan {
+  const known = new Map(current.map((m) => [m.organizationId, m]))
+  const claimedIds = new Set(claimed.map((o) => o.id))
+  return {
+    upsert: claimed.filter((org) => {
+      const copy = known.get(org.id)
+      return !copy || copy.role !== org.role || copy.slug !== org.slug || copy.name !== org.name
+    }),
+    remove: current.filter((m) => !claimedIds.has(m.organizationId)).map((m) => m.organizationId),
+  }
+}
