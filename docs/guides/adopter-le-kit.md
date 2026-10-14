@@ -84,7 +84,7 @@ Exiger le statut `check / check` dans la protection de `main` : sans lui, la fus
 { "extends": ["github>hugogebel-boop/hgdc-kit//packages/config/renovate"] }
 ```
 
-Puis ajouter le dépôt à la variable `HGDC_PRODUCTS` du kit (tableau JSON lu par le job `propagate` de `release.yml`) et au jeton `HGDC_BOT_TOKEN` (accès au dépôt, _Contents_ et _Pull requests_ en écriture), et activer « Allow auto-merge » dans les réglages du dépôt :
+Puis ajouter le dépôt à la variable `HGDC_PRODUCTS` du kit (tableau JSON lu par `propagate.yml`) et au jeton `HGDC_BOT_TOKEN` (accès au dépôt, _Contents_ et _Pull requests_ en écriture), et activer « Allow auto-merge » dans les réglages du dépôt :
 
 ```sh
 gh variable set HGDC_PRODUCTS --repo hugogebel-boop/hgdc-kit --body '["hugogebel-boop/agenthost"]'
