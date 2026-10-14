@@ -2,12 +2,12 @@
 
 Connexion d'un produit HGDC à HGDC Account (OIDC) : bouton « Se connecter avec HGDC », configuration du client better-auth, proxy `/api/auth` pour TanStack Start et gardes Convex.
 
-| Import              | Contenu                                                                                                |
-| ------------------- | ------------------------------------------------------------------------------------------------------ |
+| Import              | Contenu                                                                                                                                                    |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@hgdc/auth`        | `HGDC_ISSUER`, `HGDC_PROVIDER_ID`, `HGDC_SCOPES`, rôles (`highestRole`, `hasRole`), `parseHgdcProfile`, `organizationsFromIdToken`, `planOrganizationSync` |
-| `@hgdc/auth/server` | `hgdcProvider` (plugin `genericOAuth`), `createAuthProxy`, `restoreFetchMode`                          |
-| `@hgdc/auth/convex` | `requireIdentity`, `requireOrgMember`, `isAuthError`                                                   |
-| `@hgdc/auth/react`  | `HgdcSignInButton`, `startHgdcSignIn`, `HgdcMark`                                                      |
+| `@hgdc/auth/server` | `hgdcProvider` (plugin `genericOAuth`), `createAuthProxy`, `restoreFetchMode`                                                                              |
+| `@hgdc/auth/convex` | `requireIdentity`, `requireOrgMember`, `isAuthError`                                                                                                       |
+| `@hgdc/auth/react`  | `HgdcSignInButton`, `startHgdcSignIn`, `HgdcMark`                                                                                                          |
 
 Pairs : better-auth 1.6, convex 1.46+, React 19 (chacun facultatif selon l'import).
 
