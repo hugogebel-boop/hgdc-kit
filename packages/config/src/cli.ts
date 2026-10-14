@@ -11,8 +11,15 @@ const USAGE = `Usage : hgdc-stack <check|sync> [--cwd <dossier>]
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
-  options: { cwd: { type: "string", default: process.cwd() } },
+  options: {
+    cwd: { type: "string", default: process.cwd() },
+    help: { type: "boolean", short: "h", default: false },
+  },
 })
+if (values.help) {
+  console.log(USAGE)
+  process.exit(0)
+}
 const command = positionals[0]
 if (command !== "check" && command !== "sync") {
   console.error(USAGE)
