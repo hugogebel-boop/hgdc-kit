@@ -11,7 +11,7 @@ Le code commun de la H family (HGDC Host, Mail, Account…), publié sur npm sou
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | [`@hgdc/config`](packages/config) | Presets tsconfig, oxlint et oxfmt, preset Renovate, versions exactes de la stack et la commande `hgdc-stack` qui les impose |
 | [`@hgdc/ui`](packages/ui)         | Jetons de la DA, thèmes, polices et composants (à venir)                                                                    |
-| [`@hgdc/auth`](packages/auth)     | Bouton « Se connecter avec HGDC », config better-auth, gardes Convex (à venir)                                              |
+| [`@hgdc/auth`](packages/auth)     | Bouton « Se connecter avec HGDC », client OIDC better-auth, proxy `/api/auth`, gardes Convex `requireOrgMember`             |
 
 Le dépôt est public pour que chaque produit installe le kit sans jeton. Ce n'est pas du logiciel libre : tous droits réservés ([LICENSE](LICENSE)).
 
