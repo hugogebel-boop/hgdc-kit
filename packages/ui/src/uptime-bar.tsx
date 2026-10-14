@@ -1,3 +1,5 @@
+import { useRef, useState, type KeyboardEvent } from "react"
+
 import { SERVICE_STATUS_LABEL, type ServiceStatus } from "./status.tsx"
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip.tsx"
 import { cn } from "./cn.ts"
@@ -29,10 +31,30 @@ function describe(entry: UptimeDay): string {
     .join(" · ")
 }
 
+/** Le jour à atteindre pour une touche, ou `null` si la touche ne déplace pas. */
+export function nextDay(key: string, current: number, count: number): number | null {
+  if (count === 0) return null
+  switch (key) {
+    case "ArrowLeft":
+      return Math.max(0, current - 1)
+    case "ArrowRight":
+      return Math.min(count - 1, current + 1)
+    case "Home":
+      return 0
+    case "End":
+      return count - 1
+    default:
+      return null
+  }
+}
+
 /**
  * Une barre par jour, du plus ancien au plus récent, comme les pages de statut de référence.
  * Chaque barre a sa couleur et, au survol, une infobulle en texte (jour, statut, disponibilité,
  * note). Les lecteurs d'écran lisent la liste des jours, dont chacun dit son statut en mots.
+ *
+ * Au clavier, la barre est un seul arrêt de tabulation (le dernier jour visité, aujourd'hui au
+ * départ) ; les flèches, Début et Fin passent d'un jour à l'autre et ouvrent son infobulle.
  */
 export function UptimeBar({
   days,
@@ -47,16 +69,32 @@ export function UptimeBar({
   summary?: string
   className?: string
 }): React.JSX.Element {
+  const [focused, setFocused] = useState<number | null>(null)
+  const list = useRef<HTMLOListElement>(null)
+  const current = Math.min(focused ?? days.length - 1, days.length - 1)
+
+  function onKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    const target = nextDay(event.key, current, days.length)
+    if (target === null) return
+    event.preventDefault()
+    setFocused(target)
+    list.current?.querySelectorAll<HTMLButtonElement>("[data-slot=uptime-day]")[target]?.focus()
+  }
+
   return (
     <div data-slot="uptime-bar" className={cn("grid gap-2", className)}>
-      <ol aria-label={label} className="flex h-8 items-stretch gap-[2px]">
-        {days.map((entry) => (
+      <ol ref={list} aria-label={label} className="flex h-8 items-stretch gap-[2px]">
+        {days.map((entry, index) => (
           <li key={new Date(entry.date).toISOString()} className="flex min-w-0 flex-1">
             <Tooltip>
               <TooltipTrigger
-                render={<span />}
+                render={<button type="button" />}
+                data-slot="uptime-day"
+                tabIndex={index === current ? 0 : -1}
+                onFocus={() => setFocused(index)}
+                onKeyDown={onKeyDown}
                 className={cn(
-                  "block w-full rounded-[3px] transition-opacity duration-(--duration-fast) ease-out hover:opacity-70 data-popup-open:opacity-70",
+                  "block w-full rounded-[3px] outline-none transition-opacity duration-(--duration-fast) ease-out hover:opacity-70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-popup-open:opacity-70",
                   BAR[entry.status],
                 )}
               >
