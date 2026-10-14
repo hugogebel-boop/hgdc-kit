@@ -49,12 +49,13 @@ export function isAuthError(error: unknown): error is ConvexError<AuthErrorData>
 }
 
 /**
- * Émetteur(s) de jetons dont le `subject` désigne un utilisateur du produit. Avec le plugin
+ * Émetteur des jetons dont le `subject` désigne un utilisateur du produit. Avec le plugin
  * `convex` de better-auth : `process.env.CONVEX_SITE_URL`. Un `subject` n'est unique que chez
  * son émetteur : sans ce contrôle, un autre fournisseur accepté par Convex pourrait présenter
- * le `subject` d'un membre et prendre ses droits.
+ * le `subject` d'un membre et prendre ses droits. Un seul émetteur : l'appartenance est
+ * cherchée par `subject`, qui ne distingue pas deux fournisseurs.
  */
-export type IssuerOption = { issuer: string | readonly string[] }
+export type IssuerOption = { issuer: string }
 
 function normalizeIssuer(value: string) {
   return value.replace(/\/+$/, "")
@@ -64,11 +65,8 @@ function normalizeIssuer(value: string) {
 export async function requireIdentity(ctx: { auth: Auth }, options: IssuerOption): Promise<UserIdentity> {
   const identity = await ctx.auth.getUserIdentity()
   if (!identity) throw authError("UNAUTHENTICATED", "Connectez-vous pour continuer.")
-  const accepted = (typeof options.issuer === "string" ? [options.issuer] : options.issuer)
-    .filter(Boolean)
-    .map(normalizeIssuer)
-  if (accepted.length === 0) throw new Error("requireIdentity : émetteur attendu manquant (CONVEX_SITE_URL ?).")
-  if (!accepted.includes(normalizeIssuer(identity.issuer)))
+  if (!options.issuer) throw new Error("requireIdentity : émetteur attendu manquant (CONVEX_SITE_URL ?).")
+  if (normalizeIssuer(identity.issuer) !== normalizeIssuer(options.issuer))
     throw authError("UNAUTHENTICATED", "Connectez-vous pour continuer.")
   return identity
 }

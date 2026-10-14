@@ -50,7 +50,8 @@ const organizationClaim = z.object({
 const profileClaims = z.object({
   sub: z.string().min(1),
   email: z.email(),
-  email_verified: z.boolean(),
+  // Une adresse non vérifiée ne doit jamais créer ni relier un compte (liaison par e-mail).
+  email_verified: z.literal(true),
   name: z.string().min(1),
   picture: z.url().nullish(),
   organizations: z.array(organizationClaim).optional(),
@@ -67,7 +68,7 @@ export type HgdcOrganization = {
 export type HgdcProfile = {
   sub: string
   email: string
-  email_verified: boolean
+  email_verified: true
   name: string
   picture?: string | null | undefined
   /** Présent seulement si la portée `organizations` a été accordée. */
@@ -75,8 +76,8 @@ export type HgdcProfile = {
 }
 
 /**
- * Valide les claims reçus de HGDC Account. Lève une erreur si un champ attendu manque :
- * un profil incomplet ne doit jamais ouvrir de session.
+ * Valide les claims reçus de HGDC Account. Lève une erreur si un champ attendu manque ou si
+ * l'adresse n'est pas vérifiée : un tel profil ne doit jamais ouvrir de session.
  */
 export function parseHgdcProfile(claims: unknown): HgdcProfile {
   const result = profileClaims.safeParse(claims)

@@ -40,6 +40,7 @@ describe("parseHgdcProfile", () => {
 
   it("refuse un profil sans adresse vérifiée ou avec un rôle inconnu", () => {
     expect(() => parseHgdcProfile({ ...profile, email_verified: undefined })).toThrow(/Profil HGDC invalide/)
+    expect(() => parseHgdcProfile({ ...profile, email_verified: false })).toThrow(/Profil HGDC invalide/)
     expect(() =>
       parseHgdcProfile({ ...profile, organizations: [{ id: "o1", slug: "acme", name: "Acme", role: "root" }] }),
     ).toThrow(/Profil HGDC invalide/)
