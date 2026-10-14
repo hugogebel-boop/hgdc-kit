@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "description": "Config partagée de la H family : tsconfig, oxlint, oxfmt, Renovate, versions exactes de la stack.",
   "license": "UNLICENSED",
+  "homepage": "https://github.com/hugogebel-boop/hgdc-kit/tree/main/packages/config#readme",
+  "bugs": "https://github.com/hugogebel-boop/hgdc-kit/security/advisories/new",
   "type": "module",
   "repository": {
     "type": "git",
