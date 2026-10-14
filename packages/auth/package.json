@@ -23,13 +23,48 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./convex": {
+      "types": "./dist/convex.d.ts",
+      "default": "./dist/convex.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "default": "./dist/react.js"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json"
   },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
   "peerDependencies": {
-    "better-auth": "^1.6.16",
-    "convex": "^1.46.0"
+    "better-auth": ">=1.6.16 <1.7.0",
+    "convex": "^1.46.0",
+    "react": "^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "better-auth": {
+      "optional": true
+    },
+    "convex": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "better-auth": "1.6.16",
+    "convex": "1.46.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
   }
 }
