@@ -155,6 +155,39 @@ La coque des consoles (0.3) : `AppShell` avec `OrgSwitcher` en haut, `SidebarNav
 </AppShell>
 ```
 
+### Listes, journaux et erreurs (0.4)
+
+`DataTable` et `FilterBar` sont contrôlés et ne connaissent pas le routeur : l'état vit dans les paramètres d'URL du produit (tri, page, filtres, recherche), le tableau l'affiche et rappelle. Avec TanStack Router :
+
+```tsx
+const search = Route.useSearch()
+const navigate = useNavigate({ from: Route.fullPath })
+
+<DataTable
+  label="Déploiements"
+  rows={deployments} // undefined pendant le chargement : squelette
+  columns={columns}
+  rowKey={(d) => d._id}
+  sort={search.sort ? { key: search.sort, direction: search.dir ?? "ascending" } : null}
+  onSortChange={(s) => navigate({ search: (p) => ({ ...p, sort: s.key, dir: s.direction }), replace: true })}
+  filtered={activeFilterCount({ status: search.status }, search.q) > 0}
+  filters={
+    <FilterBar
+      search={{ value: search.q ?? "", onChange: (q) => navigate({ search: (p) => ({ ...p, q: q || undefined }), replace: true }) }}
+      filters={[{ key: "status", label: "Statut", options: STATUS_OPTIONS }]}
+      values={{ status: search.status }}
+      onFilterChange={(key, values) => navigate({ search: (p) => ({ ...p, [key]: values.length ? values : undefined }) })}
+      onReset={() => navigate({ search: {} })}
+    />
+  }
+  loadMore={{ hasMore: status === "CanLoadMore", loading: status === "LoadingMore", onLoadMore: () => loadMore(20) }}
+/>
+```
+
+La recherche n'écrit dans l'URL qu'après 250 ms de calme : `replace: true` pour elle et le tri, une entrée d'historique pour un filtre. `loadMore` suit `usePaginatedQuery` de Convex ; `pagination` sert aux pages numérotées.
+
+Une erreur de chargement : `ErrorCard` à la place du contenu (`error={<ErrorCard detail={String(error)} reference={requestId} onRetry={refetch} />}` dans un `DataTable`). Une suppression : `DestructiveDialog` remplace la copie `confirm-delete-dialog.tsx` de Mail, même API (`formatError` en plus pour traduire une `ConvexError`). Une action réversible : `toastUndo(message, { onUndo })` plutôt qu'une confirmation, avec le `Toaster` du kit monté une fois.
+
 ### Migrer depuis des copies locales
 
 Les primitives de Host et Mail sont celles du kit. Pour basculer :

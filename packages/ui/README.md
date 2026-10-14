@@ -69,6 +69,22 @@ La barre se réduit en rail (`Ctrl+B`, mémorisé) : poser `sidebarInitScript` d
 | `secret-reveal` | `<SecretReveal label="Clé d'API" value={key} onDismiss={forget} />` : affichée une fois, puis retirée de la page                                                                                     |
 | `skeleton`      | `<Pending pending={isLoading} fallback={<TableSkeleton columns={3} />}>…</Pending>` : après 200 ms, tenu 400 ms au moins                                                                             |
 
+## Listes, journaux et retours
+
+| Import               | Exemple                                                                                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `filter-bar`         | `<FilterBar search={{ value: q, onChange }} filters={[{ key: "status", label: "Statut", options }]} values={{ status }} onFilterChange={…} onReset={…} />` |
+| `data-table`         | `<DataTable label="Déploiements" rows={rows} columns={columns} rowKey={(d) => d.id} sort={sort} onSortChange={…} filters={<FilterBar …/>} loadMore={…} />` |
+| `dns-record-table`   | `<DnsRecordTable records={[{ type: "MX", name: "send", value, priority: 10, status: "pending" }]} />` (Vérifié, En attente, Échec, À ajouter)              |
+| `log-viewer`         | `<LogViewer lines={[{ id, time, level: "error", message }]} live />` : niveaux, recherche, « Suivre », copie ; seules les lignes visibles sont rendues     |
+| `sparkline`          | `<Sparkline label="Envois sur 7 jours" values={[3, 8, 5]} color={2} />`                                                                                    |
+| `middle-truncate`    | `<MiddleTruncate text={deployment.url} />` : « …/routes/index.tsx », texte entier dans la page                                                             |
+| `error-card`         | `<ErrorCard title="Impossible de charger les journaux" detail={message} reference={requestId} onRetry={refetch} />`                                        |
+| `destructive-dialog` | `<DestructiveDialog open={open} onOpenChange={setOpen} title="Supprimer le domaine" question="…" name="acme.ch" onConfirm={remove} />`                     |
+| `sonner`             | `<Toaster />` une fois, puis `toastUndo("Domaine retiré", { onUndo: restore })` ; `errorMessage(error)` pour un toast d'erreur                             |
+
+Filtres, tri et page vivent dans l'URL du produit : les composants sont contrôlés et ne connaissent pas le routeur.
+
 ## Contrôles et surfaces flottantes
 
 | Import        | Exemple                                                                                                                                                      |
