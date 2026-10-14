@@ -7,8 +7,8 @@ export default defineConfig({
   ignorePatterns: ["**/dist/**"],
   overrides: [
     {
-      // Paquets réservés, remplis par les chantiers A et B de la vague 1 : retirer alors cette exception.
-      files: ["packages/ui/src/index.ts", "packages/auth/src/index.ts"],
+      // Paquet réservé, rempli par le chantier A de la vague 1 : retirer alors cette exception.
+      files: ["packages/ui/src/index.ts"],
       rules: { "unicorn/no-empty-file": "off" },
     },
   ],
