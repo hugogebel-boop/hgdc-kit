@@ -1,6 +1,6 @@
 # @hgdc/ui
 
-Interface de la H family : jetons de la DA, thèmes clair et sombre, polices et composants de base, pour une application React 19 + Tailwind v4.
+Interface de la H family : jetons de la DA, thèmes clair et sombre, polices, composants de base et coque des consoles, pour une application React 19 + Tailwind v4.
 
 ```sh
 bun add @hgdc/ui
@@ -19,34 +19,75 @@ bun add @hgdc/ui
 
 ```tsx
 import { Button } from "@hgdc/ui/button"
-import { ThemeProvider, themeInitScript, useTheme } from "@hgdc/ui/theme"
+import { ThemeProvider, themeInitScript } from "@hgdc/ui/theme"
+import { sidebarInitScript } from "@hgdc/ui/app-shell"
 ```
 
-## Contenu
+Un sous-chemin par composant, sans fichier d'index. Les primitives viennent toutes de Base UI ; les graphiques sont en SVG, sans bibliothèque.
 
-| Import                                                                                          | Rôle                                                                                                        |
-| ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `@hgdc/ui/styles.css`                                                                           | Jetons OKLCH, thèmes (`.dark` sur `<html>`), Inter et Geist, utilitaires `surface`, `pressable`, `soft-in`… |
-| `@hgdc/ui/theme`                                                                                | `ThemeProvider`, `useTheme`, `themeInitScript` (à poser dans le `<head>` contre le flash de thème)          |
-| `@hgdc/ui/cn`                                                                                   | `cn()` (clsx + tailwind-merge)                                                                              |
-| `@hgdc/ui/use-media-query`                                                                      | `useMediaQuery`, `useIsMobile` (sûrs au rendu serveur)                                                      |
-| `@hgdc/ui/floating`                                                                             | Classes des surfaces flottantes (menus, sélecteurs)                                                         |
-| `avatar` `badge` `button` `dialog` `drawer` `dropdown-menu` `empty` `field` `input` `input-otp` | Primitives sur Base UI                                                                                      |
-| `label` `segmented-control` `select` `separator` `sonner` `spinner` `switch` `textarea`         | Primitives sur Base UI, toasts sonner, icônes Hugeicons                                                     |
+## Fondations
 
-Un sous-chemin par composant, sans fichier d'index : `import { Badge } from "@hgdc/ui/badge"`.
+| Import                     | Rôle                                                                                                                          |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `@hgdc/ui/styles.css`      | Jetons OKLCH, thèmes (`.dark` sur `<html>`), variante `rail:`, polices, utilitaires `surface`, `pressable`, `skeleton-pulse`… |
+| `@hgdc/ui/theme`           | `ThemeProvider`, `useTheme`, `themeInitScript` (dans le `<head>`, contre le flash de thème)                                   |
+| `@hgdc/ui/cn`              | `cn()` (clsx + tailwind-merge)                                                                                                |
+| `@hgdc/ui/use-media-query` | `useMediaQuery`, `useIsMobile`                                                                                                |
+| `@hgdc/ui/floating`        | Classes des surfaces flottantes                                                                                               |
+
+Primitives déjà là : `avatar` `badge` `button` `dialog` `drawer` `dropdown-menu` `empty` `field` `input` `input-otp` `label` `segmented-control` `select` `separator` `sonner` `spinner` `switch` `textarea`.
+
+## Coque des consoles
+
+| Import         | Exemple                                                                                                                                                      |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `app-shell`    | `<AppShell sidebarHeader={<OrgSwitcher …/>} nav={<SidebarNav label="Projet">…</SidebarNav>} sidebarFooter={<AccountMenu …/>}>`                               |
+|                | `<SidebarNavItem icon={Rocket01Icon} label="Déploiements" render={<Link to="/deployments" />} />`                                                            |
+| `org-switcher` | `<OrgSwitcher organizations={orgs} activeId={org.id} onSelect={go} createHref="/organisations/nouvelle" />`                                                  |
+| `account-menu` | `<AccountMenu user={user} onProfile={…} onSecurity={…} onSignOut={signOut} products={HGDC_PRODUCTS} />`                                                      |
+| `command-menu` | `<CommandMenu groups={[{ label: "Aller à", items }, { label: "Créer", items }, { label: "Changer", items }]} />` (`Ctrl+K`)                                  |
+| `kbd`          | `<KbdGroup><Kbd>Ctrl</Kbd><Kbd>K</Kbd></KbdGroup>`                                                                                                           |
+| `page-header`  | `<PageHeader title="Domaines" breadcrumbs={[{ label: "Acme", render: <Link to="/o/acme" /> }, { label: "Domaines" }]} actions={<Button>Ajouter</Button>} />` |
+
+La barre se réduit en rail (`Ctrl+B`, mémorisé) : poser `sidebarInitScript` dans le `<head>`. Le kit ne connaît ni routeur ni authentification : liens par `render={<Link />}`, actions par callbacks. Rôles d'organisation : `owner`, `admin`, `member` (Propriétaire, Admin, Membre).
+
+## Contenu et données
+
+| Import          | Exemple                                                                                                                                                                                              |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `card`          | `<Card><CardHeader><CardTitle>Domaines</CardTitle><CardAction>…</CardAction></CardHeader><CardContent>…</CardContent><CardFooter>…</CardFooter></Card>`                                              |
+| `alert`         | `<Alert tone="warning" title="Quota presque atteint" action={<Button size="sm">Voir</Button>}>90 % utilisés.</Alert>`                                                                                |
+| `table`         | `<TableHead sort="descending" onSort={…}>Date</TableHead>`, `<TableRowLink render={<Link … />}>Production</TableRowLink>`, `<TableEmpty colSpan={4}>…</TableEmpty>`, `<TableSkeleton columns={4} />` |
+| `resource-list` | `<ResourceList><ResourceItem icon={…} title="Site vitrine" meta="acme.ch" badge={…} actions={…} href="/p/site" /></ResourceList>`                                                                    |
+| `stat`          | `<StatGrid><StatTile label="Erreurs" value="12" delta={{ value: "8 %", direction: "up", good: "down" }} /></StatGrid>`                                                                               |
+| `time-chart`    | `<TimeChart label="Envois par jour" timestamps={days} series={[{ key: "sent", label: "Envoyés", values }]} kind="bar" />`                                                                            |
+| `status`        | `<StatusBadge status="degraded" />` (Opérationnel, Dégradé, Panne, Maintenance, Inconnu)                                                                                                             |
+| `uptime-bar`    | `<UptimeBar days={[{ date, status: "operational", uptime: "100 %" }]} summary="99,95 % sur 90 jours" />`                                                                                             |
+| `timeline`      | `<Timeline entries={[{ id, title: "Résolu", time, status: "operational" }]} />`                                                                                                                      |
+| `relative-time` | `<RelativeTime date={deployment._creationTime} />` (« il y a 3 min », date exacte au survol)                                                                                                         |
+| `copy-button`   | `<Snippet value="bun add @hgdc/ui" prompt />`, `<CopyButton value={url} />`                                                                                                                          |
+| `secret-reveal` | `<SecretReveal label="Clé d'API" value={key} onDismiss={forget} />` : affichée une fois, puis retirée de la page                                                                                     |
+| `skeleton`      | `<Pending pending={isLoading} fallback={<TableSkeleton columns={3} />}>…</Pending>` : après 200 ms, tenu 400 ms au moins                                                                             |
+
+## Contrôles et surfaces flottantes
+
+| Import        | Exemple                                                                                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `checkbox`    | `<label className="flex items-center gap-2.5"><Checkbox defaultChecked /> Résumé hebdomadaire</label>`                                                       |
+| `radio-group` | `<RadioGroup aria-labelledby="role" defaultValue="member"><RadioGroupItem value="admin" />…</RadioGroup>`                                                    |
+| `tabs`        | `<Tabs defaultValue="apercu"><TabsList><TabsTab value="apercu">Aperçu</TabsTab></TabsList><TabsPanel value="apercu">…</TabsPanel></Tabs>`                    |
+| `tooltip`     | `<TooltipProvider>` autour de l'app, puis `<Tooltip><TooltipTrigger aria-label="Copier">…</TooltipTrigger><TooltipContent>Copier</TooltipContent></Tooltip>` |
+| `popover`     | `<Popover><PopoverTrigger>Aide</PopoverTrigger><PopoverContent><PopoverTitle>…</PopoverTitle></PopoverContent></Popover>`                                    |
 
 ## Règles de la DA
 
-- Chrome monochrome, un seul accent violet : focus, lien, élément actif, un geste principal par écran.
-- Profondeur par la teinte : ni ombre ni bordure dans le flux, ombre réservée à ce qui flotte.
-- Boutons en pilule, champs et menus en `rounded-2xl`, cartes en `rounded-3xl`.
-- Au survol, seule la couleur change : ni ombre, ni zoom. Le rebond est réservé à l'appui.
-- Couleurs de statut : la couleur vive pour les pastilles, son encre (`text-status-active-ink`, `text-info-ink`…) pour le texte. L'information est bleue, le violet reste l'accent.
-- Chargement : l'anneau de la DA, `<Spinner />` dans un bouton, `<Spinner size={8} tone="accent" />` seul sur une page.
-- Un `Button` rendu en lien (`render={<Link />}`) reste un lien pour les lecteurs d'écran.
+- Chrome monochrome, un seul accent violet : focus, lien, un geste principal par écran. « Vous êtes ici » (barre, onglets) reste en teinte.
+- Profondeur par la teinte : cartes `surface` sans ombre ni contour, ombre réservée à ce qui flotte, aucun flou.
+- Au survol, seule la couleur change. Le rebond est réservé à l'appui. La palette de commandes s'ouvre sans animation.
+- Un statut s'écrit toujours (point et libellé), jamais par la couleur seule. Chiffres en `tabular-nums`.
+- Graphiques : `--chart-1` à `--chart-6` dans cet ordre, validées pour le daltonisme dans les deux thèmes ; au-delà de six séries, regrouper en « Autres ».
 - Référence de l'interface : Host. Couleur d'un client : `--brand-accent`.
 
-Mode d'emploi complet : [Adopter le kit](https://github.com/hugogebel-boop/hgdc-kit/blob/main/docs/guides/adopter-le-kit.md#7-interface). Décisions : [ADR 0005](https://github.com/hugogebel-boop/hgdc-kit/blob/main/docs/adr/0005-ui-css-brute-et-sous-chemins.md).
+Mode d'emploi complet : [Adopter le kit](https://github.com/hugogebel-boop/hgdc-kit/blob/main/docs/guides/adopter-le-kit.md#7-interface). Décisions : [ADR 0005](https://github.com/hugogebel-boop/hgdc-kit/blob/main/docs/adr/0005-ui-css-brute-et-sous-chemins.md), [ADR 0006](https://github.com/hugogebel-boop/hgdc-kit/blob/main/docs/adr/0006-ui-composants-des-consoles.md).
 
 Tous droits réservés, Hugo Gebel Développement Conseil.

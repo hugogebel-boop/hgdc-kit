@@ -1,6 +1,6 @@
 ---
 owner: Hugo Gebel
-last_reviewed: 2026-10-14
+last_reviewed: 2026-10-15
 ---
 
 # Adopter le kit dans un produit
@@ -126,6 +126,34 @@ bun add @hgdc/ui
 Le kit apporte les polices (Inter, Geist), `shadcn/tailwind.css`, les jetons clair et sombre et les utilitaires communs (`surface`, `surface-link`, `pressable`, `touch-target`, `soft-in`, `rise`…). Le produit ne garde que ses ajouts : variantes, teintes, animations qui lui sont propres. Ne pas redéclarer un `@utility` du kit.
 
 Le thème : `ThemeProvider` autour de l'application, et `themeInitScript` dans un `<script>` du `<head>`, avant la feuille de styles, pour éviter le flash au chargement.
+
+La coque des consoles (0.3) : `AppShell` avec `OrgSwitcher` en haut, `SidebarNav` au milieu, `AccountMenu` en bas, et `CommandMenu` une fois dans la page (`Ctrl+K`). Poser aussi `sidebarInitScript` dans le `<head>`, à côté de `themeInitScript`, et `TooltipProvider` autour de l'application. Le kit ne connaît pas le routeur : chaque lien passe par `render={<Link to="…" />}`, et TanStack Router marque l'entrée active (`data-status="active"`) sans rien de plus. La variante `rail:` vient du kit : retirer la déclaration locale et `lib/sidebar.ts`.
+
+```tsx
+<AppShell
+  sidebarHeader={
+    <OrgSwitcher
+      organizations={orgs}
+      activeId={org.id}
+      onSelect={(id) => navigate(id)}
+      createHref="/organisations/nouvelle"
+    />
+  }
+  nav={
+    <SidebarNav label="Projet">
+      <SidebarNavItem
+        icon={Rocket01Icon}
+        label="Déploiements"
+        render={<Link to="/$team/$project/deployments" params={params} />}
+      />
+    </SidebarNav>
+  }
+  sidebarFooter={<AccountMenu user={user} onProfile={() => navigate({ to: "/account" })} onSignOut={signOut} />}
+  header={<CommandMenuButton onClick={() => setPaletteOpen(true)} />}
+>
+  <Outlet />
+</AppShell>
+```
 
 ### Migrer depuis des copies locales
 
