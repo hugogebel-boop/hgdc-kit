@@ -41,7 +41,11 @@ Un sous-chemin par composant, sans fichier d'index : `import { Badge } from "@hg
 - Chrome monochrome, un seul accent violet : focus, lien, élément actif, un geste principal par écran.
 - Profondeur par la teinte : ni ombre ni bordure dans le flux, ombre réservée à ce qui flotte.
 - Boutons en pilule, champs et menus en `rounded-2xl`, cartes en `rounded-3xl`.
+- Au survol, seule la couleur change : ni ombre, ni zoom. Le rebond est réservé à l'appui.
+- Couleurs de statut : la couleur vive pour les pastilles, son encre (`text-status-active-ink`, `text-info-ink`…) pour le texte. L'information est bleue, le violet reste l'accent.
+- Chargement : l'anneau de la DA, `<Spinner />` dans un bouton, `<Spinner size={8} tone="accent" />` seul sur une page.
 - Un `Button` rendu en lien (`render={<Link />}`) reste un lien pour les lecteurs d'écran.
+- Référence de l'interface : Host. Couleur d'un client : `--brand-accent`.
 
 Mode d'emploi complet : [Adopter le kit](https://github.com/hugogebel-boop/hgdc-kit/blob/main/docs/guides/adopter-le-kit.md#7-interface). Décisions : [ADR 0005](https://github.com/hugogebel-boop/hgdc-kit/blob/main/docs/adr/0005-ui-css-brute-et-sous-chemins.md).
 
