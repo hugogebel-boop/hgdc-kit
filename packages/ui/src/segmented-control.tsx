@@ -46,8 +46,7 @@ export function SegmentedControl<T extends string>({
       role="group"
       aria-label={label}
       className={cn(
-        // Fond `muted` plutôt qu'un contour (ADR 0013).
-        "inline-flex w-fit max-w-full shrink-0 overflow-hidden rounded-3xl bg-muted p-1",
+        "inline-flex w-fit max-w-full shrink-0 overflow-hidden rounded-3xl border border-border bg-background p-1",
         className,
       )}
     >
