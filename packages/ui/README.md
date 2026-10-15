@@ -39,35 +39,38 @@ Primitives déjà là : `avatar` `badge` `button` `dialog` `drawer` `dropdown-me
 
 ## Coque des consoles
 
-| Import         | Exemple                                                                                                                                                      |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `app-shell`    | `<AppShell sidebarHeader={<OrgSwitcher …/>} nav={<SidebarNav label="Projet">…</SidebarNav>} sidebarFooter={<AccountMenu …/>}>`                               |
-|                | `<SidebarNavItem icon={Rocket01Icon} label="Déploiements" render={<Link to="/deployments" />} />`                                                            |
-| `org-switcher` | `<OrgSwitcher organizations={orgs} activeId={org.id} onSelect={go} createHref="/organisations/nouvelle" />`                                                  |
-| `account-menu` | `<AccountMenu user={user} onProfile={…} onSecurity={…} onSignOut={signOut} products={HGDC_PRODUCTS} />`                                                      |
-| `command-menu` | `<CommandMenu groups={[{ label: "Aller à", items }, { label: "Créer", items }, { label: "Changer", items }]} />` (`Ctrl+K`)                                  |
-| `kbd`          | `<KbdGroup><Kbd>Ctrl</Kbd><Kbd>K</Kbd></KbdGroup>`                                                                                                           |
-| `page-header`  | `<PageHeader title="Domaines" breadcrumbs={[{ label: "Acme", render: <Link to="/o/acme" /> }, { label: "Domaines" }]} actions={<Button>Ajouter</Button>} />` |
+| Import         | Exemple                                                                                                                                                                |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app-shell`    | `<AppShell sidebarHeader={<OrgSwitcher …/>} nav={<SidebarNav label="Projet">…</SidebarNav>} sidebarFooter={<AccountMenu …/>}>`                                         |
+|                | `<SidebarNavItem icon={Rocket01Icon} label="Déploiements" render={<Link to="/deployments" />} />`                                                                      |
+| `org-switcher` | `<OrgSwitcher organizations={orgs} activeId={org.id} onSelect={go} createHref="/organisations/nouvelle" />`                                                            |
+| `account-menu` | `<AccountMenu user={user} onProfile={…} onSecurity={…} onSignOut={signOut} product="Mail" />` : Account et les produits ouverts du catalogue, Mail coché               |
+| `command-menu` | `<CommandMenu groups={[{ label: "Aller à", items }, { label: "Créer", items }, { label: "Changer", items }]} />` (`Ctrl+K`), `<CommandMenuButton compact="mobile" …/>` |
+| `products`     | `HGDC_PRODUCTS` (mot, nom, sous-domaine, phrase, icône, état), `HGDC_ACCOUNT`, `productMenuEntries({ current: "Mail" })`                                               |
+| `kbd`          | `<KbdGroup><Kbd>Ctrl</Kbd><Kbd>K</Kbd></KbdGroup>`                                                                                                                     |
+| `page-header`  | `<PageHeader title="Domaines" breadcrumbs={[{ label: "Acme", render: <Link to="/o/acme" /> }, { label: "Domaines" }]} actions={<Button>Ajouter</Button>} />`           |
 
 La barre se réduit en rail (`Ctrl+B`, mémorisé) : poser `sidebarInitScript` dans le `<head>`. Le kit ne connaît ni routeur ni authentification : liens par `render={<Link />}`, actions par callbacks. Rôles d'organisation : `owner`, `admin`, `member` (Propriétaire, Admin, Membre).
 
 ## Contenu et données
 
-| Import          | Exemple                                                                                                                                                                                              |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `card`          | `<Card><CardHeader><CardTitle>Domaines</CardTitle><CardAction>…</CardAction></CardHeader><CardContent>…</CardContent><CardFooter>…</CardFooter></Card>`                                              |
-| `alert`         | `<Alert tone="warning" title="Quota presque atteint" action={<Button size="sm">Voir</Button>}>90 % utilisés.</Alert>`                                                                                |
-| `table`         | `<TableHead sort="descending" onSort={…}>Date</TableHead>`, `<TableRowLink render={<Link … />}>Production</TableRowLink>`, `<TableEmpty colSpan={4}>…</TableEmpty>`, `<TableSkeleton columns={4} />` |
-| `resource-list` | `<ResourceList><ResourceItem icon={…} title="Site vitrine" meta="acme.ch" badge={…} actions={…} href="/p/site" /></ResourceList>`                                                                    |
-| `stat`          | `<StatGrid><StatTile label="Erreurs" value="12" delta={{ value: "8 %", direction: "up", good: "down" }} /></StatGrid>`                                                                               |
-| `time-chart`    | `<TimeChart label="Envois par jour" timestamps={days} series={[{ key: "sent", label: "Envoyés", values }]} kind="bar" />`                                                                            |
-| `status`        | `<StatusBadge status="degraded" />` (Opérationnel, Dégradé, Panne, Maintenance, Inconnu)                                                                                                             |
-| `uptime-bar`    | `<UptimeBar days={[{ date, status: "operational", uptime: "100 %" }]} summary="99,95 % sur 90 jours" />`                                                                                             |
-| `timeline`      | `<Timeline entries={[{ id, title: "Résolu", time, status: "operational" }]} />`                                                                                                                      |
-| `relative-time` | `<RelativeTime date={deployment._creationTime} />` (« il y a 3 min », date exacte au survol)                                                                                                         |
-| `copy-button`   | `<Snippet value="bun add @hgdc/ui" prompt />`, `<CopyButton value={url} />`                                                                                                                          |
-| `secret-reveal` | `<SecretReveal label="Clé d'API" value={key} onDismiss={forget} />` : affichée une fois, puis retirée de la page                                                                                     |
-| `skeleton`      | `<Pending pending={isLoading} fallback={<TableSkeleton columns={3} />}>…</Pending>` : après 200 ms, tenu 400 ms au moins                                                                             |
+| Import          | Exemple                                                                                                                                                                                                                 |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `card`          | `<Card><CardHeader><CardTitle>Domaines</CardTitle><CardAction>…</CardAction></CardHeader><CardContent>…</CardContent><CardFooter>…</CardFooter></Card>`                                                                 |
+| `alert`         | `<Alert tone="warning" title="Quota presque atteint" action={<Button size="sm">Voir</Button>}>90 % utilisés.</Alert>`                                                                                                   |
+| `table`         | `<TableHead sort="descending" onSort={…}>Date</TableHead>`, `<TableRowLink render={<Link … />}>Production</TableRowLink>`, `<TableEmpty colSpan={4}>…</TableEmpty>`, `<TableSkeleton columns={4} />`                    |
+| `resource-list` | `<ResourceList><ResourceItem icon={…} title="Site vitrine" meta="acme.ch" badge={…} actions={…} href="/p/site" /></ResourceList>`                                                                                       |
+| `stat`          | `<StatGrid><StatTile label="Erreurs" value="12" delta={{ value: "8 %", direction: "up", good: "down" }} /></StatGrid>`                                                                                                  |
+| `time-chart`    | `<TimeChart label="Envois par jour" timestamps={days} series={[{ key: "sent", label: "Envoyés", values }]} kind="bar" lastIncomplete />` (dernier point en pointillés : la journée n'est pas finie)                     |
+| `status`        | `<StatusBadge status="degraded" />` (Opérationnel, Dégradé, Panne, Maintenance, Inconnu) ; hors services, `<StatusBadge tone="success" label="Remis" />` (`neutral`, `success`, `warning`, `danger`, `info`, `pending`) |
+| `uptime-bar`    | `<UptimeBar days={[{ date, status: "operational", uptime: "100 %" }]} summary="99,95 % sur 90 jours" />`                                                                                                                |
+| `timeline`      | `<Timeline entries={[{ id, title: "Résolu", time, status: "operational" }]} />`                                                                                                                                         |
+| `relative-time` | `<RelativeTime date={deployment._creationTime} />` (« il y a 3 min », date exacte au survol)                                                                                                                            |
+| `copy-button`   | `<Snippet value="bun add @hgdc/ui" prompt />`, `<CopyButton value={url} />`, `<CopyButton value={all} label="Tout copier" showLabel />`                                                                                 |
+| `progress`      | `<Progress label="Envoi de la campagne" value={120} max={400} />` (`value={null}` : durée inconnue), `<Meter label="E-mails ce mois" value={8600} max={10000} />` (orange puis rouge près de la limite)                 |
+| `rank-bar`      | `<RankBar label="Pages les plus vues" items={[{ key, label: "/tarifs", value: 640, render: <Link … /> }]} limit={5} />`                                                                                                 |
+| `secret-reveal` | `<SecretReveal label="Clé d'API" value={key} onDismiss={forget} />` : affichée une fois, puis retirée de la page                                                                                                        |
+| `skeleton`      | `<Pending pending={isLoading} fallback={<TableSkeleton columns={3} />}>…</Pending>` : après 200 ms, tenu 400 ms au moins                                                                                                |
 
 ## Listes, journaux et retours
 
@@ -84,6 +87,19 @@ La barre se réduit en rail (`Ctrl+B`, mémorisé) : poser `sidebarInitScript` d
 | `sonner`             | `<Toaster />` une fois, puis `toastUndo("Domaine retiré", { onUndo: restore })` ; `errorMessage(error)` pour un toast d'erreur                             |
 
 Filtres, tri et page vivent dans l'URL du produit : les composants sont contrôlés et ne connaissent pas le routeur.
+
+## Formulaires et réglages
+
+| Import              | Exemple                                                                                                                                                |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `settings-section`  | `<SettingsSection title="Nom de l'espace" description="…" dirty={changed} saving={saving} onSave={save}>…</SettingsSection>` : un Enregistrer par bloc |
+| `date-range-picker` | `<DateRangePicker value={{ from: "2026-10-01", to: "2026-10-15" }} onChange={(range, preset) => …} />` : raccourcis et période libre                   |
+| `date-time-field`   | `<DateTimeField value={sendAt} onChange={setSendAt} min={Date.now()} />` : millisecondes, heure du navigateur                                          |
+| `color-field`       | `<ColorField value="#7c3aed" onChange={…} />` : pastille, code hexadécimal, contraste avec le texte blanc et son verdict                               |
+| `money-field`       | `<MoneyField value={centimes} onChange={…} />` : CHF en centimes, « 1’250.50 », accepte « 12.– » ; `formatChf`, `parseMoney`                           |
+| `address-fields`    | `<AddressFields value={address} onChange={…} errors={validatePostalAddress(address)} />` : rue, numéro, NPA, localité, pays (facture QR)               |
+
+Les champs de date sont ceux du navigateur, sans calendrier maison (ADR 0006). Les fonctions pures (`parseMoney`, `contrastRatio`, `validatePostalAddress`, `formatDateRange`) s'importent seules, côté serveur aussi.
 
 ## Contrôles et surfaces flottantes
 

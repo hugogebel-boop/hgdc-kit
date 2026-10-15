@@ -2,12 +2,12 @@
 
 Connexion d'un produit HGDC à HGDC Account (OIDC) : bouton « Se connecter avec HGDC », configuration du client better-auth, proxy `/api/auth` pour TanStack Start et gardes Convex.
 
-| Import              | Contenu                                                                                                                                                    |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@hgdc/auth`        | `HGDC_ISSUER`, `HGDC_PROVIDER_ID`, `HGDC_SCOPES`, rôles (`highestRole`, `hasRole`), `parseHgdcProfile`, `organizationsFromIdToken`, `planOrganizationSync` |
-| `@hgdc/auth/server` | `hgdcProvider` (plugin `genericOAuth`), `createAuthProxy`, `restoreFetchMode`                                                                              |
-| `@hgdc/auth/convex` | `requireIdentity`, `requireOrgMember`, `isAuthError`                                                                                                       |
-| `@hgdc/auth/react`  | `HgdcSignInButton`, `startHgdcSignIn`, `HgdcMark`                                                                                                          |
+| Import              | Contenu                                                                                                                                                                                                                                                                                       |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@hgdc/auth`        | `HGDC_ISSUER`, `HGDC_PROVIDER_ID`, `HGDC_SCOPES`, rôles (`highestRole`, `hasRole`), `parseHgdcProfile`, `verifiedOrganizationsFromIdToken`, `verifyHgdcIdToken`, `planOrganizationSync`, fraîcheur (`membershipIsFresh`, `SESSION_TTL_SECONDS`, `MEMBERSHIP_TTL_MS`, `KEY_MEMBERSHIP_TTL_MS`) |
+| `@hgdc/auth/server` | `hgdcProvider` (plugin `genericOAuth`), `createAuthProxy`, `restoreFetchMode`                                                                                                                                                                                                                 |
+| `@hgdc/auth/convex` | `requireIdentity`, `requireOrgMember`, `isAuthError`, `authErrorReason`, `AUTH_ERROR_MESSAGES`                                                                                                                                                                                                |
+| `@hgdc/auth/react`  | `HgdcSignInButton`, `startHgdcSignIn`, `HgdcMark`                                                                                                                                                                                                                                             |
 
 Pairs : better-auth 1.6, convex 1.46+, React 19 (chacun facultatif selon l'import).
 
@@ -67,25 +67,55 @@ const { userId, role } = await requireOrgMember(ctx, organizationId, {
 })
 ```
 
-À appeler avant toute lecture ou écriture. L'émetteur est obligatoire : un `subject` n'est unique que chez son émetteur, et sans ce contrôle un autre fournisseur accepté par Convex pourrait se faire passer pour un membre. Sans session ou d'un autre émetteur : `ConvexError({ code: "UNAUTHENTICATED" })`. Personne étrangère à l'organisation ou rôle insuffisant : `FORBIDDEN`. Une appartenance rendue pour une autre personne ou une autre organisation est refusée.
+À appeler avant toute lecture ou écriture. L'émetteur est obligatoire : un `subject` n'est unique que chez son émetteur, et sans ce contrôle un autre fournisseur accepté par Convex pourrait se faire passer pour un membre. Une appartenance rendue pour une autre personne ou une autre organisation est refusée.
+
+Un refus est une `ConvexError({ code, reason, message })`. `message` s'affiche tel quel (tutoiement) ; pour décider quoi montrer, lire `reason`, jamais le texte :
+
+| `reason`            | `code`            | Cas                                       |
+| ------------------- | ----------------- | ----------------------------------------- |
+| `no_session`        | `UNAUTHENTICATED` | Personne n'est connecté                   |
+| `wrong_issuer`      | `UNAUTHENTICATED` | Jeton d'un autre émetteur                 |
+| `not_member`        | `FORBIDDEN`       | La personne n'est pas dans l'organisation |
+| `insufficient_role` | `FORBIDDEN`       | Elle en est membre, rôle insuffisant      |
+
+```ts
+import { authErrorReason } from "@hgdc/auth/convex"
+
+if (authErrorReason(error) === "insufficient_role") showUpgradeHint()
+```
+
+`authErrorReason` marche des deux côtés (la `ConvexError` reconstruite par le client garde ses données) et déduit la raison d'une erreur d'avant 0.4 par son code.
 
 Les organisations arrivent par la portée `organizations` : claim `organizations: [{ id, slug, name, role }]` de l'id_token et de userinfo.
 
 ## Synchroniser les organisations
 
-Les organisations vivent dans Account ; le produit en garde une copie (espace par organisation, appartenances) que lit le chargeur de `requireOrgMember`. Elle se met à jour à chaque connexion :
+Les organisations vivent dans Account ; le produit en garde une copie (espace par organisation, appartenances) que lit le chargeur de `requireOrgMember`. Le modèle recommandé, celui de Host :
+
+1. **Synchroniser dans `databaseHooks.session.create.before`**, avant que la session existe. Un id_token refusé fait échouer la connexion plutôt que d'ouvrir une session sur des droits périmés.
+2. **Sessions de 7 jours sans prolongation** : `session: { expiresIn: SESSION_TTL_SECONDS, disableSessionRefresh: true }`. Les organisations sont donc relues au moins une fois par semaine.
+3. **Appartenance périmée, pas d'accès** : chaque appartenance garde `syncedAt` (remis à jour à chaque connexion, même sans changement), et le chargeur rend `null` quand `membershipIsFresh` est faux. Une personne retirée dans Account perd l'accès au plus tard 8 jours après (`MEMBERSHIP_TTL_MS`).
 
 ```ts
-import { organizationsFromIdToken, planOrganizationSync } from "@hgdc/auth"
+import { HGDC_ISSUER, membershipIsFresh, planOrganizationSync, verifiedOrganizationsFromIdToken } from "@hgdc/auth"
 
-// better-auth : databaseHooks.session.create.after → mutation interne du produit
-const account = /* ligne `account` de la personne avec providerId "hgdc" */
-const claimed = organizationsFromIdToken(account.idToken) // jeton reçu du point de jeton, déjà validé
+// better-auth : databaseHooks.session.create.before
+const hgdc = accounts.find((a) => a.providerId === "hgdc") // exactement un, sinon refuser
+const claimed = verifiedOrganizationsFromIdToken(hgdc.idToken ?? "", {
+  issuer: HGDC_ISSUER,
+  clientId: process.env.HGDC_CLIENT_ID!,
+  now: Date.now(),
+}) // lève HgdcIdTokenError : émetteur, audience (clientId), iat de plus de 10 minutes
 const plan = planOrganizationSync(claimed, membershipsOfThisUser)
-// plan.upsert : créer l'espace (index unique sur organizationId) et l'appartenance, ou mettre à jour rôle, nom, slug
-// plan.remove : retirer les appartenances des organisations quittées
+// mutation interne : plan.upsert (espace + appartenance), plan.remove, et syncedAt = Date.now() partout
+
+// chargeur de requireOrgMember
+load: async (ctx, { organizationId, userId }) => {
+  const member = /* appartenance lue dans la base du produit */
+  return member && membershipIsFresh(member, Date.now()) ? member : null
+}
 ```
 
-Un rôle changé dans Account n'arrive qu'à la connexion suivante : garder des sessions courtes (7 jours au plus).
+`verifyHgdcIdToken` rend aussi les claims du profil (nom, adresse, photo) pour les recopier. La signature n'est pas revérifiée : le jeton arrive du point de jeton d'Account, reçu en TLS par le serveur (OpenID Connect Core 3.1.3.7, point 6) ; le contrôle de fraîcheur empêche qu'un ancien jeton resté dans la table `account` rejoue des organisations. Une clé d'API vit hors session : `membershipIsFresh(member, now, KEY_MEMBERSHIP_TTL_MS)` lui laisse 30 jours. Les copies périmées se purgent par un cron.
 
 Tous droits réservés, Hugo Gebel Développement Conseil.
