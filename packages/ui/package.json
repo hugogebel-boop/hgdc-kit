@@ -17,7 +17,8 @@
   "files": [
     "dist",
     "styles.css",
-    "email-icons"
+    "email-icons",
+    "family"
   ],
   "sideEffects": [
     "*.css"
@@ -26,6 +27,7 @@
     "./styles.css": "./styles.css",
     "./package.json": "./package.json",
     "./email-icons/*": "./email-icons/*",
+    "./family/*": "./family/*",
     "./*": {
       "types": "./dist/*.d.ts",
       "default": "./dist/*.js"

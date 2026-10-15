@@ -4,7 +4,9 @@ import Search01Icon from "@hugeicons/core-free-icons/Search01Icon"
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react"
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react"
 
+import type { FamilyProduct } from "./family-svg.ts"
 import { FLOATING_SURFACE } from "./floating.ts"
+import { ProductBadge } from "./product-badge.tsx"
 import { Kbd, KbdGroup, isApplePlatform } from "./kbd.tsx"
 import { cn } from "./cn.ts"
 
@@ -13,6 +15,8 @@ export type Command = {
   id: string
   label: string
   icon?: IconSvgElement
+  /** Pastille d'un produit (« Ouvrir HGDC Mail »), à la place de `icon`. */
+  badge?: FamilyProduct
   /** Autres mots qui trouvent la commande : « dns » pour « Ajouter un domaine ». */
   keywords?: Array<string>
   /** Texte discret à droite : l'organisation d'un projet, « Page ». */
@@ -156,7 +160,9 @@ export function CommandMenu({
                             }}
                             className="flex min-h-11 cursor-default items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium outline-none select-none data-highlighted:bg-muted lg:min-h-10"
                           >
-                            {command.icon ? (
+                            {command.badge ? (
+                              <ProductBadge product={command.badge} className="size-4.5" />
+                            ) : command.icon ? (
                               <HugeiconsIcon
                                 icon={command.icon}
                                 strokeWidth={1.8}

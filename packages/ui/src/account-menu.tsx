@@ -28,6 +28,8 @@ import {
   DropdownMenuTrigger,
 } from "./dropdown-menu.tsx"
 import { MENU_LINK_ITEM } from "./org-switcher.tsx"
+import type { FamilyProduct } from "./family-svg.ts"
+import { ProductBadge } from "./product-badge.tsx"
 import { productMenuEntries } from "./products.ts"
 import { useTheme, type Theme } from "./theme.tsx"
 
@@ -37,7 +39,9 @@ export type HgdcProduct = {
   href: string
   /** Le produit ouvert : coché, sans lien. */
   current?: boolean
-  /** Icône du produit ; celle d'un tableau de bord par défaut. */
+  /** Pastille du produit (`host`, `mail`…), prioritaire sur `icon`. */
+  badge?: FamilyProduct
+  /** Icône du produit sans pastille ; celle d'un tableau de bord par défaut. */
   icon?: IconSvgElement
   /** Texte discret à droite : « Préversion ». */
   hint?: string
@@ -188,13 +192,13 @@ export function AccountMenu({
               {products.map((product) =>
                 product.current ? (
                   <DropdownMenuItem key={product.name} disabled className="data-disabled:opacity-100">
-                    <HugeiconsIcon icon={product.icon ?? DashboardSquare01Icon} aria-hidden />
+                    <ProductMenuIcon product={product} />
                     <span className="flex-1">{product.name}</span>
                     <HugeiconsIcon icon={Tick02Icon} aria-label="Produit ouvert" />
                   </DropdownMenuItem>
                 ) : (
                   <MenuPrimitive.LinkItem key={product.name} href={product.href} className={MENU_LINK_ITEM}>
-                    <HugeiconsIcon icon={product.icon ?? DashboardSquare01Icon} aria-hidden />
+                    <ProductMenuIcon product={product} />
                     <span className="flex-1">{product.name}</span>
                     {product.hint ? (
                       <span className="text-xs font-normal text-muted-foreground">{product.hint}</span>
@@ -213,4 +217,9 @@ export function AccountMenu({
       </DropdownMenuContent>
     </DropdownMenu>
   )
+}
+
+function ProductMenuIcon({ product }: { product: HgdcProduct }): React.JSX.Element {
+  if (product.badge) return <ProductBadge product={product.badge} />
+  return <HugeiconsIcon icon={product.icon ?? DashboardSquare01Icon} aria-hidden />
 }

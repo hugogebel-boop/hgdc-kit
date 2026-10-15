@@ -39,16 +39,29 @@ Primitives déjà là : `avatar` `badge` `button` `dialog` `drawer` `dropdown-me
 
 ## Coque des consoles
 
-| Import         | Exemple                                                                                                                                                                                                       |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `app-shell`    | `<AppShell sidebarHeader={<OrgSwitcher …/>} nav={<SidebarNav label="Projet">…</SidebarNav>} sidebarFooter={<AccountMenu …/>}>`                                                                                |
-|                | `<SidebarNavItem icon={Rocket01Icon} label="Déploiements" render={<Link to="/deployments" />} />`                                                                                                             |
-| `org-switcher` | `<OrgSwitcher organizations={orgs} activeId={org.id} onSelect={go} createHref="/organisations/nouvelle" />`                                                                                                   |
-| `account-menu` | `<AccountMenu user={user} onProfile={…} onSecurity={…} onSignOut={signOut} product="Mail" />` : Account et les produits ouverts du catalogue, Mail coché                                                      |
-| `command-menu` | `<CommandMenu groups={[{ label: "Aller à", items }, { label: "Créer", items }, { label: "Changer", items }]} />` (`Ctrl+K`), `<CommandMenuButton compact="mobile" …/>`                                        |
-| `products`     | `HGDC_PRODUCTS` (mot, nom, sous-domaine, phrase, icône, état, `entryHref`), `HGDC_ACCOUNT`, `productMenuEntries({ current: "Mail" })` : chaque produit du menu pointe vers son entrée `/auth/hgdc` (ADR 0010) |
-| `kbd`          | `<KbdGroup><Kbd>Ctrl</Kbd><Kbd>K</Kbd></KbdGroup>`                                                                                                                                                            |
-| `page-header`  | `<PageHeader title="Domaines" breadcrumbs={[{ label: "Acme", render: <Link to="/o/acme" /> }, { label: "Domaines" }]} actions={<Button>Ajouter</Button>} />`                                                  |
+| Import         | Exemple                                                                                                                                                                                                                         |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app-shell`    | `<AppShell sidebarHeader={<OrgSwitcher …/>} nav={<SidebarNav label="Projet">…</SidebarNav>} sidebarFooter={<AccountMenu …/>}>`                                                                                                  |
+|                | `<SidebarNavItem icon={Rocket01Icon} label="Déploiements" render={<Link to="/deployments" />} />`                                                                                                                               |
+| `org-switcher` | `<OrgSwitcher organizations={orgs} activeId={org.id} onSelect={go} createHref="/organisations/nouvelle" />`                                                                                                                     |
+| `account-menu` | `<AccountMenu user={user} onProfile={…} onSecurity={…} onSignOut={signOut} product="Mail" />` : Account et les produits ouverts du catalogue, Mail coché                                                                        |
+| `command-menu` | `<CommandMenu groups={[{ label: "Aller à", items }, { label: "Créer", items }, { label: "Changer", items }]} />` (`Ctrl+K`), `<CommandMenuButton compact="mobile" …/>`                                                          |
+| `products`     | `HGDC_PRODUCTS` (mot, nom, sous-domaine, phrase, pastille `badge`, icône, état, `entryHref`), `HGDC_ACCOUNT`, `productMenuEntries({ current: "Mail" })` : chaque produit du menu pointe vers son entrée `/auth/hgdc` (ADR 0010) |
+| `kbd`          | `<KbdGroup><Kbd>Ctrl</Kbd><Kbd>K</Kbd></KbdGroup>`                                                                                                                                                                              |
+| `page-header`  | `<PageHeader title="Domaines" breadcrumbs={[{ label: "Acme", render: <Link to="/o/acme" /> }, { label: "Domaines" }]} actions={<Button>Ajouter</Button>} />`                                                                    |
+
+Le menu « Produits HGDC » et la palette (`badge` d'une commande) montrent la pastille de chaque produit.
+
+## Identité H family
+
+| Import                         | Rôle                                                                                                                                       |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `product-badge`                | `<ProductBadge product="host" className="size-8" />`, `<FamilyMark />` (le H tricolore), `PRODUCT_GRADIENT`                                |
+| `@hgdc/ui/family/<mot>.svg`    | Fichiers des pastilles (`account`, `host`, `mail`, `portal`, `status`, `analytics`, `docs`), à copier en `favicon.svg`                     |
+| `@hgdc/ui/family/hfamily*.svg` | `hfamily-icon.svg` (le H seul), `hfamily.svg` et `hfamily-dark.svg` (logo sur fond clair ou sombre, jamais recoloré)                       |
+| `styles.css`                   | `--product-<mot>-from` / `--product-<mot>-to` (dégradé de chaque pastille), `--glow-blue`, `--glow-violet`, `--glow-pink`, `--glow-orange` |
+
+Couleurs pleines ; pour éclaircir, mélanger au blanc `color-mix(in oklab, …)`, jamais `in oklch`. Une pastille reste seule, jamais dans une tuile de couleur. Les originaux vivent dans le dépôt du site hgdc.ch : les recopier dans `packages/ui/family/`, puis `bun scripts/family.ts && bun run format` (SVG embarqués et PNG des e-mails).
 
 La barre se réduit en rail (`Ctrl+B`, mémorisé) : poser `sidebarInitScript` dans le `<head>`. Le kit ne connaît ni routeur ni authentification : liens par `render={<Link />}`, actions par callbacks. Rôles d'organisation : `owner`, `admin`, `member` (Propriétaire, Admin, Membre).
 
@@ -142,7 +155,7 @@ const { html, text } = await renderEmail(
 | `EmailDetails` | Liste clé / valeur                                                                                                                          |
 | `renderEmail`  | `{ html, text }` : HTML pour clients mail, texte tiré du même rendu                                                                         |
 
-L'accent vient du catalogue (`accent` de `@hgdc/ui/products`), les icônes de `https://hgdc.ch/email/<mot>.png` (fichiers dans `@hgdc/ui/email-icons/`, régénérés par `bun scripts/email-icons.ts`). Un exemple par type : `scripts/email-showcase.tsx`.
+L'accent vient du catalogue (`accent` de `@hgdc/ui/products`), les icônes de `https://hgdc.ch/email/<mot>.png` (fichiers dans `@hgdc/ui/email-icons/`, tirés des pastilles par `bun scripts/family.ts`). Un exemple par type : `scripts/email-showcase.tsx`.
 
 ## Règles de la DA
 
