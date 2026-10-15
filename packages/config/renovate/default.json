@@ -36,6 +36,7 @@
         "oxlint-tsgolint",
         "react",
         "react-dom",
+        "react-email",
         "tailwindcss",
         "typescript",
         "vite",

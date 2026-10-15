@@ -7,6 +7,8 @@ import Rocket01Icon from "@hugeicons/core-free-icons/Rocket01Icon"
 import UserCircleIcon from "@hugeicons/core-free-icons/UserCircleIcon"
 import type { IconSvgElement } from "@hugeicons/react"
 
+import { HGDC_EMAIL_ACCENT, type EmailAccent } from "./email-palette.ts"
+
 /** Où en est un produit : seul ce qui répond s'ouvre depuis les menus. */
 export type ProductStage = "live" | "preview" | "soon"
 
@@ -29,11 +31,25 @@ export type HgdcCatalogProduct = {
   pitch: string
   icon: IconSvgElement
   stage: ProductStage
+  /**
+   * Accent du produit en hex, pour ce qui ne lit pas les jetons CSS (e-mails). Absent : l'accent
+   * violet de la DA. Tous les produits le partagent aujourd'hui ; un écart se décide ici.
+   */
+  accent?: EmailAccent | undefined
 }
 
 function product(word: string, pitch: string, icon: IconSvgElement, stage: ProductStage): HgdcCatalogProduct {
   const subdomain = `${word.toLowerCase()}.hgdc.ch`
-  return { word, name: `HGDC ${word}`, subdomain, href: `https://${subdomain}`, pitch, icon, stage }
+  return {
+    word,
+    name: `HGDC ${word}`,
+    subdomain,
+    href: `https://${subdomain}`,
+    pitch,
+    icon,
+    stage,
+    accent: HGDC_EMAIL_ACCENT,
+  }
 }
 
 /** HGDC Account : le compte commun (profil, sécurité, organisations), hors du catalogue des produits. */
