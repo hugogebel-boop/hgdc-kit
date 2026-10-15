@@ -1,6 +1,6 @@
 {
   "name": "@hgdc/domains",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Domaines personnalisés des produits HGDC : normalisation, sous-domaine ou domaine racine, preuve TXT, comparaison d'enregistrements DNS, instructions à afficher.",
   "license": "UNLICENSED",
   "homepage": "https://github.com/hugogebel-boop/hgdc-kit/tree/main/packages/domains#readme",
