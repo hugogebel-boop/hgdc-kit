@@ -1,0 +1,31 @@
+{
+  "name": "@hgdc/domains",
+  "version": "0.0.0",
+  "description": "Domaines personnalisés des produits HGDC : normalisation, sous-domaine ou domaine racine, preuve TXT, comparaison d'enregistrements DNS, instructions à afficher.",
+  "license": "UNLICENSED",
+  "homepage": "https://github.com/hugogebel-boop/hgdc-kit/tree/main/packages/domains#readme",
+  "bugs": "https://github.com/hugogebel-boop/hgdc-kit/security/advisories/new",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hugogebel-boop/hgdc-kit.git",
+    "directory": "packages/domains"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  }
+}
