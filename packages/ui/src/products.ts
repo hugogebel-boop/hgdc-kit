@@ -48,10 +48,10 @@ export const HGDC_ACCOUNT: HgdcCatalogProduct = product(
 export const HGDC_PRODUCTS: ReadonlyArray<HgdcCatalogProduct> = [
   product("Host", "Ton site en ligne, déployé à chaque modification.", Rocket01Icon, "preview"),
   product("Mail", "Tes e-mails, newsletters et formulaires, envoyés depuis ton adresse.", Mail01Icon, "live"),
-  product("Portal", "Un espace partagé où ton client suit son projet, signe et paie.", Briefcase01Icon, "soon"),
-  product("Status", "La surveillance de tes sites et ta page de statut.", Activity01Icon, "soon"),
-  product("Analytics", "Tes visiteurs mesurés, sans cookies ni bannière.", Analytics01Icon, "soon"),
-  product("Docs", "Ta documentation en ligne, avec un assistant qui y répond.", BookOpen01Icon, "soon"),
+  product("Portal", "Un espace partagé où ton client suit son projet, signe et paie.", Briefcase01Icon, "live"),
+  product("Status", "La surveillance de tes sites et ta page de statut.", Activity01Icon, "live"),
+  product("Analytics", "Tes visiteurs mesurés, sans cookies ni bannière.", Analytics01Icon, "live"),
+  product("Docs", "Ta documentation en ligne, avec un assistant qui y répond.", BookOpen01Icon, "live"),
 ]
 
 /** Vrai si le produit répond déjà (en service ou en préversion). */
