@@ -34,7 +34,15 @@ describe("catalogue des produits", () => {
 
   it("ne met au menu qu'Account et les produits ouverts, avec le produit courant coché", () => {
     const entries = productMenuEntries({ current: "mail" })
-    expect(entries.map((e) => e.name)).toEqual(["HGDC Account", "HGDC Host", "HGDC Mail"])
+    expect(entries.map((e) => e.name)).toEqual([
+      "HGDC Account",
+      "HGDC Host",
+      "HGDC Mail",
+      "HGDC Portal",
+      "HGDC Status",
+      "HGDC Analytics",
+      "HGDC Docs",
+    ])
     expect(entries.find((e) => e.current)?.name).toBe("HGDC Mail")
     expect(entries.find((e) => e.name === "HGDC Host")?.hint).toBe("Préversion")
   })
@@ -54,7 +62,7 @@ describe("AccountMenu et le catalogue", () => {
     expect(mail.getAttribute("href")).toBe("https://mail.hgdc.ch")
     expect(screen.getByRole("menuitem", { name: "HGDC Account" }).getAttribute("href")).toBe("https://account.hgdc.ch")
     expect(screen.getByLabelText("Produit ouvert")).toBeDefined()
-    expect(screen.queryByRole("menuitem", { name: /Portal/ })).toBeNull()
+    expect(screen.getByRole("menuitem", { name: "HGDC Portal" }).getAttribute("href")).toBe("https://portal.hgdc.ch")
   })
 
   it("garde une liste passée par le produit, et la retire si elle est vide", async () => {
