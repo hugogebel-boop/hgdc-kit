@@ -105,6 +105,8 @@ gh variable set HGDC_PRODUCTS --repo hugogebel-boop/hgdc-kit --body '["hugogebel
 
 Pour un produit qui se connecte par HGDC Account : `bun add @hgdc/auth`, puis suivre le [README du paquet](../../packages/auth/README.md) (fournisseur `hgdc` dans `genericOAuth`, proxy `/api/auth` avec `restoreFetchMode` côté Convex, bouton, gardes avec l'émetteur `CONVEX_SITE_URL`). Le `clientId` et le `clientSecret` sont remis par HGDC à l'enregistrement du produit.
 
+Synchronisation des organisations (0.4) : suivre le modèle du README, « Synchroniser les organisations » : `verifiedOrganizationsFromIdToken` dans `session.create.before`, sessions de 7 jours sans prolongation (`SESSION_TTL_SECONDS`, `disableSessionRefresh: true`), `syncedAt` sur chaque appartenance et `membershipIsFresh` dans le chargeur de `requireOrgMember`. Un produit qui a sa propre copie de ces règles (Host : `verifiedClaims`, `membershipIsFresh`) la remplace par celles du kit. Pour réagir à un refus côté client, lire `authErrorReason(error)`, jamais le texte du message : il est passé au tutoiement en 0.4 (« Connecte-toi pour continuer. »), et un test qui le compare mot à mot est à mettre à jour.
+
 ## 7. Interface
 
 ```sh
@@ -187,6 +189,14 @@ const navigate = useNavigate({ from: Route.fullPath })
 La recherche n'écrit dans l'URL qu'après 250 ms de calme : `replace: true` pour elle et le tri, une entrée d'historique pour un filtre. `loadMore` suit `usePaginatedQuery` de Convex ; `pagination` sert aux pages numérotées.
 
 Une erreur de chargement : `ErrorCard` à la place du contenu (`error={<ErrorCard detail={String(error)} reference={requestId} onRetry={refetch} />}` dans un `DataTable`). Une suppression : `DestructiveDialog` remplace la copie `confirm-delete-dialog.tsx` de Mail, même API (`formatError` en plus pour traduire une `ConvexError`). Une action réversible : `toastUndo(message, { onUndo })` plutôt qu'une confirmation, avec le `Toaster` du kit monté une fois.
+
+### Réglages, champs et tableaux de bord (0.5)
+
+- Une page de réglages : un `SettingsSection` par bloc, chacun son bouton Enregistrer (`dirty`, `saving`, `onSave`). Host retire `SettingsSection` de `components/page.tsx`.
+- Le menu du compte : `product="Mail"` suffit, la liste vient du catalogue du kit (`@hgdc/ui/products`). Mail retire `HGDC_PRODUCTS` de `lib/account.ts` (passer `accountHref` pour un Account local), Account son `lib/products.ts` au profit de `HGDC_PRODUCTS` et `PRODUCT_STAGE_LABEL`. Un produit qui passait déjà `products` garde sa liste ; `products={[]}` retire la rubrique.
+- Statut d'un déploiement, d'un e-mail ou d'un domaine : `<StatusBadge tone="…" label="…" />` plutôt qu'un `Badge` coloré à la main. `pending` anime le point.
+- Un graphique par jour dont la journée n'est pas finie : `lastIncomplete`.
+- Montants : stocker des centimes entiers, saisir par `MoneyField`, afficher par `formatChf`. Adresses : le type `PostalAddress` se stocke tel quel (rue et numéro séparés), prêt pour une facture QR.
 
 ### Migrer depuis des copies locales
 
