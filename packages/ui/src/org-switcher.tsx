@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./dropdown-menu.tsx"
+import { useShellPlacement } from "./shell-placement.ts"
 import { cn } from "./cn.ts"
 
 /** Les trois rôles d'une organisation de la famille. */
@@ -60,7 +61,9 @@ export function OrgMark({
 }
 
 /**
- * Haut de la barre latérale : l'organisation active, et le menu pour en changer ou en créer une.
+ * L'organisation active, et le menu pour en changer ou en créer une. En haut de la barre des
+ * produits d'`AppShell` (la marque seule, le nom quand la barre s'élargit), dans le tiroir sur
+ * téléphone, ou en haut de la barre latérale quand le produit coupe la barre des produits.
  * Présentationnel : le produit passe la liste, l'active et ce qu'il faut faire au choix (changer
  * l'URL `/o/<slug>/…`), le kit n'appelle rien.
  */
@@ -81,8 +84,11 @@ export function OrgSwitcher({
   onCreate?: () => void
   className?: string
 }): React.JSX.Element | null {
+  const placement = useShellPlacement()
   const active = organizations.find((org) => org.id === activeId)
   if (!active) return null
+  // En haut de la barre des produits : la marque seule dans 40 px, le nom quand la barre s'élargit.
+  const inRail = placement === "product-rail"
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -92,14 +98,23 @@ export function OrgSwitcher({
             aria-label={`Organisation ${active.name}, changer d'organisation`}
             className={cn(
               "flex h-10 w-full min-w-0 items-center gap-2.5 rounded-xl px-1.5 text-left outline-none transition-colors duration-(--duration-fast) ease-out hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-muted",
-              "lg:hover:bg-shell-hover lg:aria-expanded:bg-shell-hover lg:rail:w-auto lg:rail:justify-center lg:rail:px-1",
+              inRail
+                ? "shrink-0 gap-3 px-1 hover:bg-shell-hover aria-expanded:bg-shell-hover"
+                : "lg:hover:bg-shell-hover lg:aria-expanded:bg-shell-hover lg:rail:w-auto lg:rail:justify-center lg:rail:px-1",
               className,
             )}
           />
         }
       >
         <OrgMark org={active} />
-        <span className="min-w-0 flex-1 lg:rail:hidden">
+        <span
+          className={cn(
+            "min-w-0 flex-1",
+            inRail
+              ? "opacity-0 transition-opacity duration-(--duration-fast) ease-out group-data-expanded/rail:opacity-100 motion-reduce:transition-none"
+              : "lg:rail:hidden",
+          )}
+        >
           <span className="block truncate text-sm font-medium">{active.name}</span>
           {active.role ? (
             <span className="block truncate text-xs text-muted-foreground lg:text-shell-muted">
@@ -110,7 +125,12 @@ export function OrgSwitcher({
         <HugeiconsIcon
           icon={UnfoldMoreIcon}
           aria-hidden
-          className="size-4 shrink-0 text-muted-foreground lg:text-shell-muted lg:rail:hidden"
+          className={cn(
+            "size-4 shrink-0 text-muted-foreground lg:text-shell-muted",
+            inRail
+              ? "opacity-0 transition-opacity duration-(--duration-fast) group-data-expanded/rail:opacity-100"
+              : "lg:rail:hidden",
+          )}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">

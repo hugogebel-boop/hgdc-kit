@@ -1,13 +1,13 @@
 # @hgdc/auth
 
-Connexion d'un produit HGDC à HGDC Account (OIDC) : bouton « Se connecter avec HGDC », configuration du client better-auth, proxy `/api/auth` pour TanStack Start et gardes Convex.
+Connexion d'un produit de la famille à Account (OIDC) : bouton « Se connecter avec H family », configuration du client better-auth, proxy `/api/auth` pour TanStack Start et gardes Convex.
 
 | Import              | Contenu                                                                                                                                                                                                                                                                                                                                                           |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@hgdc/auth`        | `HGDC_ISSUER`, `HGDC_PROVIDER_ID`, `HGDC_SCOPES`, entrée commune (`HGDC_ENTRY_PATH`, `safeNextPath`, `hgdcEntryUrl`), rôles (`highestRole`, `hasRole`), `parseHgdcProfile`, `verifiedOrganizationsFromIdToken`, `verifyHgdcIdToken`, `planOrganizationSync`, fraîcheur (`membershipIsFresh`, `SESSION_TTL_SECONDS`, `MEMBERSHIP_TTL_MS`, `KEY_MEMBERSHIP_TTL_MS`) |
 | `@hgdc/auth/server` | `hgdcProvider` (plugin `genericOAuth`), `createAuthProxy`, `restoreFetchMode`, `createHgdcEntry`                                                                                                                                                                                                                                                                  |
 | `@hgdc/auth/convex` | `requireIdentity`, `requireOrgMember`, `isAuthError`, `authErrorReason`, `AUTH_ERROR_MESSAGES`                                                                                                                                                                                                                                                                    |
-| `@hgdc/auth/react`  | `HgdcSignInButton`, `startHgdcSignIn`, `HgdcMark`                                                                                                                                                                                                                                                                                                                 |
+| `@hgdc/auth/react`  | `HgdcSignInButton`, `startHgdcSignIn`, `HgdcMark` (le H tricolore de la famille, `HGDC_MARK_SVG`)                                                                                                                                                                                                                                                                 |
 
 Pairs : better-auth 1.6, convex 1.46+, React 19 (chacun facultatif selon l'import).
 

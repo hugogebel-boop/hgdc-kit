@@ -17,26 +17,26 @@ describe("submitAccessRequest", () => {
   it("poste en JSON avec le produit et le piège, et lit chaque réponse", async () => {
     const fetcher = reply(200, { ok: true })
     const values = { ...EMPTY_ACCESS_REQUEST, prenom: "Léa", email: "lea@atelier.ch" }
-    expect(await submitAccessRequest(ENDPOINT, values, "HGDC Mail", { fetcher })).toEqual({ kind: "sent" })
+    expect(await submitAccessRequest(ENDPOINT, values, "Mail", { fetcher })).toEqual({ kind: "sent" })
     const [url, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toBe(ENDPOINT)
     expect((init.headers as Record<string, string>).Accept).toBe("application/json")
-    expect(JSON.parse(init.body as string)).toMatchObject({ prenom: "Léa", produit: "HGDC Mail", _gotcha: "" })
+    expect(JSON.parse(init.body as string)).toMatchObject({ prenom: "Léa", produit: "Mail", _gotcha: "" })
 
     const invalid = reply(422, { ok: false, error: { code: "validation_error" }, errors: { email: "Invalide." } })
-    expect(await submitAccessRequest(ENDPOINT, values, "HGDC Mail", { fetcher: invalid })).toEqual({
+    expect(await submitAccessRequest(ENDPOINT, values, "Mail", { fetcher: invalid })).toEqual({
       kind: "invalid",
       errors: { email: "Invalide." },
     })
     const limited = reply(429, { ok: false, error: { code: "rate_limited" } })
-    expect(await submitAccessRequest(ENDPOINT, values, "HGDC Mail", { fetcher: limited })).toMatchObject({
+    expect(await submitAccessRequest(ENDPOINT, values, "Mail", { fetcher: limited })).toMatchObject({
       kind: "failed",
       message: expect.stringContaining("Réessaie dans une minute"),
     })
     const offline = vi.fn<AccessRequestFetcher>(async () => {
       throw new TypeError("Failed to fetch")
     })
-    expect((await submitAccessRequest(ENDPOINT, values, "HGDC Mail", { fetcher: offline })).kind).toBe("failed")
+    expect((await submitAccessRequest(ENDPOINT, values, "Mail", { fetcher: offline })).kind).toBe("failed")
   })
 })
 
@@ -49,8 +49,8 @@ function fill() {
 
 describe("AccessRequest", () => {
   it("affiche la réussite avec l'adresse saisie", async () => {
-    render(<AccessRequest endpoint={ENDPOINT} product="HGDC Host" fetcher={reply(200, { ok: true })} />)
-    expect(screen.getByRole("heading", { name: "Demander un accès à HGDC Host" })).toBeTruthy()
+    render(<AccessRequest endpoint={ENDPOINT} product="Host" fetcher={reply(200, { ok: true })} />)
+    expect(screen.getByRole("heading", { name: "Demander un accès à Host" })).toBeTruthy()
     fill()
     fireEvent.submit(screen.getByRole("button", { name: "Envoyer la demande" }).closest("form")!)
     await waitFor(() => expect(screen.getByRole("heading", { name: "Demande envoyée" })).toBeTruthy())
@@ -64,7 +64,7 @@ describe("AccessRequest", () => {
       error: { code: "validation_error" },
       errors: { email: "Adresse invalide." },
     })
-    render(<AccessRequest endpoint={ENDPOINT} product="HGDC Mail" fetcher={fetcher} />)
+    render(<AccessRequest endpoint={ENDPOINT} product="Mail" fetcher={fetcher} />)
     fill()
     fireEvent.submit(screen.getByRole("button", { name: "Envoyer la demande" }).closest("form")!)
     await waitFor(() => expect(screen.getByText("Adresse invalide.")).toBeTruthy())
@@ -72,7 +72,7 @@ describe("AccessRequest", () => {
   })
 
   it("rend le lien de connexion du produit", () => {
-    render(<AccessRequest endpoint={ENDPOINT} product="HGDC Mail" signInHref="/connexion" />)
+    render(<AccessRequest endpoint={ENDPOINT} product="Mail" signInHref="/connexion" />)
     expect(screen.getByRole("link", { name: "Se connecter" }).getAttribute("href")).toBe("/connexion")
   })
 })

@@ -46,18 +46,33 @@ export async function startHgdcSignIn(
   }
 }
 
-/** Monogramme HGDC, en `currentColor`. */
-export function HgdcMark(props: { className?: string }): ReactElement {
+/**
+ * Le H tricolore de la famille, copie exacte de `@hgdc/ui/family/hfamily-icon.svg` (un test le
+ * vérifie) : `@hgdc/auth` ne dépend pas de `@hgdc/ui`.
+ */
+export const HGDC_MARK_SVG: string =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><defs><linearGradient id="l" x1="0" y1="24" x2="0" y2="232" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2c78fd"/><stop offset="1" stop-color="#7343fe"/></linearGradient><linearGradient id="r" x1="0" y1="24" x2="0" y2="232" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fe5292"/><stop offset="1" stop-color="#ff9a46"/></linearGradient><linearGradient id="b" x1="64" y1="0" x2="192" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#8145ff"/><stop offset="1" stop-color="#fe5292"/></linearGradient></defs><rect x="43" y="24" width="57" height="208" rx="18" fill="url(#l)"/><rect x="156" y="24" width="57" height="208" rx="18" fill="url(#r)"/><rect x="67" y="107" width="122" height="43" rx="14" fill="url(#b)"/></svg>'
+
+/**
+ * Le H tricolore de la famille, en image : ses dégradés gardent leurs identifiants pour eux, deux
+ * marques dans une page ne se marchent pas dessus. Couleurs pleines, jamais recolorées.
+ */
+export function HgdcMark({ className }: { className?: string }): ReactElement {
   return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true" {...props}>
-      <rect x="2.5" y="8.5" width="13" height="7" rx="2" transform="rotate(45 9 12)" />
-      <rect x="8.5" y="8.5" width="13" height="7" rx="2" transform="rotate(45 15 12)" opacity="0.6" />
-    </svg>
+    <img
+      src={`data:image/svg+xml,${encodeURIComponent(HGDC_MARK_SVG)}`}
+      alt=""
+      aria-hidden="true"
+      width={16}
+      height={16}
+      draggable={false}
+      className={className}
+    />
   )
 }
 
 /**
- * Bouton « Se connecter avec HGDC ». Sans style propre : le produit le met en forme par
+ * Bouton « Se connecter avec H family ». Sans style propre : le produit le met en forme par
  * `className`, l'état d'attente est exposé par `aria-busy` et `data-pending`.
  */
 export function HgdcSignInButton({
@@ -65,7 +80,7 @@ export function HgdcSignInButton({
   callbackURL = "/",
   errorCallbackURL,
   onError,
-  label = "Se connecter avec HGDC",
+  label = "Se connecter avec H family",
   disabled,
   ...rest
 }: HgdcSignInButtonProps): ReactElement {
@@ -94,7 +109,7 @@ export function HgdcSignInButton({
       onClick={() => void signIn()}
     >
       <HgdcMark />
-      <span>{pending ? "Redirection vers HGDC…" : label}</span>
+      <span>{pending ? "Redirection vers Account…" : label}</span>
     </button>
   )
 }

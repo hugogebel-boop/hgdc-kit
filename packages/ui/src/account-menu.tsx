@@ -34,7 +34,7 @@ import { productMenuEntries } from "./products.ts"
 import { useTheme, type Theme } from "./theme.tsx"
 
 export type HgdcProduct = {
-  /** « HGDC Host ». */
+  /** « Host ». */
   name: string
   href: string
   /** Le produit ouvert : coché, sans lien. */
@@ -66,7 +66,7 @@ function initials(name: string): string {
  * l'avatar seul, pour une barre du haut. Le produit passe les actions ; le thème passe par
  * `ThemeProvider`.
  *
- * « Produits HGDC » liste par défaut Account et les produits ouverts du catalogue
+ * « Produits » liste par défaut Account et les produits ouverts du catalogue
  * (`productMenuEntries`, `@hgdc/ui/products`), avec `product` coché. `products` remplace cette
  * liste ; `products={[]}` la retire.
  */
@@ -188,7 +188,7 @@ export function AccountMenu({
           <>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuLabel>Produits HGDC</DropdownMenuLabel>
+              <DropdownMenuLabel>Produits</DropdownMenuLabel>
               {products.map((product) =>
                 product.current ? (
                   <DropdownMenuItem key={product.name} disabled className="data-disabled:opacity-100">

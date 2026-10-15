@@ -6,6 +6,11 @@ import { useRender } from "@base-ui/react/use-render"
 import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react"
 
 import { Drawer, DrawerContent, DrawerTitle } from "./drawer.tsx"
+import type { FamilyProduct } from "./family-svg.ts"
+import { isApplePlatform, Kbd, KbdGroup } from "./kbd.tsx"
+import { ProductBadge } from "./product-badge.tsx"
+import { ProductRail } from "./product-rail.tsx"
+import { HGDC_ACCOUNT, HGDC_PRODUCTS } from "./products.ts"
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip.tsx"
 import { cn } from "./cn.ts"
 
@@ -146,25 +151,129 @@ export function SidebarNavItem({
 
 // ── Coque ─────────────────────────────────────────────────────────────────────────────
 
+// Les noms de Hugeicons disent l'état du panneau, pas le geste : « Open » dessine la flèche vers la
+// gauche (réduire), « Close » vers la droite (déplier).
+const COLLAPSE_ICON = PanelLeftOpenIcon
+const EXPAND_ICON = PanelLeftCloseIcon
+
+/** Même boîte qu'une entrée de la barre en rail : 40 × 36 px, icône de 18 px centrée. */
+const TOGGLE =
+  "relative grid h-9 w-10 shrink-0 place-items-center rounded-xl text-shell-muted outline-none transition-colors duration-(--duration-fast) ease-out hover:bg-shell-hover hover:text-shell-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+
+function ShortcutHint({ label }: { label: string }): React.JSX.Element {
+  return (
+    <span className="flex items-center gap-2">
+      {label}
+      <KbdGroup>
+        <Kbd>{isApplePlatform() ? "⌘" : "Ctrl"}</Kbd>
+        <Kbd>B</Kbd>
+      </KbdGroup>
+    </span>
+  )
+}
+
+function productName(product: FamilyProduct): string {
+  if (product === HGDC_ACCOUNT.badge) return HGDC_ACCOUNT.name
+  return HGDC_PRODUCTS.find((item) => item.badge === product)?.name ?? `HGDC ${product}`
+}
+
 /**
- * La coque commune des consoles HGDC, celle de Host. Sur ordinateur : colonne teintée à gauche
- * (organisation en haut, navigation, compte en bas), réductible en rail (`Ctrl+B`, mémorisé), et
- * la page sur une carte à côté. Sur téléphone : une barre en haut, le menu dans un tiroir qui
- * monte du bas et se referme quand on choisit une page.
+ * Haut de la barre latérale. Dépliée : la marque du produit, et le bouton « Réduire » à droite.
+ * En rail : la marque seule, qui devient le bouton « Déplier » au survol de la barre ou au focus,
+ * à la même place : le bouton ne descend jamais sous le logo. Les deux états sont dans la page et
+ * choisis par la variante CSS `rail:`, donc justes dès la première peinture.
+ */
+function SidebarHead({ product }: { product: FamilyProduct }): React.JSX.Element {
+  return (
+    <div className="mt-2 flex h-14 shrink-0 items-center gap-1 px-3">
+      <div data-slot="sidebar-brand" className="flex min-w-0 flex-1 items-center gap-2.5 pl-2.25 rail:hidden">
+        <ProductBadge product={product} className="size-6" />
+        <span className="truncate font-heading text-[0.9375rem] font-semibold">{productName(product)}</span>
+      </div>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              type="button"
+              data-slot="sidebar-collapse"
+              onClick={toggleSidebar}
+              aria-label="Réduire la barre latérale"
+              aria-keyshortcuts="Control+B Meta+B"
+              className={cn(TOGGLE, "rail:hidden")}
+            />
+          }
+        >
+          <HugeiconsIcon icon={COLLAPSE_ICON} strokeWidth={1.8} aria-hidden className="size-[1.125rem]" />
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          <ShortcutHint label="Réduire" />
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              type="button"
+              data-slot="sidebar-expand"
+              onClick={toggleSidebar}
+              aria-label="Déplier la barre latérale"
+              aria-keyshortcuts="Control+B Meta+B"
+              className={cn(TOGGLE, "group/toggle hidden rail:grid")}
+            />
+          }
+        >
+          <ProductBadge
+            product={product}
+            className="col-start-1 row-start-1 size-6 transition-opacity duration-(--duration-fast) ease-out group-hover/sidebar:opacity-0 group-focus-visible/toggle:opacity-0 motion-reduce:transition-none"
+          />
+          <HugeiconsIcon
+            icon={EXPAND_ICON}
+            strokeWidth={1.8}
+            aria-hidden
+            className="col-start-1 row-start-1 size-[1.125rem] opacity-0 transition-opacity duration-(--duration-fast) ease-out group-hover/sidebar:opacity-100 group-focus-visible/toggle:opacity-100 motion-reduce:transition-none"
+          />
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          <ShortcutHint label="Déplier" />
+        </TooltipContent>
+      </Tooltip>
+    </div>
+  )
+}
+
+/**
+ * La coque commune des consoles HGDC, celle de Host. Sur ordinateur, de gauche à droite : la barre
+ * des produits de la famille (organisation en haut, pastilles, Account en bas, élargie au survol
+ * par-dessus la page), la barre latérale du produit (sa marque, sa navigation, le compte en bas),
+ * réductible en rail (`Ctrl+B`, mémorisé), et la page sur une carte. Sur téléphone : une barre en
+ * haut, le menu dans un tiroir qui monte du bas et se referme quand on choisit une page ; les
+ * produits restent dans le menu de l'avatar.
  *
  * Le kit ne connaît ni le routeur ni l'authentification : le produit passe ses éléments
  * (`OrgSwitcher`, `SidebarNav`, `AccountMenu`) et ses liens.
  */
 export function AppShell({
-  sidebarHeader,
+  product,
+  organization,
+  productRail = true,
+  accountHref,
   nav,
   sidebarFooter,
   header,
   children,
   mainClassName,
 }: {
-  /** Haut de la barre : `OrgSwitcher`. */
-  sidebarHeader?: ReactNode
+  /** Le produit affiché (`"host"`) : sa marque en haut de la barre, « vous êtes ici » dans la barre des produits. */
+  product: FamilyProduct
+  /** `OrgSwitcher` : en haut de la barre des produits, en haut du tiroir sur téléphone. */
+  organization?: ReactNode
+  /**
+   * `false` : pas de barre des produits (un écran hors de la famille). L'organisation passe alors
+   * sous la marque, dans la barre latérale.
+   */
+  productRail?: boolean
+  /** Adresse d'Account dans la barre des produits (un Account local en développement). */
+  accountHref?: string | undefined
   /** `SidebarNav` et ses `SidebarNavItem`. */
   nav: ReactNode
   /** Bas de la barre : liens secondaires (Docs, Paramètres) et `AccountMenu`. */
@@ -175,41 +284,31 @@ export function AppShell({
   /** Largeur et marges du contenu : `max-w-6xl` par défaut. */
   mainClassName?: string
 }): React.JSX.Element {
-  const rail = useSidebarRail()
   const [menuOpen, setMenuOpen] = useState(false)
   useToggleShortcut()
 
   return (
     <ShellContext.Provider value={{ closeMobileNav: () => setMenuOpen(false) }}>
-      <div data-slot="app-shell" className="min-h-dvh lg:grid lg:h-dvh lg:grid-cols-[auto_minmax(0,1fr)] lg:bg-shell">
+      <div
+        data-slot="app-shell"
+        className={cn(
+          "min-h-dvh lg:grid lg:h-dvh lg:bg-shell",
+          productRail ? "lg:grid-cols-[auto_auto_minmax(0,1fr)]" : "lg:grid-cols-[auto_minmax(0,1fr)]",
+        )}
+      >
         <a
           href="#contenu"
           className="sr-only z-50 rounded-xl bg-background px-4 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:ring-2 focus:ring-ring"
         >
           Aller au contenu
         </a>
+        {productRail ? <ProductRail current={product} organization={organization} accountHref={accountHref} /> : null}
         <aside
           aria-label="Barre latérale"
-          className="hidden overflow-hidden text-shell-foreground transition-[width] duration-(--duration-drawer) ease-ios motion-reduce:transition-none lg:flex lg:w-64 lg:flex-col lg:rail:w-16"
+          className="group/sidebar hidden overflow-hidden text-shell-foreground transition-[width] duration-(--duration-drawer) ease-ios motion-reduce:transition-none lg:flex lg:w-64 lg:flex-col lg:rail:w-16"
         >
-          <div className="mt-2 flex min-h-14 shrink-0 items-center gap-1 px-3 rail:flex-col rail:justify-center rail:px-0 rail:py-1">
-            <div className="min-w-0 flex-1 rail:flex-none">{sidebarHeader}</div>
-            <button
-              type="button"
-              onClick={toggleSidebar}
-              aria-label={rail ? "Déplier la barre latérale" : "Réduire la barre latérale"}
-              aria-keyshortcuts="Control+B Meta+B"
-              title={rail ? "Déplier (Ctrl+B)" : "Réduire (Ctrl+B)"}
-              className="grid size-8 shrink-0 place-items-center rounded-lg text-shell-muted outline-none transition-colors duration-(--duration-fast) ease-out hover:bg-shell-hover hover:text-shell-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:scale-[0.96]"
-            >
-              <HugeiconsIcon
-                icon={rail ? PanelLeftCloseIcon : PanelLeftOpenIcon}
-                strokeWidth={1.8}
-                aria-hidden
-                className="size-[1.125rem]"
-              />
-            </button>
-          </div>
+          <SidebarHead product={product} />
+          {!productRail && organization ? <div className="shrink-0 px-3 pb-1">{organization}</div> : null}
           {nav}
           {sidebarFooter ? <div className="grid gap-0.5 px-3 pt-1 pb-3">{sidebarFooter}</div> : null}
         </aside>
@@ -243,7 +342,7 @@ export function AppShell({
         <Drawer side="bottom" open={menuOpen} onOpenChange={setMenuOpen}>
           <DrawerContent className="lg:hidden">
             <DrawerTitle className="sr-only">Menu</DrawerTitle>
-            {sidebarHeader ? <div className="px-3 pt-1">{sidebarHeader}</div> : null}
+            {organization ? <div className="px-3 pt-1">{organization}</div> : null}
             {nav}
             {sidebarFooter ? (
               <div className="grid gap-0.5 border-t border-foreground/5 px-3 pt-2 pb-[max(env(safe-area-inset-bottom),0.75rem)]">

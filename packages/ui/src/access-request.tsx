@@ -88,7 +88,7 @@ export function AccessRequest({
   endpoint,
   product,
   title = `Demander un accès à ${product}`,
-  description = "Les comptes HGDC s'ouvrent sur invitation. Dis-nous qui tu es : on te répond rapidement et, si c'est bon, tu reçois une invitation par e-mail.",
+  description = "Les comptes s'ouvrent sur invitation. Dis-nous qui tu es : on te répond rapidement et, si c'est bon, tu reçois une invitation par e-mail.",
   messageLabel = "Ton projet, en quelques mots (facultatif)",
   signInHref = "/sign-in",
   signInRender,
@@ -98,7 +98,7 @@ export function AccessRequest({
 }: {
   /** Adresse d'envoi du formulaire Forms : `https://<deploiement>.convex.site/f/<id>`. */
   endpoint: string
-  /** Nom affiché et valeur du champ caché `produit` : « HGDC Mail ». */
+  /** Nom affiché et valeur du champ caché `produit` : « Mail ». */
   product: string
   title?: string
   description?: ReactNode
@@ -142,8 +142,8 @@ export function AccessRequest({
         <div>
           <h1 className="text-3xl font-semibold text-balance">Demande envoyée</h1>
           <p className="mt-2 text-muted-foreground">
-            Merci. Un accusé de réception part vers {sentTo}. Si ta demande est acceptée, tu reçois une invitation de
-            HGDC Account pour créer ton compte.
+            Merci. Un accusé de réception part vers {sentTo}. Si ta demande est acceptée, tu reçois une invitation
+            d'Account pour créer ton compte.
           </p>
         </div>
         <LinkSlot href={homeHref} render={homeRender} className={buttonVariants({ variant: "outline", size: "lg" })}>
@@ -220,7 +220,7 @@ export function AccessRequest({
         Envoyer la demande
       </Button>
       <p className="text-sm text-muted-foreground">
-        Déjà un compte HGDC ?{" "}
+        Déjà un compte ?{" "}
         <LinkSlot
           href={signInHref}
           render={signInRender}

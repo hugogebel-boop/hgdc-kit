@@ -1,12 +1,14 @@
 // @vitest-environment happy-dom
 import DashboardSquare01Icon from "@hugeicons/core-free-icons/DashboardSquare01Icon"
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { AccountMenu } from "./account-menu.tsx"
 import { AppShell, SidebarNav, SidebarNavItem, toggleSidebar } from "./app-shell.tsx"
 import { CommandMenu, matchCommand } from "./command-menu.tsx"
 import { OrgSwitcher } from "./org-switcher.tsx"
+import { PRODUCT_RAIL_OPEN_DELAY } from "./product-rail.tsx"
+import { PRODUCT_ENTRY_PATH } from "./products.ts"
 
 afterEach(cleanup)
 
@@ -61,16 +63,16 @@ describe("AppShell", () => {
     localStorage.clear()
   })
 
+  const nav = (
+    <SidebarNav label="Projet">
+      <SidebarNavItem icon={DashboardSquare01Icon} label="Vue d'ensemble" href="/" active />
+      <SidebarNavItem icon={DashboardSquare01Icon} label="Domaines" href="/domaines" />
+    </SidebarNav>
+  )
+
   it("marque la page ouverte et mémorise le rail", () => {
     render(
-      <AppShell
-        nav={
-          <SidebarNav label="Projet">
-            <SidebarNavItem icon={DashboardSquare01Icon} label="Vue d'ensemble" href="/" active />
-            <SidebarNavItem icon={DashboardSquare01Icon} label="Domaines" href="/domaines" />
-          </SidebarNav>
-        }
-      >
+      <AppShell product="host" nav={nav}>
         Page
       </AppShell>,
     )
@@ -81,14 +83,38 @@ describe("AppShell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Réduire la barre latérale" }))
     expect(document.documentElement.dataset.sidebar).toBe("rail")
     expect(localStorage.getItem("sidebar")).toBe("rail")
-    expect(screen.getByRole("button", { name: "Déplier la barre latérale" })).toBeDefined()
-    act(() => toggleSidebar())
+    fireEvent.click(screen.getByRole("button", { name: "Déplier la barre latérale" }))
     expect(document.documentElement.dataset.sidebar).toBeUndefined()
+    act(() => toggleSidebar())
+    expect(document.documentElement.dataset.sidebar).toBe("rail")
+  })
+
+  it("garde le bouton Déplier à la place du logo, jamais dessous", () => {
+    const { container } = render(
+      <AppShell product="mail" nav={nav}>
+        Page
+      </AppShell>,
+    )
+    const aside = screen.getByRole("complementary", { name: "Barre latérale" })
+    const brand = container.querySelector("[data-slot=sidebar-brand]")
+    expect(brand?.textContent).toBe("Mail")
+    const expand = screen.getByRole("button", { name: "Déplier la barre latérale" })
+    // Le logo du produit est dans le bouton : en rail, il devient le bouton au survol.
+    expect(expand.querySelector("img")).not.toBeNull()
+    expect(expand.className).toContain("rail:grid")
+    expect(expand.className).toContain("hidden")
+    expect(screen.getByRole("button", { name: "Réduire la barre latérale" }).className).toContain("rail:hidden")
+    // Même rangée que la marque, en tête de la barre.
+    expect(expand.parentElement).toBe(brand?.parentElement)
+    expect(aside.firstElementChild).toBe(expand.parentElement)
+    // Même boîte qu'une entrée de navigation en rail : 40 × 36 px.
+    expect(expand.className).toContain("h-9")
+    expect(expand.className).toContain("w-10")
   })
 
   it("réduit la barre à Ctrl+B, sauf dans un champ", () => {
     render(
-      <AppShell nav={null}>
+      <AppShell product="host" nav={null}>
         <input aria-label="Nom" />
       </AppShell>,
     )
@@ -98,6 +124,98 @@ describe("AppShell", () => {
       fireEvent.keyDown(document, { key: "b", ctrlKey: true })
     })
     expect(document.documentElement.dataset.sidebar).toBe("rail")
+  })
+})
+
+describe("Barre des produits", () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("liste les sept produits, Account en bas, chacun par son entrée", () => {
+    render(
+      <AppShell product="mail" nav={null} accountHref="http://localhost:3000">
+        Page
+      </AppShell>,
+    )
+    const rail = screen.getByRole("navigation", { name: "Produits" })
+    const links = within(rail).getAllByRole("link")
+    expect(links.map((link) => link.textContent)).toEqual([
+      "Host, Préversion",
+      "Mail",
+      "Portal",
+      "Status",
+      "Analytics",
+      "Docs",
+      "Account",
+    ])
+    const host = within(rail).getByRole("link", { name: /Host/ })
+    expect(host.getAttribute("href")).toBe(`https://host.hgdc.ch${PRODUCT_ENTRY_PATH}?next=/`)
+    expect(host.getAttribute("aria-current")).toBeNull()
+    const mail = within(rail).getByRole("link", { name: "Mail" })
+    expect(mail.getAttribute("aria-current")).toBe("page")
+    expect(mail.getAttribute("href")).toBe("/")
+    expect(within(rail).getByRole("link", { name: "Account" }).getAttribute("href")).toBe("http://localhost:3000")
+  })
+
+  it("porte le sélecteur d'organisation en haut", () => {
+    render(
+      <AppShell
+        product="status"
+        organization={<OrgSwitcher organizations={[{ id: "a", name: "Acme" }]} activeId="a" onSelect={() => {}} />}
+        nav={null}
+      >
+        Page
+      </AppShell>,
+    )
+    const rail = screen.getByRole("navigation", { name: "Produits" })
+    expect(within(rail).getByRole("button", { name: "Organisation Acme, changer d'organisation" })).toBeDefined()
+    expect(rail.firstElementChild?.tagName).toBe("BUTTON")
+  })
+
+  it("s'élargit au survol après un délai d'intention, se referme dès la sortie", () => {
+    vi.useFakeTimers()
+    render(
+      <AppShell product="docs" nav={null}>
+        Page
+      </AppShell>,
+    )
+    const rail = screen.getByRole("navigation", { name: "Produits" })
+    fireEvent.pointerEnter(rail, { pointerType: "mouse" })
+    act(() => {
+      vi.advanceTimersByTime(PRODUCT_RAIL_OPEN_DELAY - 10)
+    })
+    expect(rail.dataset.expanded).toBeUndefined()
+    act(() => {
+      vi.advanceTimersByTime(10)
+    })
+    expect(rail.dataset.expanded).toBe("")
+    fireEvent.pointerLeave(rail, { pointerType: "mouse" })
+    expect(rail.dataset.expanded).toBeUndefined()
+
+    // Un passage plus court que le délai n'ouvre rien.
+    fireEvent.pointerEnter(rail, { pointerType: "mouse" })
+    fireEvent.pointerLeave(rail, { pointerType: "mouse" })
+    act(() => {
+      vi.advanceTimersByTime(PRODUCT_RAIL_OPEN_DELAY * 2)
+    })
+    expect(rail.dataset.expanded).toBeUndefined()
+  })
+
+  it("se coupe par `productRail={false}`, l'organisation passe dans la barre latérale", () => {
+    render(
+      <AppShell
+        product="account"
+        productRail={false}
+        organization={<OrgSwitcher organizations={[{ id: "a", name: "Acme" }]} activeId="a" onSelect={() => {}} />}
+        nav={null}
+      >
+        Page
+      </AppShell>,
+    )
+    expect(screen.queryByRole("navigation", { name: "Produits" })).toBeNull()
+    const aside = screen.getByRole("complementary", { name: "Barre latérale" })
+    expect(within(aside).getByRole("button", { name: "Organisation Acme, changer d'organisation" })).toBeDefined()
   })
 })
 
@@ -141,14 +259,14 @@ describe("AccountMenu", () => {
         onProfile={() => {}}
         onSignOut={onSignOut}
         products={[
-          { name: "HGDC Host", href: "https://host.example", current: true },
-          { name: "HGDC Mail", href: "https://mail.example" },
+          { name: "Host", href: "https://host.example", current: true },
+          { name: "Mail", href: "https://mail.example" },
         ]}
       />,
     )
     fireEvent.click(screen.getByRole("button", { name: "Compte de Hugo Gebel" }))
     expect(await screen.findByRole("menuitem", { name: "Profil" })).toBeDefined()
-    expect(screen.getByRole("menuitem", { name: "HGDC Mail" }).getAttribute("href")).toBe("https://mail.example")
+    expect(screen.getByRole("menuitem", { name: "Mail" }).getAttribute("href")).toBe("https://mail.example")
     fireEvent.click(screen.getByRole("menuitem", { name: "Se déconnecter" }))
     expect(onSignOut).toHaveBeenCalledOnce()
   })

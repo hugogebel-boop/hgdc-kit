@@ -41,7 +41,7 @@ Primitives déjà là : `avatar` `badge` `button` `dialog` `drawer` `dropdown-me
 
 | Import         | Exemple                                                                                                                                                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `app-shell`    | `<AppShell sidebarHeader={<OrgSwitcher …/>} nav={<SidebarNav label="Projet">…</SidebarNav>} sidebarFooter={<AccountMenu …/>}>`                                                                                                  |
+| `app-shell`    | `<AppShell product="mail" organization={<OrgSwitcher …/>} nav={<SidebarNav label="Projet">…</SidebarNav>} sidebarFooter={<AccountMenu …/>}>`                                                                                    |
 |                | `<SidebarNavItem icon={Rocket01Icon} label="Déploiements" render={<Link to="/deployments" />} />`                                                                                                                               |
 | `org-switcher` | `<OrgSwitcher organizations={orgs} activeId={org.id} onSelect={go} createHref="/organisations/nouvelle" />`                                                                                                                     |
 | `account-menu` | `<AccountMenu user={user} onProfile={…} onSecurity={…} onSignOut={signOut} product="Mail" />` : Account et les produits ouverts du catalogue, Mail coché                                                                        |
@@ -50,7 +50,7 @@ Primitives déjà là : `avatar` `badge` `button` `dialog` `drawer` `dropdown-me
 | `kbd`          | `<KbdGroup><Kbd>Ctrl</Kbd><Kbd>K</Kbd></KbdGroup>`                                                                                                                                                                              |
 | `page-header`  | `<PageHeader title="Domaines" breadcrumbs={[{ label: "Acme", render: <Link to="/o/acme" /> }, { label: "Domaines" }]} actions={<Button>Ajouter</Button>} />`                                                                    |
 
-Le menu « Produits HGDC » et la palette (`badge` d'une commande) montrent la pastille de chaque produit.
+Le menu « Produits » et la palette (`badge` d'une commande) montrent la pastille de chaque produit.
 
 ## Identité H family
 
@@ -63,7 +63,7 @@ Le menu « Produits HGDC » et la palette (`badge` d'une commande) montrent la p
 
 Couleurs pleines ; pour éclaircir, mélanger au blanc `color-mix(in oklab, …)`, jamais `in oklch`. Une pastille reste seule, jamais dans une tuile de couleur. Les originaux vivent dans le dépôt du site hgdc.ch : les recopier dans `packages/ui/family/`, puis `bun scripts/family.ts && bun run format` (SVG embarqués et PNG des e-mails).
 
-La barre se réduit en rail (`Ctrl+B`, mémorisé) : poser `sidebarInitScript` dans le `<head>`. Le kit ne connaît ni routeur ni authentification : liens par `render={<Link />}`, actions par callbacks. Rôles d'organisation : `owner`, `admin`, `member` (Propriétaire, Admin, Membre).
+Sur ordinateur, la coque ouvre sur la barre des produits (ADR 0011) : organisation en haut, pastilles des produits ouverts, Account en bas, chacun par son entrée `/auth/hgdc?next=/`, le produit courant en teinte. Au survol (150 ms d'intention) ou au focus clavier, elle s'élargit par-dessus la page et écrit les noms. `productRail={false}` la coupe ; `accountHref` pointe vers un Account local. La barre latérale porte la marque du produit et se réduit en rail (`Ctrl+B`, mémorisé) : poser `sidebarInitScript` dans le `<head>`. En rail, la pastille du produit devient le bouton « Déplier » au survol. Le kit ne connaît ni routeur ni authentification : liens par `render={<Link />}`, actions par callbacks. Rôles d'organisation : `owner`, `admin`, `member` (Propriétaire, Admin, Membre).
 
 ## Contenu et données
 
@@ -112,7 +112,7 @@ Filtres, tri et page vivent dans l'URL du produit : les composants sont contrôl
 | `money-field`       | `<MoneyField value={centimes} onChange={…} />` : CHF en centimes, « 1’250.50 », accepte « 12.– » ; `formatChf`, `parseMoney`                           |
 | `address-fields`    | `<AddressFields value={address} onChange={…} errors={validatePostalAddress(address)} />` : rue, numéro, NPA, localité, pays (facture QR)               |
 
-`access-request` : `<AccessRequest endpoint="https://<deploiement>.convex.site/f/<id>" product="HGDC Mail" signInRender={<Link to="/sign-in" />} />`, la page « Demander un accès » d'un produit (les comptes HGDC s'ouvrent sur invitation). Poste en JSON vers un formulaire HGDC Mail Forms : prénom, nom, entreprise, e-mail professionnel, message facultatif, `produit` caché, piège `_gotcha`. États envoi, réussite, erreur, champ refusé ; `submitAccessRequest` s'appelle seul.
+`access-request` : `<AccessRequest endpoint="https://<deploiement>.convex.site/f/<id>" product="Mail" signInRender={<Link to="/sign-in" />} />`, la page « Demander un accès » d'un produit (les comptes HGDC s'ouvrent sur invitation). Poste en JSON vers un formulaire HGDC Mail Forms : prénom, nom, entreprise, e-mail professionnel, message facultatif, `produit` caché, piège `_gotcha`. États envoi, réussite, erreur, champ refusé ; `submitAccessRequest` s'appelle seul.
 
 Les champs de date sont ceux du navigateur, sans calendrier maison (ADR 0006). Les fonctions pures (`parseMoney`, `contrastRatio`, `validatePostalAddress`, `formatDateRange`) s'importent seules, côté serveur aussi.
 
@@ -142,18 +142,18 @@ const { html, text } = await renderEmail(
 )
 ```
 
-| Bloc           | Rôle                                                                                                                                        |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `EmailLayout`  | Icône et nom du produit, carte, pied « Propulsé par HGDC Mail » et mentions légales ; `footer` (désabonnement), `name`, `iconSrc`, `accent` |
-| `EmailHeading` | Titre                                                                                                                                       |
-| `EmailText`    | Paragraphe ; `small` pour une note secondaire                                                                                               |
-| `EmailButton`  | Lien direct, jamais réécrit ; absolu (`https:`, `mailto:`) ou erreur                                                                        |
-| `EmailLink`    | Lien dans le texte                                                                                                                          |
-| `EmailCode`    | Code à usage unique, en deux groupes à l'œil, d'un bloc au copier                                                                           |
-| `EmailCallout` | Encadré `neutral`, `info`, `success`, `warning`, `danger`, avec titre                                                                       |
-| `EmailDivider` | Séparateur                                                                                                                                  |
-| `EmailDetails` | Liste clé / valeur                                                                                                                          |
-| `renderEmail`  | `{ html, text }` : HTML pour clients mail, texte tiré du même rendu                                                                         |
+| Bloc           | Rôle                                                                                                                                                 |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EmailLayout`  | Icône et nom du produit, carte, pied « Envoyé avec Mail de la H family » et mentions légales ; `footer` (désabonnement), `name`, `iconSrc`, `accent` |
+| `EmailHeading` | Titre                                                                                                                                                |
+| `EmailText`    | Paragraphe ; `small` pour une note secondaire                                                                                                        |
+| `EmailButton`  | Lien direct, jamais réécrit ; absolu (`https:`, `mailto:`) ou erreur                                                                                 |
+| `EmailLink`    | Lien dans le texte                                                                                                                                   |
+| `EmailCode`    | Code à usage unique, en deux groupes à l'œil, d'un bloc au copier                                                                                    |
+| `EmailCallout` | Encadré `neutral`, `info`, `success`, `warning`, `danger`, avec titre                                                                                |
+| `EmailDivider` | Séparateur                                                                                                                                           |
+| `EmailDetails` | Liste clé / valeur                                                                                                                                   |
+| `renderEmail`  | `{ html, text }` : HTML pour clients mail, texte tiré du même rendu                                                                                  |
 
 L'accent vient du catalogue (`accent` de `@hgdc/ui/products`), les icônes de `https://hgdc.ch/email/<mot>.png` (fichiers dans `@hgdc/ui/email-icons/`, tirés des pastilles par `bun scripts/family.ts`). Un exemple par type : `scripts/email-showcase.tsx`.
 

@@ -15,7 +15,7 @@ export type Command = {
   id: string
   label: string
   icon?: IconSvgElement
-  /** Pastille d'un produit (« Ouvrir HGDC Mail »), à la place de `icon`. */
+  /** Pastille d'un produit (« Ouvrir Mail »), à la place de `icon`. */
   badge?: FamilyProduct
   /** Autres mots qui trouvent la commande : « dns » pour « Ajouter un domaine ». */
   keywords?: Array<string>

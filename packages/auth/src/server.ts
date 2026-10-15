@@ -136,7 +136,7 @@ function authorizationUrl(body: unknown): string | null {
 /**
  * Entrée commune `GET /auth/hgdc?next=<chemin>` (`HGDC_ENTRY_PATH`), à monter comme route
  * serveur du produit. Le menu « Produits » de `@hgdc/ui` y envoie : on entre dans le produit
- * sans passer par sa page d'accueil ni recliquer « Se connecter avec HGDC ».
+ * sans passer par sa page d'accueil ni recliquer « Se connecter avec H family ».
  *
  * - Session du produit ouverte : redirection vers `next`.
  * - Sinon : la connexion HGDC part aussitôt (même appel que `HgdcSignInButton`, fait par le
