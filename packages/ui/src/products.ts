@@ -21,9 +21,9 @@ export const PRODUCT_STAGE_LABEL: Readonly<Record<ProductStage, string>> = {
 
 /** Un produit de la famille, tel que la vision le décrit. */
 export type HgdcCatalogProduct = {
-  /** Le mot de « HGDC <mot> » : « Host ». */
+  /** Le mot du produit, qui sert de sous-domaine : « Host ». */
   word: string
-  /** « HGDC Host ». */
+  /** Nom affiché, le mot seul (« Host ») : la famille ne se répète pas devant chaque produit. */
   name: string
   /** « host.hgdc.ch ». */
   subdomain: string
@@ -62,7 +62,7 @@ function product(word: string, pitch: string, icon: IconSvgElement, stage: Produ
   const href = `https://${subdomain}`
   return {
     word,
-    name: `HGDC ${word}`,
+    name: word,
     subdomain,
     href,
     entryHref: `${href}${PRODUCT_ENTRY_PATH}`,
@@ -77,7 +77,7 @@ function product(word: string, pitch: string, icon: IconSvgElement, stage: Produ
 /** HGDC Account : le compte commun (profil, sécurité, organisations), hors du catalogue des produits. */
 const account = product(
   "Account",
-  "Ton compte HGDC : profil, sécurité et organisations, pour tous les produits.",
+  "Ton compte : profil, sécurité et organisations, pour tous les produits de la famille.",
   UserCircleIcon,
   "live",
 )
@@ -98,7 +98,7 @@ export function isProductOpen(item: Pick<HgdcCatalogProduct, "stage">): boolean 
   return item.stage !== "soon"
 }
 
-/** Une entrée du menu « Produits HGDC » d'`AccountMenu`. */
+/** Une entrée du menu « Produits » d'`AccountMenu`. */
 export type ProductMenuEntry = {
   name: string
   href: string
@@ -135,4 +135,43 @@ export function productMenuEntries(
     ...(item.word.toLowerCase() === current ? { current: true } : {}),
     ...(item.stage === "preview" ? { hint: PRODUCT_STAGE_LABEL.preview } : {}),
   }))
+}
+
+/** Une entrée de la barre des produits d'`AppShell`. */
+export type ProductRailEntry = {
+  name: string
+  href: string
+  badge: FamilyProduct
+  /** Le produit ouvert : « vous êtes ici », lien vers sa propre racine. */
+  current?: boolean
+  /** Texte discret sous le nom : « Préversion ». */
+  hint?: string
+}
+
+/**
+ * Les entrées de la barre des produits : les produits ouverts du catalogue, puis Account, à part
+ * en bas (le compte commun, pas un produit). Chaque produit pointe vers son entrée
+ * `/auth/hgdc?next=/` (ADR 0010), Account vers sa racine (`accountHref` en développement). Le
+ * produit courant pointe vers `/`, sans détour par l'entrée.
+ */
+export function productRailEntries(
+  options: {
+    current?: string | undefined
+    accountHref?: string | undefined
+    catalog?: ReadonlyArray<HgdcCatalogProduct> | undefined
+  } = {},
+): { products: Array<ProductRailEntry>; account: ProductRailEntry } {
+  const current = options.current?.toLowerCase()
+  const entry = (item: HgdcCatalogProduct, href: string): ProductRailEntry => ({
+    name: item.name,
+    badge: item.badge,
+    ...(item.badge === current ? { href: "/", current: true } : { href }),
+    ...(item.stage === "preview" ? { hint: PRODUCT_STAGE_LABEL.preview } : {}),
+  })
+  return {
+    products: (options.catalog ?? HGDC_PRODUCTS)
+      .filter(isProductOpen)
+      .map((item) => entry(item, `${item.entryHref}?next=/`)),
+    account: entry(HGDC_ACCOUNT, options.accountHref ?? HGDC_ACCOUNT.entryHref),
+  }
 }

@@ -202,10 +202,11 @@ export function EmailLayout({
                   style={{ display: "inline-block", verticalAlign: "middle", borderRadius: 8, marginRight: 6 }}
                 />
                 <span style={{ verticalAlign: "middle" }}>
-                  Propulsé par{" "}
+                  Envoyé avec{" "}
                   <Link href={MAIL_HREF} className="hg-muted" style={{ color: l.muted, textDecoration: "underline" }}>
-                    HGDC Mail
-                  </Link>
+                    Mail
+                  </Link>{" "}
+                  de la H family
                 </span>
               </Text>
               <Text className="hg-muted" style={{ ...muted, margin: "4px 0 0" }}>

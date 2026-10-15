@@ -24,7 +24,7 @@ export function ConfirmationCodeEmail({ code }: { code: string }): ReactElement 
   return (
     <EmailLayout product="Account" preview={`Ton code de confirmation est ${code}. Il est valable 10 minutes.`}>
       <EmailHeading>Confirme ton adresse e-mail</EmailHeading>
-      <EmailText>Saisis ce code dans HGDC Account pour confirmer ton adresse.</EmailText>
+      <EmailText>Saisis ce code dans Account pour confirmer ton adresse.</EmailText>
       <EmailCode code={code} />
       <EmailText small>
         Il est valable 10 minutes. Si tu n&apos;as rien demandé, ignore cet e-mail : ton compte ne change pas.
@@ -44,7 +44,7 @@ export function InvitationEmail({
   url: string
 }): ReactElement {
   return (
-    <EmailLayout product="Portal" preview={`${inviter} t'invite à rejoindre ${organization} sur HGDC Portal.`}>
+    <EmailLayout product="Portal" preview={`${inviter} t'invite à rejoindre ${organization} sur Portal.`}>
       <EmailHeading>
         {inviter} t&apos;invite dans {organization}
       </EmailHeading>

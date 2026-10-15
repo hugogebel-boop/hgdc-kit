@@ -66,7 +66,7 @@ describe("identité H family", () => {
       />,
     )
     fireEvent.click(screen.getByRole("button", { name: "Compte de Hugo Gebel" }))
-    const status = await screen.findByRole("menuitem", { name: "HGDC Status" })
+    const status = await screen.findByRole("menuitem", { name: "Status" })
     expect(status.querySelector("img")?.getAttribute("src")).toBe(
       `data:image/svg+xml,${encodeURIComponent(PRODUCT_BADGE_SVG.status)}`,
     )

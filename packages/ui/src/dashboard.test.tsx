@@ -26,7 +26,7 @@ describe("catalogue des produits", () => {
   it("décrit chaque produit par son mot, son sous-domaine et son état", () => {
     expect(HGDC_PRODUCTS.map((p) => p.word)).toEqual(["Host", "Mail", "Portal", "Status", "Analytics", "Docs"])
     for (const product of [HGDC_ACCOUNT, ...HGDC_PRODUCTS]) {
-      expect(product.name).toBe(`HGDC ${product.word}`)
+      expect(product.name).toBe(product.word)
       expect(product.href).toBe(`https://${product.subdomain}`)
       expect(product.subdomain).toBe(`${product.word.toLowerCase()}.hgdc.ch`)
       expect(product.pitch).not.toMatch(/[–—]|\b(vous|votre|vos)\b/i)
@@ -35,30 +35,22 @@ describe("catalogue des produits", () => {
 
   it("ne met au menu qu'Account et les produits ouverts, avec le produit courant coché", () => {
     const entries = productMenuEntries({ current: "mail" })
-    expect(entries.map((e) => e.name)).toEqual([
-      "HGDC Account",
-      "HGDC Host",
-      "HGDC Mail",
-      "HGDC Portal",
-      "HGDC Status",
-      "HGDC Analytics",
-      "HGDC Docs",
-    ])
-    expect(entries.find((e) => e.current)?.name).toBe("HGDC Mail")
-    expect(entries.find((e) => e.name === "HGDC Host")?.hint).toBe("Préversion")
+    expect(entries.map((e) => e.name)).toEqual(["Account", "Host", "Mail", "Portal", "Status", "Analytics", "Docs"])
+    expect(entries.find((e) => e.current)?.name).toBe("Mail")
+    expect(entries.find((e) => e.name === "Host")?.hint).toBe("Préversion")
   })
 
   it("envoie chaque produit vers son entrée connectée, Account vers sa racine", () => {
     expect(PRODUCT_ENTRY_PATH).toBe(HGDC_ENTRY_PATH)
     const entries = productMenuEntries({ current: "Host" })
     expect(Object.fromEntries(entries.map((e) => [e.name, e.href]))).toEqual({
-      "HGDC Account": "https://account.hgdc.ch",
-      "HGDC Host": "https://host.hgdc.ch/auth/hgdc",
-      "HGDC Mail": "https://mail.hgdc.ch/auth/hgdc",
-      "HGDC Portal": "https://portal.hgdc.ch/auth/hgdc",
-      "HGDC Status": "https://status.hgdc.ch/auth/hgdc",
-      "HGDC Analytics": "https://analytics.hgdc.ch/auth/hgdc",
-      "HGDC Docs": "https://docs.hgdc.ch/auth/hgdc",
+      Account: "https://account.hgdc.ch",
+      Host: "https://host.hgdc.ch/auth/hgdc",
+      Mail: "https://mail.hgdc.ch/auth/hgdc",
+      Portal: "https://portal.hgdc.ch/auth/hgdc",
+      Status: "https://status.hgdc.ch/auth/hgdc",
+      Analytics: "https://analytics.hgdc.ch/auth/hgdc",
+      Docs: "https://docs.hgdc.ch/auth/hgdc",
     })
     expect(HGDC_ACCOUNT.entryHref).toBe(HGDC_ACCOUNT.href)
     for (const product of HGDC_PRODUCTS) expect(product.href).toBe(`https://${product.subdomain}`)
@@ -75,28 +67,28 @@ describe("AccountMenu et le catalogue", () => {
   it("liste les produits du kit par défaut et coche le produit ouvert", async () => {
     render(<AccountMenu user={user} onSignOut={() => {}} product="Host" />)
     fireEvent.click(screen.getByRole("button", { name: "Compte de Hugo Gebel" }))
-    const mail = await screen.findByRole("menuitem", { name: "HGDC Mail" })
+    const mail = await screen.findByRole("menuitem", { name: "Mail" })
     expect(mail.getAttribute("href")).toBe("https://mail.hgdc.ch/auth/hgdc")
-    expect(screen.getByRole("menuitem", { name: "HGDC Account" }).getAttribute("href")).toBe("https://account.hgdc.ch")
+    expect(screen.getByRole("menuitem", { name: "Account" }).getAttribute("href")).toBe("https://account.hgdc.ch")
     expect(screen.getByLabelText("Produit ouvert")).toBeDefined()
-    expect(screen.getByRole("menuitem", { name: "HGDC Portal" }).getAttribute("href")).toBe(
+    expect(screen.getByRole("menuitem", { name: "Portal" }).getAttribute("href")).toBe(
       "https://portal.hgdc.ch/auth/hgdc",
     )
   })
 
   it("garde une liste passée par le produit, et la retire si elle est vide", async () => {
     const { unmount } = render(
-      <AccountMenu user={user} onSignOut={() => {}} products={[{ name: "HGDC Labs", href: "https://labs.example" }]} />,
+      <AccountMenu user={user} onSignOut={() => {}} products={[{ name: "Labs", href: "https://labs.example" }]} />,
     )
     fireEvent.click(screen.getByRole("button", { name: "Compte de Hugo Gebel" }))
-    expect(await screen.findByRole("menuitem", { name: "HGDC Labs" })).toBeDefined()
-    expect(screen.queryByRole("menuitem", { name: "HGDC Mail" })).toBeNull()
+    expect(await screen.findByRole("menuitem", { name: "Labs" })).toBeDefined()
+    expect(screen.queryByRole("menuitem", { name: "Mail" })).toBeNull()
     unmount()
 
     render(<AccountMenu user={user} onSignOut={() => {}} products={[]} />)
     fireEvent.click(screen.getByRole("button", { name: "Compte de Hugo Gebel" }))
     await screen.findByRole("menuitem", { name: "Se déconnecter" })
-    expect(screen.queryByText("Produits HGDC")).toBeNull()
+    expect(screen.queryByText("Produits")).toBeNull()
   })
 })
 
