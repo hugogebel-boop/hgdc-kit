@@ -44,6 +44,15 @@ Puis, sur npmjs.com, pour chacun :
 
 `npm login`, puis `bun run release` depuis `main` à jour, `git push --tags`, et les deux réglages ci-dessus pour le nouveau paquet. Les versions suivantes passent par la CI, avec provenance.
 
+Sans session npm (voie retenue le 2026-10-15, premier envoi de `@hgdc/domains`) : le jeton d'automatisation Doppler `hgdc/prd` `NPM_PUBLISH_TOKEN` (compte `smartflowdev`, sans 2FA), écrit dans un `.npmrc` temporaire, jamais affiché, effacé aussitôt :
+
+```sh
+umask 077 && rc="$(mktemp)"   && printf '//registry.npmjs.org/:_authToken=%s
+' "$(doppler secrets get NPM_PUBLISH_TOKEN --project hgdc --config prd --plain)" > "$rc"   && NPM_CONFIG_USERCONFIG="$rc" bun run release; trash "$rc"; git push --tags
+```
+
+`npm view @hgdc/<paquet> version` peut rendre `E404` quelques minutes après la publication (CDN de npm) : attendre.
+
 ## Incidents
 
 - **`E404` ou `ENEEDAUTH` au publish** : trusted publisher mal déclaré (dépôt ou nom de fichier du workflow, sensibles à la casse) ou `repository.url` du `package.json` différent du dépôt.
