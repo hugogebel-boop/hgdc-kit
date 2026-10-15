@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.10.1
+
+### Patch Changes
+
+- b904cee: Email footer: the link carries "Mail de la H family", so the plain text reads "Envoyé avec Mail de la H family https://mail.hgdc.ch".
+
 ## 0.10.0
 
 ### Minor Changes
