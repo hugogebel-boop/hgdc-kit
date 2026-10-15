@@ -99,6 +99,8 @@ Filtres, tri et page vivent dans l'URL du produit : les composants sont contrôl
 | `money-field`       | `<MoneyField value={centimes} onChange={…} />` : CHF en centimes, « 1’250.50 », accepte « 12.– » ; `formatChf`, `parseMoney`                           |
 | `address-fields`    | `<AddressFields value={address} onChange={…} errors={validatePostalAddress(address)} />` : rue, numéro, NPA, localité, pays (facture QR)               |
 
+`access-request` : `<AccessRequest endpoint="https://<deploiement>.convex.site/f/<id>" product="HGDC Mail" signInRender={<Link to="/sign-in" />} />`, la page « Demander un accès » d'un produit (les comptes HGDC s'ouvrent sur invitation). Poste en JSON vers un formulaire HGDC Mail Forms : prénom, nom, entreprise, e-mail professionnel, message facultatif, `produit` caché, piège `_gotcha`. États envoi, réussite, erreur, champ refusé ; `submitAccessRequest` s'appelle seul.
+
 Les champs de date sont ceux du navigateur, sans calendrier maison (ADR 0006). Les fonctions pures (`parseMoney`, `contrastRatio`, `validatePostalAddress`, `formatDateRange`) s'importent seules, côté serveur aussi.
 
 ## Contrôles et surfaces flottantes
