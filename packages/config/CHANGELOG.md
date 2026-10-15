@@ -1,5 +1,11 @@
 # @hgdc/config
 
+## 0.1.4
+
+### Patch Changes
+
+- 55d82ce: `react-email` 6.11.1 rejoint la stack (`stack.json` et preset Renovate) : la version que le produit installe pour `@hgdc/ui/email` est celle contre laquelle le kit est testé.
+
 ## 0.1.3
 
 ### Patch Changes
