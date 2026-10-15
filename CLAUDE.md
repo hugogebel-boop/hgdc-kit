@@ -9,4 +9,5 @@ Code commun de la H family, publié sur npm (`@hgdc/*`). Vue d'ensemble : `READM
 - Toute modification d'un paquet publié s'accompagne d'un changeset (`bun changeset`). Jamais de CHANGELOG ni de version écrits à la main.
 - Le nom du fichier `release.yml` est déclaré comme trusted publisher sur npm : le renommer casse la publication.
 - changesets/action v2 : entrées et sorties en kebab-case (`publish-script`, `published-packages`). Une sortie mal nommée vaut une chaîne vide, sans erreur. Le jeton passe par l'entrée `github-token` (`HGDC_BOT_TOKEN`, pour que la PR de release ait sa CI), jamais par `env.GITHUB_TOKEN`.
+- Un nouveau paquet n'est jamais publié par la CI (`publish.ts` le saute tant qu'il n'existe pas sur npm) : premier envoi par Hugo depuis le poste (`docs/runbooks/publier.md`).
 - Avant de livrer : `bun run check`.
