@@ -394,6 +394,19 @@
   animation: live-ping 1.6s var(--ease-out) infinite;
 }
 
+/* Barre d'avancement de durée inconnue : un tiers de piste qui glisse, à vitesse constante. */
+@keyframes progress-slide {
+  from {
+    translate: -100% 0;
+  }
+  to {
+    translate: 300% 0;
+  }
+}
+@utility progress-slide {
+  animation: progress-slide 1.4s linear infinite;
+}
+
 /* Des étapes qui montent l'une après l'autre au premier affichage. */
 @keyframes rise {
   from {
@@ -419,5 +432,11 @@
   }
   .card-in {
     transition: none;
+  }
+  /* Sans mouvement, la durée inconnue se lit sur une piste pleine et pâle. */
+  .progress-slide {
+    animation: none;
+    width: 100%;
+    opacity: 0.35;
   }
 }

@@ -216,17 +216,22 @@ function subscribeNever(): () => void {
   return noop
 }
 
+const COMPACT = "w-9 max-w-none justify-center px-0"
+
 /**
  * Le bouton qui ouvre la palette, pour la souris et le doigt : « Rechercher » et le raccourci.
- * Dans la barre latérale ou l'en-tête.
+ * Dans la barre latérale ou l'en-tête. `compact` : la loupe seule, dans un carré de 36 px, le
+ * libellé devenant le nom accessible ; `"mobile"` ne compacte que sous `lg`, sans JavaScript.
  */
 export function CommandMenuButton({
   onClick,
   label = "Rechercher",
+  compact = false,
   className,
 }: {
   onClick: () => void
   label?: string
+  compact?: boolean | "mobile"
   className?: string
 }): React.JSX.Element {
   const apple = useSyncExternalStore(subscribeNever, isApplePlatform, () => false)
@@ -235,14 +240,26 @@ export function CommandMenuButton({
       type="button"
       onClick={onClick}
       aria-keyshortcuts="Control+K Meta+K"
+      {...(compact === true ? { "aria-label": label, title: label } : {})}
+      data-compact={compact === false ? undefined : String(compact)}
       className={cn(
         "touch-target flex h-9 w-full max-w-sm min-w-0 items-center gap-2 rounded-xl bg-foreground/[0.05] px-3 text-sm text-muted-foreground outline-none transition-colors duration-(--duration-fast) ease-out hover:bg-foreground/[0.08] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50",
+        compact === true && COMPACT,
+        compact === "mobile" && "max-lg:w-9 max-lg:max-w-none max-lg:justify-center max-lg:px-0",
         className,
       )}
     >
       <HugeiconsIcon icon={Search01Icon} strokeWidth={2} aria-hidden className="size-4 shrink-0" />
-      <span className="min-w-0 flex-1 truncate text-left">{label}</span>
-      <KbdGroup aria-hidden className="max-lg:hidden">
+      <span
+        className={cn(
+          "min-w-0 flex-1 truncate text-left",
+          compact === true && "sr-only",
+          compact === "mobile" && "max-lg:sr-only",
+        )}
+      >
+        {label}
+      </span>
+      <KbdGroup aria-hidden className={cn("max-lg:hidden", compact === true && "hidden")}>
         <Kbd>{apple ? "⌘" : "Ctrl"}</Kbd>
         <Kbd>K</Kbd>
       </KbdGroup>

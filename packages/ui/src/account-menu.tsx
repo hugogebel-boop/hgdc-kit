@@ -7,7 +7,7 @@ import SecurityLockIcon from "@hugeicons/core-free-icons/SecurityLockIcon"
 import Sun03Icon from "@hugeicons/core-free-icons/Sun03Icon"
 import Tick02Icon from "@hugeicons/core-free-icons/Tick02Icon"
 import UserIcon from "@hugeicons/core-free-icons/UserIcon"
-import { HugeiconsIcon } from "@hugeicons/react"
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react"
 import { Menu as MenuPrimitive } from "@base-ui/react/menu"
 import type { ReactNode } from "react"
 
@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "./dropdown-menu.tsx"
 import { MENU_LINK_ITEM } from "./org-switcher.tsx"
+import { productMenuEntries } from "./products.ts"
 import { useTheme, type Theme } from "./theme.tsx"
 
 export type HgdcProduct = {
@@ -36,6 +37,10 @@ export type HgdcProduct = {
   href: string
   /** Le produit ouvert : coché, sans lien. */
   current?: boolean
+  /** Icône du produit ; celle d'un tableau de bord par défaut. */
+  icon?: IconSvgElement
+  /** Texte discret à droite : « Préversion ». */
+  hint?: string
 }
 
 export type AccountUser = { name: string; email: string; image?: string | null }
@@ -56,6 +61,10 @@ function initials(name: string): string {
  * produits HGDC, déconnexion. `row` : avatar, nom et adresse (l'avatar seul en rail) ; `avatar` :
  * l'avatar seul, pour une barre du haut. Le produit passe les actions ; le thème passe par
  * `ThemeProvider`.
+ *
+ * « Produits HGDC » liste par défaut Account et les produits ouverts du catalogue
+ * (`productMenuEntries`, `@hgdc/ui/products`), avec `product` coché. `products` remplace cette
+ * liste ; `products={[]}` la retire.
  */
 export function AccountMenu({
   user,
@@ -63,7 +72,9 @@ export function AccountMenu({
   onSecurity,
   onShortcuts,
   onSignOut,
-  products,
+  products: productsProp,
+  product: currentProduct,
+  accountHref,
   children,
   variant = "row",
 }: {
@@ -73,13 +84,18 @@ export function AccountMenu({
   /** Ouvre l'aide des raccourcis clavier. */
   onShortcuts?: () => void
   onSignOut: () => void
-  /** Les produits de la famille, pour passer de l'un à l'autre. */
+  /** Les produits de la famille, pour passer de l'un à l'autre. Le catalogue du kit par défaut. */
   products?: Array<HgdcProduct>
+  /** Mot du produit ouvert (« Mail »), coché dans la liste par défaut. */
+  product?: string
+  /** Adresse d'Account dans la liste par défaut (un Account local en développement). */
+  accountHref?: string
   /** Entrées propres au produit (« Administration »), après le profil. */
   children?: ReactNode
   variant?: "row" | "avatar"
 }): React.JSX.Element {
   const { theme, setTheme } = useTheme()
+  const products = productsProp ?? productMenuEntries({ current: currentProduct, accountHref })
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -164,7 +180,7 @@ export function AccountMenu({
             <DropdownMenuShortcut>?</DropdownMenuShortcut>
           </DropdownMenuItem>
         ) : null}
-        {products?.length ? (
+        {products.length ? (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
@@ -172,14 +188,17 @@ export function AccountMenu({
               {products.map((product) =>
                 product.current ? (
                   <DropdownMenuItem key={product.name} disabled className="data-disabled:opacity-100">
-                    <HugeiconsIcon icon={DashboardSquare01Icon} aria-hidden />
+                    <HugeiconsIcon icon={product.icon ?? DashboardSquare01Icon} aria-hidden />
                     <span className="flex-1">{product.name}</span>
                     <HugeiconsIcon icon={Tick02Icon} aria-label="Produit ouvert" />
                   </DropdownMenuItem>
                 ) : (
                   <MenuPrimitive.LinkItem key={product.name} href={product.href} className={MENU_LINK_ITEM}>
-                    <HugeiconsIcon icon={DashboardSquare01Icon} aria-hidden />
-                    {product.name}
+                    <HugeiconsIcon icon={product.icon ?? DashboardSquare01Icon} aria-hidden />
+                    <span className="flex-1">{product.name}</span>
+                    {product.hint ? (
+                      <span className="text-xs font-normal text-muted-foreground">{product.hint}</span>
+                    ) : null}
                   </MenuPrimitive.LinkItem>
                 ),
               )}
