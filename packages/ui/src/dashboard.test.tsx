@@ -5,7 +5,8 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { AccountMenu } from "./account-menu.tsx"
 import { CommandMenuButton } from "./command-menu.tsx"
 import { CopyButton } from "./copy-button.tsx"
-import { HGDC_ACCOUNT, HGDC_PRODUCTS, productMenuEntries } from "./products.ts"
+import { HGDC_ENTRY_PATH } from "../../auth/src/index.ts"
+import { HGDC_ACCOUNT, HGDC_PRODUCTS, PRODUCT_ENTRY_PATH, productMenuEntries } from "./products.ts"
 import { Meter, Progress } from "./progress.tsx"
 import { RankBar } from "./rank-bar.tsx"
 import { StatusBadge, StatusDot } from "./status.tsx"
@@ -47,6 +48,22 @@ describe("catalogue des produits", () => {
     expect(entries.find((e) => e.name === "HGDC Host")?.hint).toBe("Préversion")
   })
 
+  it("envoie chaque produit vers son entrée connectée, Account vers sa racine", () => {
+    expect(PRODUCT_ENTRY_PATH).toBe(HGDC_ENTRY_PATH)
+    const entries = productMenuEntries({ current: "Host" })
+    expect(Object.fromEntries(entries.map((e) => [e.name, e.href]))).toEqual({
+      "HGDC Account": "https://account.hgdc.ch",
+      "HGDC Host": "https://host.hgdc.ch/auth/hgdc",
+      "HGDC Mail": "https://mail.hgdc.ch/auth/hgdc",
+      "HGDC Portal": "https://portal.hgdc.ch/auth/hgdc",
+      "HGDC Status": "https://status.hgdc.ch/auth/hgdc",
+      "HGDC Analytics": "https://analytics.hgdc.ch/auth/hgdc",
+      "HGDC Docs": "https://docs.hgdc.ch/auth/hgdc",
+    })
+    expect(HGDC_ACCOUNT.entryHref).toBe(HGDC_ACCOUNT.href)
+    for (const product of HGDC_PRODUCTS) expect(product.href).toBe(`https://${product.subdomain}`)
+  })
+
   it("remplace l'adresse d'Account pour le développement", () => {
     expect(productMenuEntries({ accountHref: "http://localhost:3000" })[0]?.href).toBe("http://localhost:3000")
   })
@@ -59,10 +76,12 @@ describe("AccountMenu et le catalogue", () => {
     render(<AccountMenu user={user} onSignOut={() => {}} product="Host" />)
     fireEvent.click(screen.getByRole("button", { name: "Compte de Hugo Gebel" }))
     const mail = await screen.findByRole("menuitem", { name: "HGDC Mail" })
-    expect(mail.getAttribute("href")).toBe("https://mail.hgdc.ch")
+    expect(mail.getAttribute("href")).toBe("https://mail.hgdc.ch/auth/hgdc")
     expect(screen.getByRole("menuitem", { name: "HGDC Account" }).getAttribute("href")).toBe("https://account.hgdc.ch")
     expect(screen.getByLabelText("Produit ouvert")).toBeDefined()
-    expect(screen.getByRole("menuitem", { name: "HGDC Portal" }).getAttribute("href")).toBe("https://portal.hgdc.ch")
+    expect(screen.getByRole("menuitem", { name: "HGDC Portal" }).getAttribute("href")).toBe(
+      "https://portal.hgdc.ch/auth/hgdc",
+    )
   })
 
   it("garde une liste passée par le produit, et la retire si elle est vide", async () => {

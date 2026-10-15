@@ -2,12 +2,12 @@
 
 Connexion d'un produit HGDC à HGDC Account (OIDC) : bouton « Se connecter avec HGDC », configuration du client better-auth, proxy `/api/auth` pour TanStack Start et gardes Convex.
 
-| Import              | Contenu                                                                                                                                                                                                                                                                                       |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@hgdc/auth`        | `HGDC_ISSUER`, `HGDC_PROVIDER_ID`, `HGDC_SCOPES`, rôles (`highestRole`, `hasRole`), `parseHgdcProfile`, `verifiedOrganizationsFromIdToken`, `verifyHgdcIdToken`, `planOrganizationSync`, fraîcheur (`membershipIsFresh`, `SESSION_TTL_SECONDS`, `MEMBERSHIP_TTL_MS`, `KEY_MEMBERSHIP_TTL_MS`) |
-| `@hgdc/auth/server` | `hgdcProvider` (plugin `genericOAuth`), `createAuthProxy`, `restoreFetchMode`                                                                                                                                                                                                                 |
-| `@hgdc/auth/convex` | `requireIdentity`, `requireOrgMember`, `isAuthError`, `authErrorReason`, `AUTH_ERROR_MESSAGES`                                                                                                                                                                                                |
-| `@hgdc/auth/react`  | `HgdcSignInButton`, `startHgdcSignIn`, `HgdcMark`                                                                                                                                                                                                                                             |
+| Import              | Contenu                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@hgdc/auth`        | `HGDC_ISSUER`, `HGDC_PROVIDER_ID`, `HGDC_SCOPES`, entrée commune (`HGDC_ENTRY_PATH`, `safeNextPath`, `hgdcEntryUrl`), rôles (`highestRole`, `hasRole`), `parseHgdcProfile`, `verifiedOrganizationsFromIdToken`, `verifyHgdcIdToken`, `planOrganizationSync`, fraîcheur (`membershipIsFresh`, `SESSION_TTL_SECONDS`, `MEMBERSHIP_TTL_MS`, `KEY_MEMBERSHIP_TTL_MS`) |
+| `@hgdc/auth/server` | `hgdcProvider` (plugin `genericOAuth`), `createAuthProxy`, `restoreFetchMode`, `createHgdcEntry`                                                                                                                                                                                                                                                                  |
+| `@hgdc/auth/convex` | `requireIdentity`, `requireOrgMember`, `isAuthError`, `authErrorReason`, `AUTH_ERROR_MESSAGES`                                                                                                                                                                                                                                                                    |
+| `@hgdc/auth/react`  | `HgdcSignInButton`, `startHgdcSignIn`, `HgdcMark`                                                                                                                                                                                                                                                                                                                 |
 
 Pairs : better-auth 1.6, convex 1.46+, React 19 (chacun facultatif selon l'import).
 
@@ -54,6 +54,31 @@ authComponent.registerRoutes(http, (ctx) => {
   return { ...auth, handler: (request: Request) => auth.handler(restoreFetchMode(request)) }
 })
 ```
+
+## Entrée commune `/auth/hgdc`
+
+Le menu « Produits » (`@hgdc/ui/account-menu`) envoie vers `https://<mot>.hgdc.ch/auth/hgdc`, pas vers la page d'accueil publique. Chaque produit monte cette route serveur, au même chemin :
+
+```ts
+// src/routes/auth/hgdc.ts
+import { createHgdcEntry } from "@hgdc/auth/server"
+import { createFileRoute } from "@tanstack/react-router"
+
+import { proxyAuth } from "@/lib/auth-server" // le proxy /api/auth (createAuthProxy)
+
+const entry = createHgdcEntry({ proxy: proxyAuth, errorCallbackURL: "/sign-in?error=1" })
+
+export const Route = createFileRoute("/auth/hgdc")({
+  server: { handlers: { GET: ({ request }) => entry(request) } },
+})
+```
+
+- Session du produit ouverte : redirection vers `next`.
+- Sinon la connexion HGDC part aussitôt, côté serveur (même appel que le bouton), avec retour vers `next`. Session d'Account ouverte et produit autorisé : Account renvoie sans formulaire.
+- `next` (`?next=/o/acme`) n'accepte qu'un chemin du produit (`safeNextPath`) ; tout le reste devient `/`, que chaque produit redirige vers son app quand la session existe. `errorCallbackURL` : la page de connexion du produit avec son paramètre d'erreur.
+- Lien vers un produit depuis ailleurs : `hgdcEntryUrl("https://mail.hgdc.ch", "/o/acme")`.
+
+Décision : ADR 0010.
 
 ## Garder une fonction Convex
 

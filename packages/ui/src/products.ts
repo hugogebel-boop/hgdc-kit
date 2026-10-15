@@ -26,7 +26,13 @@ export type HgdcCatalogProduct = {
   name: string
   /** « host.hgdc.ch ». */
   subdomain: string
+  /** Page d'accueil publique : `https://host.hgdc.ch`. */
   href: string
+  /**
+   * Entrée dans l'app avec la session HGDC Account (`PRODUCT_ENTRY_PATH`), sans page d'accueil
+   * ni bouton de connexion. Pour Account, sa racine.
+   */
+  entryHref: string
   /** Une phrase, au tutoiement. */
   pitch: string
   icon: IconSvgElement
@@ -38,13 +44,22 @@ export type HgdcCatalogProduct = {
   accent?: EmailAccent | undefined
 }
 
+/**
+ * Chemin de l'entrée commune des produits, le `HGDC_ENTRY_PATH` de `@hgdc/auth` : chaque produit
+ * le monte (`createHgdcEntry`). Il ouvre l'app avec la session HGDC Account, sans formulaire
+ * quand cette session existe.
+ */
+export const PRODUCT_ENTRY_PATH = "/auth/hgdc"
+
 function product(word: string, pitch: string, icon: IconSvgElement, stage: ProductStage): HgdcCatalogProduct {
   const subdomain = `${word.toLowerCase()}.hgdc.ch`
+  const href = `https://${subdomain}`
   return {
     word,
     name: `HGDC ${word}`,
     subdomain,
-    href: `https://${subdomain}`,
+    href,
+    entryHref: `${href}${PRODUCT_ENTRY_PATH}`,
     pitch,
     icon,
     stage,
@@ -53,12 +68,13 @@ function product(word: string, pitch: string, icon: IconSvgElement, stage: Produ
 }
 
 /** HGDC Account : le compte commun (profil, sécurité, organisations), hors du catalogue des produits. */
-export const HGDC_ACCOUNT: HgdcCatalogProduct = product(
+const account = product(
   "Account",
   "Ton compte HGDC : profil, sécurité et organisations, pour tous les produits.",
   UserCircleIcon,
   "live",
 )
+export const HGDC_ACCOUNT: HgdcCatalogProduct = { ...account, entryHref: account.href }
 
 /** Les produits de la famille, dans leur ordre d'affichage. Account n'en fait pas partie (`HGDC_ACCOUNT`). */
 export const HGDC_PRODUCTS: ReadonlyArray<HgdcCatalogProduct> = [
@@ -89,7 +105,8 @@ export type ProductMenuEntry = {
 /**
  * Les entrées du menu du compte : Account d'abord, puis les produits ouverts. `current` est le
  * mot du produit affiché (« Mail ») : il est coché. `accountHref` remplace l'adresse d'Account
- * (un Account local en développement).
+ * (un Account local en développement). Chaque produit pointe vers son entrée (`entryHref`) :
+ * un clic ouvre l'app avec la session HGDC, pas la page d'accueil publique.
  */
 export function productMenuEntries(
   options: {
@@ -99,10 +116,11 @@ export function productMenuEntries(
   } = {},
 ): Array<ProductMenuEntry> {
   const current = options.current?.toLowerCase()
-  const account = { ...HGDC_ACCOUNT, href: options.accountHref ?? HGDC_ACCOUNT.href }
+  const accountHref = options.accountHref ?? HGDC_ACCOUNT.entryHref
+  const account = { ...HGDC_ACCOUNT, href: accountHref, entryHref: accountHref }
   return [account, ...(options.catalog ?? HGDC_PRODUCTS).filter(isProductOpen)].map((item) => ({
     name: item.name,
-    href: item.href,
+    href: item.entryHref,
     icon: item.icon,
     ...(item.word.toLowerCase() === current ? { current: true } : {}),
     ...(item.stage === "preview" ? { hint: PRODUCT_STAGE_LABEL.preview } : {}),

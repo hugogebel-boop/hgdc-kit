@@ -1,6 +1,13 @@
 import type { GenericOAuthConfig } from "better-auth/plugins/generic-oauth"
 
-import { HGDC_ISSUER, HGDC_PROVIDER_ID, HGDC_SCOPES, parseHgdcProfile } from "./index.ts"
+import {
+  HGDC_ENTRY_NEXT_PARAM,
+  HGDC_ISSUER,
+  HGDC_PROVIDER_ID,
+  HGDC_SCOPES,
+  parseHgdcProfile,
+  safeNextPath,
+} from "./index.ts"
 
 /** En-tête qui porte le `sec-fetch-mode` du navigateur à travers le proxy. */
 export const FETCH_MODE_HEADER = "x-hgdc-fetch-mode"
@@ -58,6 +65,128 @@ export function createAuthProxy(
       redirect: "manual",
       ...(hasBody ? { body: await request.arrayBuffer() } : {}),
     })
+  }
+}
+
+export type HgdcEntryOptions = {
+  /** Le proxy `/api/auth` du produit (`createAuthProxy`). */
+  proxy: (request: Request) => Promise<Response>
+  /**
+   * Page du produit si la connexion échoue (Account refuse, réseau) : sa page de connexion avec
+   * son paramètre d'erreur, par exemple `/sign-in?error=1`. Chemin relatif du produit.
+   */
+  errorCallbackURL: string
+  /** Chemin de better-auth, `/api/auth` par défaut. */
+  basePath?: string
+}
+
+const STRIPPED_ON_INTERNAL_CALL = [
+  "content-length",
+  "content-type",
+  "accept",
+  "sec-fetch-mode",
+  "sec-fetch-dest",
+  "sec-fetch-site",
+  "sec-fetch-user",
+  FETCH_MODE_HEADER,
+]
+
+function internalHeaders(request: Request, origin: string): Headers {
+  // Garde cookies, adresse IP et user-agent (limites de débit, sessions) ; retire le mode de
+  // navigation, sinon better-auth rendrait une redirection au lieu du JSON attendu.
+  const headers = new Headers(request.headers)
+  for (const name of STRIPPED_ON_INTERNAL_CALL) headers.delete(name)
+  headers.set("accept", "application/json")
+  headers.set("origin", origin)
+  return headers
+}
+
+function setCookies(response: Response): string[] {
+  return typeof response.headers.getSetCookie === "function" ? response.headers.getSetCookie() : []
+}
+
+function redirectTo(location: string, cookies: readonly string[] = []): Response {
+  const headers = new Headers({ location, "cache-control": "no-store", "referrer-policy": "no-referrer" })
+  for (const cookie of cookies) headers.append("set-cookie", cookie)
+  return new Response(null, { status: 302, headers })
+}
+
+async function readJson(response: Response): Promise<unknown> {
+  try {
+    return await response.json()
+  } catch {
+    return null
+  }
+}
+
+function hasSessionBody(body: unknown): boolean {
+  return typeof body === "object" && body !== null && "session" in body && Boolean(body.session)
+}
+
+function authorizationUrl(body: unknown): string | null {
+  if (typeof body !== "object" || body === null || !("url" in body) || typeof body.url !== "string") return null
+  try {
+    const url = new URL(body.url)
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Entrée commune `GET /auth/hgdc?next=<chemin>` (`HGDC_ENTRY_PATH`), à monter comme route
+ * serveur du produit. Le menu « Produits » de `@hgdc/ui` y envoie : on entre dans le produit
+ * sans passer par sa page d'accueil ni recliquer « Se connecter avec HGDC ».
+ *
+ * - Session du produit ouverte : redirection vers `next`.
+ * - Sinon : la connexion HGDC part aussitôt (même appel que `HgdcSignInButton`, fait par le
+ *   serveur), retour vers `next`. Si la session d'Account est ouverte et le produit déjà
+ *   autorisé, Account renvoie sans formulaire : trois redirections, aucun clic.
+ *
+ * `next` est filtré par `safeNextPath` (chemin du produit seulement, pas de redirection ouverte),
+ * puis better-auth le revérifie contre ses `trustedOrigins`.
+ *
+ * ```ts
+ * // src/routes/auth/hgdc.ts
+ * const entry = createHgdcEntry({ proxy: proxyAuth, errorCallbackURL: "/sign-in?error=1" })
+ * export const Route = createFileRoute("/auth/hgdc")({
+ *   server: { handlers: { GET: ({ request }) => entry(request) } },
+ * })
+ * ```
+ */
+export function createHgdcEntry(options: HgdcEntryOptions): (request: Request) => Promise<Response> {
+  const errorCallbackURL = safeNextPath(options.errorCallbackURL, "")
+  if (!errorCallbackURL) throw new Error("createHgdcEntry : errorCallbackURL doit être un chemin du produit.")
+  const basePath = (options.basePath ?? "/api/auth").replace(/\/+$/, "")
+
+  return async (request) => {
+    const url = new URL(request.url)
+    const next = safeNextPath(url.searchParams.get(HGDC_ENTRY_NEXT_PARAM))
+    const cookies: string[] = []
+    try {
+      if (request.headers.has("cookie")) {
+        const session = await options.proxy(
+          new Request(`${url.origin}${basePath}/get-session`, { headers: internalHeaders(request, url.origin) }),
+        )
+        cookies.push(...setCookies(session))
+        if (session.ok && hasSessionBody(await readJson(session))) return redirectTo(next, cookies)
+      }
+
+      const headers = internalHeaders(request, url.origin)
+      headers.set("content-type", "application/json")
+      const signIn = await options.proxy(
+        new Request(`${url.origin}${basePath}/sign-in/oauth2`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ providerId: HGDC_PROVIDER_ID, callbackURL: next, errorCallbackURL }),
+        }),
+      )
+      const target = signIn.ok ? authorizationUrl(await readJson(signIn)) : null
+      if (!target) return redirectTo(errorCallbackURL, cookies)
+      return redirectTo(target, [...cookies, ...setCookies(signIn)])
+    } catch {
+      return redirectTo(errorCallbackURL, cookies)
+    }
   }
 }
 

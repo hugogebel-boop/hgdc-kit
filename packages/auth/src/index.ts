@@ -12,6 +12,53 @@ export const ORGANIZATIONS_SCOPE = "organizations"
 /** Portées demandées par défaut : identité, adresse vérifiée, renouvellement et organisations. */
 export const HGDC_SCOPES: readonly string[] = ["openid", "profile", "email", "offline_access", ORGANIZATIONS_SCOPE]
 
+/**
+ * Entrée commune des produits : `https://<mot>.hgdc.ch/auth/hgdc?next=<chemin>` ouvre le produit
+ * avec la session HGDC Account, sans page d'accueil ni bouton (`createHgdcEntry`, `@hgdc/auth/server`).
+ * Le menu « Produits » de `@hgdc/ui` y pointe : même chemin dans chaque produit.
+ */
+export const HGDC_ENTRY_PATH = "/auth/hgdc"
+
+/** Paramètre de l'entrée qui porte la page d'arrivée. */
+export const HGDC_ENTRY_NEXT_PARAM = "next"
+
+const NEXT_MAX_LENGTH = 2048
+const NEXT_BASE = "https://next.invalid"
+
+/**
+ * Page d'arrivée sûre : un chemin du produit lui-même, jamais une autre origine. Refuse ce qu'un
+ * navigateur lirait comme une adresse externe (`//hôte`, `/\hôte`, schéma), les caractères de
+ * contrôle, et l'entrée ou `/api/auth` (boucle). Rend `fallback` dans tous ces cas.
+ */
+export function safeNextPath(value: string | null | undefined, fallback = "/"): string {
+  if (typeof value !== "string" || value.length === 0 || value.length > NEXT_MAX_LENGTH) return fallback
+  if (!value.startsWith("/") || value.startsWith("//")) return fallback
+  // Les navigateurs lisent `\` comme `/` : `/\evil.ch` serait une adresse externe.
+  // oxlint-disable-next-line no-control-regex -- refuser les caractères de contrôle est le but
+  if (/[\\\u0000-\u001f\u007f]/.test(value)) return fallback
+  let url: URL
+  try {
+    url = new URL(value, NEXT_BASE)
+  } catch {
+    return fallback
+  }
+  if (url.origin !== NEXT_BASE) return fallback
+  const path = url.pathname.replace(/\/+$/, "") || "/"
+  if (path === HGDC_ENTRY_PATH || path === "/api/auth" || path.startsWith("/api/auth/")) return fallback
+  return `${url.pathname}${url.search}${url.hash}`
+}
+
+/**
+ * Adresse de l'entrée commune d'un produit : `hgdcEntryUrl("https://mail.hgdc.ch", "/o/acme")`.
+ * Sans `next` (ou `next` refusé), le produit ouvre sa page d'accueil connectée.
+ */
+export function hgdcEntryUrl(productOrigin: string, next?: string): string {
+  const url = new URL(HGDC_ENTRY_PATH, new URL(productOrigin).origin)
+  const path = next === undefined ? "/" : safeNextPath(next)
+  if (path !== "/") url.searchParams.set(HGDC_ENTRY_NEXT_PARAM, path)
+  return url.toString()
+}
+
 /** Rôles d'organisation, du plus faible au plus fort. */
 export const ORG_ROLES = ["member", "admin", "owner"] as const
 export type OrgRole = (typeof ORG_ROLES)[number]
