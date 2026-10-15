@@ -1,6 +1,6 @@
 {
   "name": "@hgdc/errors",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Remontée d'erreurs des produits HGDC vers GlitchTip (protocole Sentry) : nettoyée, bornée, non bloquante.",
   "license": "UNLICENSED",
   "homepage": "https://github.com/hugogebel-boop/hgdc-kit/tree/main/packages/errors#readme",
