@@ -101,6 +101,8 @@ function decodeBase64Url(segment: string): string {
  * du point de jeton d'Account par le serveur (champ `idToken` de la table `account` de
  * better-auth) : sa signature n'est pas revérifiée ici (OpenID Connect Core 3.1.3.7, point 6).
  * Lève une erreur si le jeton est illisible ou si un claim est invalide ; `[]` sans la portée.
+ * À la connexion, préférer `verifiedOrganizationsFromIdToken`, qui contrôle aussi émetteur,
+ * audience et fraîcheur.
  */
 export function organizationsFromIdToken(idToken: string): HgdcOrganization[] {
   const payload = idToken.split(".")[1]
@@ -137,4 +139,139 @@ export function planOrganizationSync(
     }),
     remove: current.filter((m) => !claimedIds.has(m.organizationId)).map((m) => m.organizationId),
   }
+}
+
+/** Âge maximal d'un id_token lu à la connexion : il vient d'être reçu du point de jeton d'Account. */
+export const ID_TOKEN_MAX_AGE_SECONDS: number = 10 * 60
+
+/** Avance d'horloge tolérée entre Account et le produit, en secondes. */
+export const ID_TOKEN_CLOCK_SKEW_SECONDS: number = 60
+
+/** Pourquoi un id_token est refusé, pour les journaux : la personne ne voit que « Connexion HGDC requise ». */
+export type IdTokenRejection = "unreadable" | "wrong_issuer" | "wrong_audience" | "stale" | "invalid_claims"
+
+/** Erreur de `verifyHgdcIdToken` et `verifiedOrganizationsFromIdToken`. */
+export class HgdcIdTokenError extends Error {
+  readonly reason: IdTokenRejection
+  constructor(reason: IdTokenRejection, message: string) {
+    super(message)
+    this.name = "HgdcIdTokenError"
+    this.reason = reason
+  }
+}
+
+export type IdTokenExpectation = {
+  /** Émetteur attendu : `HGDC_ISSUER`, ou celui d'un Account de préproduction. */
+  issuer: string
+  /** Identifiant du client du produit : l'audience du jeton. */
+  clientId: string
+  /** Instant présent en millisecondes (`Date.now()`). */
+  now: number
+}
+
+function payloadOf(idToken: string): Record<string, unknown> {
+  const segment = idToken.split(".")[1]
+  if (!segment) throw new HgdcIdTokenError("unreadable", "id_token HGDC illisible")
+  let payload: unknown
+  try {
+    payload = JSON.parse(decodeBase64Url(segment))
+  } catch {
+    throw new HgdcIdTokenError("unreadable", "id_token HGDC illisible")
+  }
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload))
+    throw new HgdcIdTokenError("unreadable", "id_token HGDC illisible")
+  return payload as Record<string, unknown>
+}
+
+/**
+ * Contrôle de provenance et de fraîcheur d'un id_token lu dans la table `account` de better-auth,
+ * avant d'en recopier quoi que ce soit (OpenID Connect Core 3.1.3.7) :
+ * - `iss` égal à l'émetteur attendu ;
+ * - `aud` contient `clientId`, et `azp` vaut `clientId` quand il y a plusieurs audiences ;
+ * - `iat` de moins de `ID_TOKEN_MAX_AGE_SECONDS`, pas dans le futur, et `exp` non dépassé.
+ *
+ * La signature n'est pas revérifiée : le jeton vient du point de jeton d'Account, reçu par le
+ * serveur en TLS (point 6). Le contrôle de fraîcheur empêche qu'un jeton ancien, que
+ * better-auth n'aurait pas réécrit, rejoue des organisations périmées.
+ */
+export function verifyHgdcIdToken(
+  idToken: string,
+  expected: IdTokenExpectation,
+): { claims: Record<string, unknown>; organizations: HgdcOrganization[] } {
+  if (!expected.issuer || !expected.clientId)
+    throw new Error("verifyHgdcIdToken : émetteur ou clientId attendu manquant (HGDC_CLIENT_ID ?).")
+  const claims = payloadOf(idToken)
+
+  const issuer = typeof claims.iss === "string" ? claims.iss.replace(/\/+$/, "") : null
+  if (issuer !== expected.issuer.replace(/\/+$/, ""))
+    throw new HgdcIdTokenError("wrong_issuer", "id_token d'un autre émetteur")
+
+  const audience = Array.isArray(claims.aud) ? claims.aud : [claims.aud]
+  if (!audience.includes(expected.clientId))
+    throw new HgdcIdTokenError("wrong_audience", "id_token destiné à un autre client")
+  if (audience.length > 1 && claims.azp !== expected.clientId)
+    throw new HgdcIdTokenError("wrong_audience", "id_token destiné à un autre client")
+
+  const now = Math.floor(expected.now / 1000)
+  const iat = typeof claims.iat === "number" ? claims.iat : null
+  if (iat === null || now - iat > ID_TOKEN_MAX_AGE_SECONDS || iat - now > ID_TOKEN_CLOCK_SKEW_SECONDS)
+    throw new HgdcIdTokenError("stale", "id_token périmé")
+  if (claims.exp !== undefined && (typeof claims.exp !== "number" || now - claims.exp > ID_TOKEN_CLOCK_SKEW_SECONDS))
+    throw new HgdcIdTokenError("stale", "id_token périmé")
+
+  const result = organizationsClaim.safeParse(claims)
+  if (!result.success)
+    throw new HgdcIdTokenError("invalid_claims", `Organisations HGDC invalides : ${z.prettifyError(result.error)}`)
+  return { claims, organizations: result.data.organizations ?? [] }
+}
+
+/**
+ * Organisations d'un id_token reçu à la connexion, après `verifyHgdcIdToken`. À appeler dans
+ * `databaseHooks.session.create.before` : un jeton refusé fait échouer la connexion plutôt que
+ * d'ouvrir une session sur des droits périmés.
+ *
+ * ```ts
+ * const organizations = verifiedOrganizationsFromIdToken(account.idToken, {
+ *   issuer: HGDC_ISSUER,
+ *   clientId: process.env.HGDC_CLIENT_ID!,
+ *   now: Date.now(),
+ * })
+ * ```
+ */
+export function verifiedOrganizationsFromIdToken(idToken: string, expected: IdTokenExpectation): HgdcOrganization[] {
+  return verifyHgdcIdToken(idToken, expected).organizations
+}
+
+/**
+ * Durée d'une session d'un produit, sans prolongation (`session: { expiresIn: SESSION_TTL_SECONDS,
+ * disableSessionRefresh: true }`) : les organisations sont relues à chaque connexion, donc au
+ * moins une fois tous les 7 jours.
+ */
+export const SESSION_TTL_SECONDS: number = 7 * 24 * 60 * 60
+
+/**
+ * Âge maximal d'une appartenance copiée depuis Account, en millisecondes : 8 jours, soit une
+ * session de 7 jours et un jour de marge. Une copie plus ancienne n'est plus portée par aucune
+ * session (personne retirée dans Account, session d'avant la synchronisation) : elle n'ouvre plus rien.
+ */
+export const MEMBERSHIP_TTL_MS: number = 8 * 24 * 60 * 60 * 1000
+
+/**
+ * Âge maximal de l'appartenance de la créatrice d'une clé d'API, qui vit hors session (CLI,
+ * intégrations) : 30 jours. Passé ce délai sans reconnexion, la clé cesse d'agir.
+ */
+export const KEY_MEMBERSHIP_TTL_MS: number = 30 * 24 * 60 * 60 * 1000
+
+/**
+ * Vrai si l'appartenance a été confirmée par Account il y a moins de `ttl` (par défaut
+ * `MEMBERSHIP_TTL_MS`). `syncedAt` : dernière synchronisation réussie, en millisecondes, mise
+ * à jour même quand rien n'a changé. Une copie sans date n'est jamais fraîche.
+ */
+export function membershipIsFresh(
+  membership: { syncedAt?: number | null | undefined },
+  now: number,
+  ttl: number = MEMBERSHIP_TTL_MS,
+): boolean {
+  const { syncedAt } = membership
+  return typeof syncedAt === "number" && now - syncedAt <= ttl
 }

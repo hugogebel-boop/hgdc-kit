@@ -1,7 +1,15 @@
 import type { Auth, UserIdentity } from "convex/server"
+import { ConvexError } from "convex/values"
 import { describe, expect, it } from "vitest"
 
-import { isAuthError, requireIdentity, requireOrgMember, type Membership } from "./convex.ts"
+import {
+  AUTH_ERROR_MESSAGES,
+  authErrorReason,
+  isAuthError,
+  requireIdentity,
+  requireOrgMember,
+  type Membership,
+} from "./convex.ts"
 
 type Ctx = { auth: Auth; memberships: Membership[] }
 
@@ -99,5 +107,48 @@ describe("requireOrgMember", () => {
   it("refuse un rôle inconnu", async () => {
     const odd = [{ organizationId: "acme", userId: "ada", role: "superadmin" }]
     expect(await codeOf(requireOrgMember(ctxFor("ada", odd), "acme", { load, issuer: ISSUER }))).toBe("FORBIDDEN")
+  })
+})
+
+async function reasonOf(promise: Promise<unknown>) {
+  try {
+    await promise
+    return "OK"
+  } catch (error) {
+    return authErrorReason(error) ?? "OTHER"
+  }
+}
+
+describe("raison des refus", () => {
+  it("distingue chaque refus par reason, sans lire le message", async () => {
+    expect(await reasonOf(requireIdentity(ctxFor(null, []), { issuer: ISSUER }))).toBe("no_session")
+    const forged = ctxFor("ada", acme, "https://autre-fournisseur.example")
+    expect(await reasonOf(requireIdentity(forged, { issuer: ISSUER }))).toBe("wrong_issuer")
+    expect(await reasonOf(requireOrgMember(ctxFor("eve", acme), "acme", { load, issuer: ISSUER }))).toBe("not_member")
+    expect(
+      await reasonOf(requireOrgMember(ctxFor("bob", acme), "acme", { load, minRole: "admin", issuer: ISSUER })),
+    ).toBe("insufficient_role")
+  })
+
+  it("porte code, reason et message au tutoiement, sans grand tiret", async () => {
+    await expect(
+      requireOrgMember(ctxFor("bob", acme), "acme", { load, minRole: "owner", issuer: ISSUER }),
+    ).rejects.toMatchObject({
+      data: {
+        code: "FORBIDDEN",
+        reason: "insufficient_role",
+        message: "Ton rôle dans cette organisation ne permet pas cette action.",
+      },
+    })
+    for (const message of Object.values(AUTH_ERROR_MESSAGES)) {
+      expect(message).not.toMatch(/[–—]|(vous|votre|vos)/i)
+    }
+  })
+
+  it("déduit la raison d'une erreur 0.3 sans reason, et ignore les autres erreurs", () => {
+    expect(authErrorReason(new ConvexError({ code: "UNAUTHENTICATED", message: "x" }))).toBe("no_session")
+    expect(authErrorReason(new ConvexError({ code: "FORBIDDEN", message: "x" }))).toBe("not_member")
+    expect(authErrorReason(new Error("rôle"))).toBeNull()
+    expect(authErrorReason(new ConvexError({ code: "AUTRE" }))).toBeNull()
   })
 })
