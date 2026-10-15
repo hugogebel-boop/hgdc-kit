@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.7.0
+
+### Minor Changes
+
+- 2346727: `@hgdc/ui/access-request` : la page « Demander un accès » commune aux produits (formulaire HGDC Mail Forms en JSON, états envoi, réussite, erreur et champ refusé, lien de connexion du routeur du produit), et `submitAccessRequest` pour un formulaire maison.
+
 ## 0.6.0
 
 ### Minor Changes
