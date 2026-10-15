@@ -30,18 +30,52 @@ export function useCopy(): { copied: boolean; copy: (value: string) => Promise<b
 
 /**
  * Bouton-icône qui copie une valeur ; l'icône devient une coche, et « Copié » est annoncé aux
- * lecteurs d'écran.
+ * lecteurs d'écran. `showLabel` écrit le libellé à côté de l'icône (« Tout copier »), pour une
+ * copie qui n'est pas collée à sa valeur : tout un bloc d'enregistrements DNS, un journal.
  */
 export function CopyButton({
   value,
   label = "Copier",
+  showLabel = false,
   className,
 }: {
   value: string
   label?: string
+  /** Libellé visible, qui devient « Copié » le temps de la confirmation. */
+  showLabel?: boolean
   className?: string
 }): React.JSX.Element {
   const { copied, copy } = useCopy()
+  if (showLabel)
+    return (
+      <button
+        type="button"
+        onClick={() => void copy(value)}
+        data-copied={copied || undefined}
+        className={cn(
+          "touch-target inline-flex h-8 shrink-0 pressable items-center gap-1.5 rounded-full px-3 text-sm font-medium text-muted-foreground outline-none hover:bg-foreground/[0.06] hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50",
+          copied && "text-status-active-ink hover:text-status-active-ink",
+          className,
+        )}
+      >
+        <HugeiconsIcon
+          key={copied ? "ok" : "copy"}
+          icon={copied ? Tick02Icon : Copy01Icon}
+          aria-hidden
+          className="size-4 pop-in"
+        />
+        {/* La largeur ne bouge pas quand le libellé change : les deux textes occupent la même case. */}
+        <span className="inline-grid">
+          <span className={cn("col-start-1 row-start-1", copied && "invisible")}>{label}</span>
+          <span aria-hidden className={cn("col-start-1 row-start-1", !copied && "invisible")}>
+            Copié
+          </span>
+        </span>
+        <span className="sr-only" aria-live="polite">
+          {copied ? "Copié" : ""}
+        </span>
+      </button>
+    )
   return (
     <button
       type="button"

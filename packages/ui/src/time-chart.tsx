@@ -56,6 +56,7 @@ export function TimeChart({
   formatValue = (v) => number.format(v),
   formatTime = (t) => dayMonth.format(t),
   emptyLabel = "Aucune donnée sur cette période.",
+  lastIncomplete = false,
   className,
 }: {
   timestamps: Array<number>
@@ -70,6 +71,12 @@ export function TimeChart({
   formatValue?: (value: number) => string
   formatTime?: (time: number) => string
   emptyLabel?: string
+  /**
+   * Le dernier point couvre une période pas encore finie (aujourd'hui, ce mois-ci) : sa ligne est
+   * en pointillés, sa barre pâlie, et l'infobulle le dit. Sans cela, une chute du dernier jour
+   * se lit comme une baisse alors que la journée n'est pas terminée.
+   */
+  lastIncomplete?: boolean
   className?: string
 }): React.JSX.Element {
   const [active, setActive] = useState<number | null>(null)
@@ -115,13 +122,15 @@ export function TimeChart({
     setActive((current) => Math.min(n - 1, Math.max(0, (current ?? (move > 0 ? -1 : n)) + move)))
   }
 
+  const incompleteIndex = lastIncomplete && n > 1 ? n - 1 : -1
   const activeTime = active !== null ? timestamps[active] : undefined
   const describe = (i: number) => {
     const t = timestamps[i]
     const values = series
       .map((s) => `${s.label} ${s.values[i] == null ? "pas de mesure" : formatValue(s.values[i] ?? 0)}`)
       .join(", ")
-    return t === undefined ? values : `${formatTime(t)} : ${values}`
+    const time = t === undefined ? "" : `${formatTime(t)}${i === incompleteIndex ? " (en cours)" : ""} : `
+    return `${time}${values}`
   }
   const xLabels = compact ? [] : [0, Math.floor((n - 1) / 2), n - 1].filter((v, i, a) => a.indexOf(v) === i)
 
@@ -212,7 +221,7 @@ export function TimeChart({
                           width={0.7}
                           height={h}
                           fill={color(si)}
-                          opacity={active === null || active === i ? 1 : 0.55}
+                          opacity={(active === null || active === i ? 1 : 0.55) * (i === incompleteIndex ? 0.5 : 1)}
                         />
                       ) : null
                     })
@@ -223,7 +232,10 @@ export function TimeChart({
                         <path d={areaPath(s.values, scale.max)} fill={color(si)} opacity={0.1} />
                       ) : null}
                       <path
-                        d={linePath(s.values, scale.max)}
+                        d={linePath(
+                          incompleteIndex < 0 ? s.values : s.values.map((v, i) => (i === incompleteIndex ? null : v)),
+                          scale.max,
+                        )}
                         fill="none"
                         stroke={color(si)}
                         strokeWidth={2}
@@ -231,6 +243,21 @@ export function TimeChart({
                         strokeLinecap="round"
                         vectorEffect="non-scaling-stroke"
                       />
+                      {incompleteIndex >= 0 ? (
+                        <path
+                          data-slot="time-chart-incomplete"
+                          d={linePath(
+                            s.values.map((v, i) => (i >= incompleteIndex - 1 ? v : null)),
+                            scale.max,
+                          )}
+                          fill="none"
+                          stroke={color(si)}
+                          strokeWidth={2}
+                          strokeDasharray="3 4"
+                          strokeLinecap="round"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      ) : null}
                     </g>
                   ))}
 
@@ -256,7 +283,12 @@ export function TimeChart({
                 )}
                 style={{ left: `${((active + 0.5) / n) * 100}%` }}
               >
-                <p className="font-medium">{formatTime(activeTime)}</p>
+                <p className="font-medium">
+                  {formatTime(activeTime)}
+                  {active === incompleteIndex ? (
+                    <span className="ml-1.5 font-normal text-muted-foreground">En cours</span>
+                  ) : null}
+                </p>
                 {series.map((s, si) => (
                   <p key={s.key} className="flex items-center gap-2">
                     <span aria-hidden className="size-2 shrink-0 rounded-[2px]" style={{ background: color(si) }} />
@@ -304,7 +336,10 @@ export function TimeChart({
         <tbody>
           {timestamps.map((t, i) => (
             <tr key={t}>
-              <th scope="row">{formatTime(t)}</th>
+              <th scope="row">
+                {formatTime(t)}
+                {i === incompleteIndex ? " (en cours)" : ""}
+              </th>
               {series.map((s) => (
                 <td key={s.key}>{s.values[i] === null ? "-" : formatValue(s.values[i] ?? 0)}</td>
               ))}
