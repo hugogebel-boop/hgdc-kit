@@ -111,6 +111,37 @@ Les champs de date sont ceux du navigateur, sans calendrier maison (ADR 0006). L
 | `tooltip`     | `<TooltipProvider>` autour de l'app, puis `<Tooltip><TooltipTrigger aria-label="Copier">…</TooltipTrigger><TooltipContent>Copier</TooltipContent></Tooltip>` |
 | `popover`     | `<Popover><PopoverTrigger>Aide</PopoverTrigger><PopoverContent><PopoverTitle>…</PopoverTitle></PopoverContent></Popover>`                                    |
 
+## E-mails
+
+`@hgdc/ui/email` : le modèle commun des e-mails transactionnels, rendu par React Email (`bun add --exact react-email@6.11.1`, version de la stack). Rendu côté serveur, dans une action Convex `"use node"`.
+
+```tsx
+import { EmailButton, EmailHeading, EmailLayout, EmailText, renderEmail } from "@hgdc/ui/email"
+
+const { html, text } = await renderEmail(
+  <EmailLayout product="Portal" preview="Claire t'invite à rejoindre Atelier Dupont.">
+    <EmailHeading>Claire t'invite dans Atelier Dupont</EmailHeading>
+    <EmailText>Tu pourras suivre le projet, signer et payer au même endroit.</EmailText>
+    <EmailButton href={url}>Voir l'invitation</EmailButton>
+  </EmailLayout>,
+)
+```
+
+| Bloc           | Rôle                                                                                                                                        |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EmailLayout`  | Icône et nom du produit, carte, pied « Propulsé par HGDC Mail » et mentions légales ; `footer` (désabonnement), `name`, `iconSrc`, `accent` |
+| `EmailHeading` | Titre                                                                                                                                       |
+| `EmailText`    | Paragraphe ; `small` pour une note secondaire                                                                                               |
+| `EmailButton`  | Lien direct, jamais réécrit ; absolu (`https:`, `mailto:`) ou erreur                                                                        |
+| `EmailLink`    | Lien dans le texte                                                                                                                          |
+| `EmailCode`    | Code à usage unique, en deux groupes à l'œil, d'un bloc au copier                                                                           |
+| `EmailCallout` | Encadré `neutral`, `info`, `success`, `warning`, `danger`, avec titre                                                                       |
+| `EmailDivider` | Séparateur                                                                                                                                  |
+| `EmailDetails` | Liste clé / valeur                                                                                                                          |
+| `renderEmail`  | `{ html, text }` : HTML pour clients mail, texte tiré du même rendu                                                                         |
+
+L'accent vient du catalogue (`accent` de `@hgdc/ui/products`), les icônes de `https://hgdc.ch/email/<mot>.png` (fichiers dans `@hgdc/ui/email-icons/`, régénérés par `bun scripts/email-icons.ts`). Un exemple par type : `scripts/email-showcase.tsx`.
+
 ## Règles de la DA
 
 - Chrome monochrome, un seul accent violet : focus, lien, un geste principal par écran. « Vous êtes ici » (barre, onglets) reste en teinte.
@@ -120,6 +151,6 @@ Les champs de date sont ceux du navigateur, sans calendrier maison (ADR 0006). L
 - Graphiques : `--chart-1` à `--chart-6` dans cet ordre, validées pour le daltonisme dans les deux thèmes ; au-delà de six séries, regrouper en « Autres ».
 - Référence de l'interface : Host. Couleur d'un client : `--brand-accent`.
 
-Mode d'emploi complet : [Adopter le kit](https://github.com/hugogebel-boop/hgdc-kit/blob/main/docs/guides/adopter-le-kit.md#7-interface). Décisions : [ADR 0005](https://github.com/hugogebel-boop/hgdc-kit/blob/main/docs/adr/0005-ui-css-brute-et-sous-chemins.md), [ADR 0006](https://github.com/hugogebel-boop/hgdc-kit/blob/main/docs/adr/0006-ui-composants-des-consoles.md).
+Mode d'emploi complet : [Adopter le kit](https://github.com/hugogebel-boop/hgdc-kit/blob/main/docs/guides/adopter-le-kit.md#7-interface). Décisions : [ADR 0005](https://github.com/hugogebel-boop/hgdc-kit/blob/main/docs/adr/0005-ui-css-brute-et-sous-chemins.md), [ADR 0006](https://github.com/hugogebel-boop/hgdc-kit/blob/main/docs/adr/0006-ui-composants-des-consoles.md), [ADR 0007](https://github.com/hugogebel-boop/hgdc-kit/blob/main/docs/adr/0007-ui-modele-des-e-mails.md).
 
 Tous droits réservés, Hugo Gebel Développement Conseil.

@@ -1,6 +1,7 @@
 node_modules
 dist
 .pack
+.email-showcase
 *.tgz
 *.log
 .DS_Store

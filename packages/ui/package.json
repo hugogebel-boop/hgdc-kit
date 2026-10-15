@@ -16,7 +16,8 @@
   },
   "files": [
     "dist",
-    "styles.css"
+    "styles.css",
+    "email-icons"
   ],
   "sideEffects": [
     "*.css"
@@ -24,6 +25,7 @@
   "exports": {
     "./styles.css": "./styles.css",
     "./package.json": "./package.json",
+    "./email-icons/*": "./email-icons/*",
     "./*": {
       "types": "./dist/*.d.ts",
       "default": "./dist/*.js"
@@ -48,6 +50,15 @@
   "peerDependencies": {
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "tailwindcss": "^4.3.3"
+    "tailwindcss": "^4.3.3",
+    "react-email": "^6.11.1"
+  },
+  "peerDependenciesMeta": {
+    "react-email": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "react-email": "6.11.1"
   }
 }
