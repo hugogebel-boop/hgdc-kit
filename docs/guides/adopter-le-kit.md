@@ -216,3 +216,29 @@ Le kit suit l'interface de Host. Écarts à connaître : un bouton ne grossit pl
 Texte d'un statut : `text-status-active-ink`, `text-status-paused-ink` ou `text-info-ink` sur un lavis (`bg-status-active/15`), jamais la couleur vive en texte : elle reste aux pastilles et aux graphiques. L'information est bleue (`--info`), le violet reste l'accent. Chargement : `<Spinner />` dans un bouton ou une ligne, `<Spinner size={8} tone="accent" />` seul sur une page.
 
 Couleur d'un client : poser `--brand-accent` et `--brand-accent-foreground` (et leurs variantes `-dark`). L'accent, l'anneau de focus et `--accent-soft` suivent.
+
+## 8. E-mails transactionnels (`@hgdc/ui/email`, 0.6)
+
+```sh
+bun add --exact react-email@6.11.1   # version de la stack
+```
+
+1. Écrire chaque e-mail comme un composant sur `EmailLayout`, à partir de l'exemple le plus proche dans `scripts/email-showcase.tsx` (code de confirmation, invitation, alerte de panne, confirmation d'abonnement).
+2. Rendre dans une action `"use node"` : `const { html, text } = await renderEmail(<MonEmail … />)`, puis envoyer `html` et `text` ensemble par HGDC Mail. Une valeur saisie par une personne passe en enfant JSX : React l'échappe.
+3. Retirer l'ancien gabarit : `convex/emails/SystemEmail.tsx` (Mail), `convex/lib/mailTemplates.ts` (Account), le texte seul de Status, le gabarit de Portal.
+
+Textes : tutoiement, une action par e-mail, `EmailText small` pour la validité et le « si tu n'as rien demandé », pas de grand tiret. Un e-mail envoyé aux abonnés d'un client (Status) passe `name="Statut · <page>"`, et `accent` si la page a une couleur ; `footer` dit pourquoi la personne le reçoit et porte le lien de désabonnement (`List-Unsubscribe` reste dans les en-têtes).
+
+## 9. Erreurs (`@hgdc/errors`)
+
+```sh
+bun add --exact @hgdc/errors
+```
+
+| Ancienne copie                                                   | Remplacement                                                                                                           |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `convex/lib/errorReport.ts` (`reportServerError`)                | `import { reportServerError } from "@hgdc/errors/convex"`, même signature                                              |
+| `src/lib/error-reporting.ts`                                     | `createBrowserReporter({ dsn: import.meta.env.VITE_GLITCHTIP_DSN, keyPrefixes: ["am_"] })`, puis `report` et `install` |
+| `shared/errorReport.ts`, `collector/error-report.ts` (Analytics) | `@hgdc/errors` (cœur) et `createErrorReporter` de `@hgdc/errors/server`                                                |
+
+Les variables d'environnement ne changent pas (`GLITCHTIP_DSN`, `VITE_GLITCHTIP_DSN`) ; `GLITCHTIP_RELEASE` (SHA du commit) est facultative. Garder les préfixes de clés du produit dans `keyPrefixes` (`ah_` pour Host, `am_` pour Mail). Supprimer ensuite les copies et leurs tests : ceux du paquet les couvrent.

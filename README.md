@@ -1,6 +1,6 @@
 ---
 owner: Hugo Gebel
-last_reviewed: 2026-10-14
+last_reviewed: 2026-10-15
 ---
 
 # hgdc-kit
@@ -10,8 +10,9 @@ Le code commun de la H family (HGDC Host, Mail, Account…), publié sur npm sou
 | Paquet                            | Contenu                                                                                                                     |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | [`@hgdc/config`](packages/config) | Presets tsconfig, oxlint et oxfmt, preset Renovate, versions exactes de la stack et la commande `hgdc-stack` qui les impose |
-| [`@hgdc/ui`](packages/ui)         | Jetons de la DA, thèmes, polices, composants de base et coque des consoles (Base UI, Tailwind v4, graphiques SVG)           |
+| [`@hgdc/ui`](packages/ui)         | Jetons de la DA, thèmes, composants, coque des consoles et modèle des e-mails transactionnels (`@hgdc/ui/email`)            |
 | [`@hgdc/auth`](packages/auth)     | Bouton « Se connecter avec HGDC », client OIDC better-auth, proxy `/api/auth`, gardes Convex `requireOrgMember`             |
+| [`@hgdc/errors`](packages/errors) | Remontée d'erreurs vers GlitchTip, nettoyée et non bloquante : Convex, navigateur, serveur Bun ou Node                      |
 
 Le dépôt est public pour que chaque produit installe le kit sans jeton. Ce n'est pas du logiciel libre : tous droits réservés ([LICENSE](LICENSE)).
 
