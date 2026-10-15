@@ -8,6 +8,7 @@ import UserCircleIcon from "@hugeicons/core-free-icons/UserCircleIcon"
 import type { IconSvgElement } from "@hugeicons/react"
 
 import { HGDC_EMAIL_ACCENT, type EmailAccent } from "./email-palette.ts"
+import { isFamilyProduct, type FamilyProduct } from "./family-svg.ts"
 
 /** Où en est un produit : seul ce qui répond s'ouvre depuis les menus. */
 export type ProductStage = "live" | "preview" | "soon"
@@ -35,6 +36,9 @@ export type HgdcCatalogProduct = {
   entryHref: string
   /** Une phrase, au tutoiement. */
   pitch: string
+  /** Pastille du produit (`ProductBadge` de `@hgdc/ui/product-badge`) : le mot en minuscules. */
+  badge: FamilyProduct
+  /** Pictogramme Hugeicons, pour une liste qui en veut un (palette, navigation). Le logo est `badge`. */
   icon: IconSvgElement
   stage: ProductStage
   /**
@@ -52,7 +56,9 @@ export type HgdcCatalogProduct = {
 export const PRODUCT_ENTRY_PATH = "/auth/hgdc"
 
 function product(word: string, pitch: string, icon: IconSvgElement, stage: ProductStage): HgdcCatalogProduct {
-  const subdomain = `${word.toLowerCase()}.hgdc.ch`
+  const badge = word.toLowerCase()
+  if (!isFamilyProduct(badge)) throw new Error(`@hgdc/ui/products : pas de pastille pour « ${word} »`)
+  const subdomain = `${badge}.hgdc.ch`
   const href = `https://${subdomain}`
   return {
     word,
@@ -61,6 +67,7 @@ function product(word: string, pitch: string, icon: IconSvgElement, stage: Produ
     href,
     entryHref: `${href}${PRODUCT_ENTRY_PATH}`,
     pitch,
+    badge,
     icon,
     stage,
     accent: HGDC_EMAIL_ACCENT,
@@ -97,6 +104,8 @@ export type ProductMenuEntry = {
   href: string
   /** Le produit ouvert : coché, sans lien. */
   current?: boolean
+  /** Pastille du produit, affichée à la place de `icon`. */
+  badge?: FamilyProduct
   icon?: IconSvgElement
   /** Texte discret à droite : « Préversion ». */
   hint?: string
@@ -121,6 +130,7 @@ export function productMenuEntries(
   return [account, ...(options.catalog ?? HGDC_PRODUCTS).filter(isProductOpen)].map((item) => ({
     name: item.name,
     href: item.entryHref,
+    badge: item.badge,
     icon: item.icon,
     ...(item.word.toLowerCase() === current ? { current: true } : {}),
     ...(item.stage === "preview" ? { hint: PRODUCT_STAGE_LABEL.preview } : {}),

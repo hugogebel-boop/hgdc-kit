@@ -216,6 +216,31 @@
   --inverse: oklch(0.1 0 0);
 }
 
+/* Identité H family, la même en clair et en sombre. Dégradé de chaque pastille produit
+   (`ProductBadge`, `family/<mot>.svg`) et palette du H tricolore. Réservés aux visuels de marque
+   (pastille, carte de produit), jamais au chrome. Couleurs pleines ; pour éclaircir, mélanger au
+   blanc `in oklab`, jamais `in oklch` (la teinte du blanc s'y mêle, tout vire au rose). */
+:root {
+  --product-account-from: #ff3b47;
+  --product-account-to: #ff6352;
+  --product-host-from: #194ff7;
+  --product-host-to: #02b4ff;
+  --product-mail-from: #f61f8e;
+  --product-mail-to: #ff5cb8;
+  --product-portal-from: #4732ed;
+  --product-portal-to: #b03cff;
+  --product-status-from: #199f62;
+  --product-status-to: #56db29;
+  --product-analytics-from: #fe5623;
+  --product-analytics-to: #ffb003;
+  --product-docs-from: #1bb9cf;
+  --product-docs-to: #13e4c8;
+  --glow-blue: #2c78fd;
+  --glow-violet: #7343fe;
+  --glow-pink: #fe5292;
+  --glow-orange: #ff9a46;
+}
+
 @layer base {
   /* Une grille sans colonnes déclarées a une seule piste qui ne s'élargit jamais pour un
      texte long : sans ça, `min-width: auto` pousse la page en défilement horizontal sur
