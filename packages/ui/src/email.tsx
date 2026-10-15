@@ -204,9 +204,8 @@ export function EmailLayout({
                 <span style={{ verticalAlign: "middle" }}>
                   Envoyé avec{" "}
                   <Link href={MAIL_HREF} className="hg-muted" style={{ color: l.muted, textDecoration: "underline" }}>
-                    Mail
-                  </Link>{" "}
-                  de la H family
+                    Mail de la H family
+                  </Link>
                 </span>
               </Text>
               <Text className="hg-muted" style={{ ...muted, margin: "4px 0 0" }}>
