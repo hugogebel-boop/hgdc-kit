@@ -1,6 +1,6 @@
 ---
 owner: Hugo Gebel
-last_reviewed: 2026-10-14
+last_reviewed: 2026-10-15
 ---
 
 # Publier une version
@@ -15,14 +15,34 @@ Vérifier : `npm view @hgdc/config version` et le badge « Provenance » sur npm
 
 ## Premier publish d'un nouveau paquet
 
-npm ne déclare un _trusted publisher_ que sur un paquet qui existe déjà. La première version part donc du poste, sans provenance :
+npm ne déclare un _trusted publisher_ que sur un paquet qui existe déjà. En CI, `scripts/publish.ts` saute donc tout paquet absent de npm (avertissement « Premier envoi manuel » dans le journal de `release.yml`) : la release des autres paquets passe, et la première version part du poste, sans provenance.
 
-1. `npm login` (compte `smartflowdev`, membre de l'organisation `hgdc`), puis `bun run release` depuis `main` à jour. npm demande la confirmation 2FA dans le navigateur.
-2. Pour chaque nouveau paquet : npmjs.com → paquet → _Settings_ → _Trusted Publisher_ → _GitHub Actions_ : utilisateur `hugogebel-boop`, dépôt `hgdc-kit`, workflow `release.yml`, environnement vide.
-3. Même page, _Publishing access_ → « Require two-factor authentication and disallow tokens ».
-4. `git push --tags` pour les tags créés par `changeset tag`.
+### En attente : `@hgdc/errors` et `@hgdc/docs`
 
-Les versions suivantes passent par la CI, avec provenance.
+`@hgdc/errors` vit ici ; `@hgdc/docs` dans le dépôt privé `hgdc-docs` (`packages/site`). Les deux partent en une fois, avec la même session npm. Prérequis : la PR « chore: release » qui porte `@hgdc/errors` 0.1.0 est fusionnée, les deux dépôts sont clonés côte à côte (`kit/` et `docs/`).
+
+```sh
+cd kit && git switch main && git pull && git -C ../docs switch main && git -C ../docs pull \
+  && (npm whoami || npm login) \
+  && bun install --frozen-lockfile && bun run release && git push --tags \
+  && (cd ../docs/packages/site && npm publish --access public) \
+  && npm view @hgdc/errors version && npm view @hgdc/docs version
+```
+
+- `npm login` : compte `smartflowdev`, membre de l'organisation `hgdc`. npm demande la confirmation 2FA dans le navigateur à chaque publication.
+- `bun run release` construit le kit et publie ce qui manque sur npm (ici `@hgdc/errors` seul), puis crée son tag ; `git push --tags` le pousse.
+- `@hgdc/docs` part sans provenance tant que `hgdc-docs` est privé.
+
+Puis, sur npmjs.com, pour chacun :
+
+1. Paquet → _Settings_ → _Trusted Publisher_ → _GitHub Actions_ :
+   - `@hgdc/errors` : utilisateur `hugogebel-boop`, dépôt `hgdc-kit`, workflow `release.yml`, environnement vide.
+   - `@hgdc/docs` : utilisateur `hugogebel-boop`, dépôt `hgdc-docs`, workflow `release.yml` (à créer dans `hgdc-docs` sur le modèle de celui du kit ; d'ici là, les versions suivantes partent du poste comme la première).
+2. Même page, _Publishing access_ → « Require two-factor authentication and disallow tokens ».
+
+### Cas général
+
+`npm login`, puis `bun run release` depuis `main` à jour, `git push --tags`, et les deux réglages ci-dessus pour le nouveau paquet. Les versions suivantes passent par la CI, avec provenance.
 
 ## Incidents
 
