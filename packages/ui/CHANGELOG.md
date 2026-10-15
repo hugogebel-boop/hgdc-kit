@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.5.1
+
+### Patch Changes
+
+- b204752: Catalogue des produits : Portal, Status, Analytics et Docs passent en service.
+
 ## 0.5.0
 
 ### Minor Changes
