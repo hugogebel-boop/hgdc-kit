@@ -1,5 +1,11 @@
 # @hgdc/auth
 
+## 0.6.2
+
+### Patch Changes
+
+- b3c09d4: README : mise en place des clés JWKS statiques en deux temps (Convex refuse un push dont la config lit une variable absente).
+
 ## 0.6.1
 
 ### Patch Changes
