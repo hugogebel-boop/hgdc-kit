@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { cleanup, render, screen } from "@testing-library/react"
+import { transform } from "lightningcss"
 import { afterEach, describe, expect, it } from "vitest"
 
 import { FamilyLoader } from "./family-loader.tsx"
@@ -55,6 +56,26 @@ describe("FamilyLoader", () => {
     const reduced = css.slice(css.lastIndexOf("@media (prefers-reduced-motion: reduce)"))
     expect(reduced).toMatch(/\.family-loader \[data-piece\] \{\s*animation: none;/)
     expect(reduced).toMatch(/\.family-loader svg \{\s*animation: family-loader-breathe/)
+  })
+
+  it("minifié comme dans les produits (lightningcss, Vite), chaque pièce garde son animation", () => {
+    const minified = transform({
+      filename: "styles.css",
+      code: Buffer.from(css),
+      minify: true,
+      errorRecovery: true,
+      targets: { chrome: 111 << 16, safari: 16 << 16, firefox: 128 << 16 },
+    }).code.toString()
+    const reducedAt = minified.indexOf("@media (prefers-reduced-motion:reduce){.family-loader")
+    expect(reducedAt).toBeGreaterThan(-1)
+    const normal = minified.slice(0, reducedAt)
+    for (const piece of ["left", "bar", "right"]) {
+      const rule = normal.match(new RegExp(String.raw`\.family-loader \[data-piece=${piece}\]\{([^}]*)\}`))?.[1]
+      expect(rule, piece).toMatch(new RegExp(String.raw`^animation:[^;]*\bfamily-loader-${piece}\b`))
+      expect(rule, piece).toContain("infinite")
+    }
+    expect(normal).not.toMatch(/\.family-loader \[data-piece[^\]]*\]\{animation:none/)
+    expect(minified.slice(reducedAt)).toMatch(/\.family-loader \[data-piece\]\{animation:none\}/)
   })
 
   it("`page` le centre dans un bloc de la hauteur de l'écran", () => {
