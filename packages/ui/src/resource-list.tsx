@@ -81,7 +81,8 @@ export function ResourceItem({
         </p>
         {meta ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{meta}</p> : null}
       </div>
-      {badge ? <div className="hidden shrink-0 sm:block">{badge}</div> : null}
+      {/* Visible aussi sur téléphone : un rôle ou un état ne disparaît pas faute de place, le titre se tronque. */}
+      {badge ? <div className="shrink-0">{badge}</div> : null}
       {actions ? <div className="relative z-1 flex shrink-0 items-center gap-1">{actions}</div> : null}
     </li>
   )

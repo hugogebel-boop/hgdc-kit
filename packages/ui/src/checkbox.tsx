@@ -27,7 +27,8 @@ export function Checkbox({ className, indeterminate, ...props }: CheckboxPrimiti
         "data-checked:border-primary data-checked:bg-primary data-indeterminate:border-primary data-indeterminate:bg-primary",
         "data-disabled:cursor-not-allowed data-disabled:opacity-50",
         "aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-invalid:border-destructive",
-        "dark:bg-white/[0.04]",
+        // Le fond sombre de la case vide ne doit jamais recouvrir le fond coché (même spécificité).
+        "dark:bg-white/[0.04] dark:data-checked:bg-primary dark:data-indeterminate:bg-primary",
         className,
       )}
       {...props}

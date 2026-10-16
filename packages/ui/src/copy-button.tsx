@@ -121,7 +121,11 @@ export function Snippet({
   return (
     <div
       data-slot="snippet"
-      className={cn("flex min-w-0 items-center gap-2 rounded-2xl bg-foreground/[0.05] py-1.5 pr-1.5 pl-4", className)}
+      className={cn(
+        // `max-w-full` : dans une colonne centrée (état vide), la commande défile au lieu de déborder.
+        "flex max-w-full min-w-0 items-center gap-2 rounded-2xl bg-foreground/[0.05] py-1.5 pr-1.5 pl-4",
+        className,
+      )}
     >
       <pre className="min-w-0 flex-1 overflow-x-auto py-1 font-mono text-[13px] [scrollbar-width:thin]">
         {prompt ? (

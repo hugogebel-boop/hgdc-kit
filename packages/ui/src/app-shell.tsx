@@ -5,6 +5,7 @@ import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react"
 import { useRender } from "@base-ui/react/use-render"
 import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react"
 
+import { CommandMenuButton } from "./command-menu.tsx"
 import { Drawer, DrawerContent, DrawerTitle } from "./drawer.tsx"
 import type { FamilyProduct } from "./family-svg.ts"
 import { isApplePlatform, Kbd, KbdGroup } from "./kbd.tsx"
@@ -260,6 +261,8 @@ export function AppShell({
   nav,
   sidebarFooter,
   header,
+  onSearch,
+  searchLabel,
   children,
   mainClassName,
 }: {
@@ -278,10 +281,23 @@ export function AppShell({
   nav: ReactNode
   /** Bas de la barre : liens secondaires (Docs, Paramètres) et `AccountMenu`. */
   sidebarFooter?: ReactNode
-  /** Barre du haut de la page : sélecteur de projet, recherche (`CommandMenuButton`). */
+  /**
+   * Barre du haut, à gauche, après la marque sur téléphone : le contexte de la page (sélecteur de
+   * projet, rappel). Jamais la recherche : elle passe par `onSearch`.
+   */
   header?: ReactNode
+  /**
+   * Ouvre la palette (`CommandMenu`). La coque pose la recherche toujours au même endroit : à
+   * droite de la barre du haut, 384 px sur ordinateur, la loupe seule sur téléphone.
+   */
+  onSearch?: () => void
+  /** Texte du champ de recherche : « Rechercher » par défaut. */
+  searchLabel?: string
   children: ReactNode
-  /** Largeur et marges du contenu : `max-w-6xl` par défaut. */
+  /**
+   * @deprecated La largeur du contenu est la même dans toute la famille (`max-w-6xl`, ADR 0012) :
+   * une page étroite passe par `Page` (`@hgdc/ui/page-header`), pas par la coque.
+   */
   mainClassName?: string
 }): React.JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -324,7 +340,20 @@ export function AppShell({
               >
                 <HugeiconsIcon icon={Menu01Icon} aria-hidden className="size-5" />
               </button>
+              {/* Sur téléphone, la marque du produit est toujours là : pastille et nom. */}
+              <div data-slot="app-shell-brand" className="flex shrink-0 items-center gap-2 pr-1 lg:hidden">
+                <ProductBadge product={product} className="size-6" />
+                <span className="font-heading text-[0.9375rem] font-semibold">{productName(product)}</span>
+              </div>
               <div className="flex min-w-0 flex-1 items-center gap-2">{header}</div>
+              {onSearch ? (
+                <CommandMenuButton
+                  onClick={onSearch}
+                  compact="mobile"
+                  className="shrink-0 lg:w-96 lg:max-w-none"
+                  {...(searchLabel !== undefined ? { label: searchLabel } : {})}
+                />
+              ) : null}
             </header>
             <main
               id="contenu"

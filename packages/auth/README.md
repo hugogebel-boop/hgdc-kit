@@ -55,6 +55,31 @@ authComponent.registerRoutes(http, (ctx) => {
 })
 ```
 
+## Clés JWKS statiques côté Convex
+
+Chaque appel HTTP à Convex avec un jeton (le rendu serveur de TanStack Start, `fetchAuthQuery`) fait vérifier ce jeton par le backend Convex, qui ne le met jamais en cache. Avec `getAuthConfigProvider()` seul, il va chercher les clés à `<site>/api/auth/convex/jwks` **à chaque appel** : sous charge, cette adresse répond 429 et la page tombe en erreur. Les clés se donnent donc en dur, par la variable `JWKS` du déploiement Convex :
+
+```ts
+// convex/auth.config.ts
+export default { providers: [getAuthConfigProvider({ jwks: process.env.JWKS })] } satisfies AuthConfig
+
+// convex/auth.ts, dans les plugins
+convex({ authConfig, jwks: process.env.JWKS })
+
+// convex/authKeys.ts
+export const latestJwks = internalAction({
+  args: {},
+  handler: async (ctx) => await createAuth(ctx).api.getLatestJwks(),
+})
+```
+
+```sh
+npx convex run authKeys:latestJwks --prod | npx convex env set JWKS --prod
+npx convex deploy
+```
+
+Sans `JWKS`, la configuration retombe sur l'adresse : un déploiement de développement marche sans rien poser. La variable contient la clé privée chiffrée : elle ne sort jamais du déploiement (ni affichée, ni copiée ailleurs). Après une rotation des clés, relancer les deux commandes.
+
 ## Entrée commune `/auth/hgdc`
 
 Le menu « Produits » (`@hgdc/ui/account-menu`) envoie vers `https://<mot>.hgdc.ch/auth/hgdc`, pas vers la page d'accueil publique. Chaque produit monte cette route serveur, au même chemin :

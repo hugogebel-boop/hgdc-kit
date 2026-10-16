@@ -92,3 +92,48 @@ export function PageHeader({
     </header>
   )
 }
+
+/**
+ * Une page de console, dans la coque (`AppShell`) : `PageHeader`, puis les sections empilées.
+ * La règle de largeur de la famille (ADR 0012) : la coque pose la même boîte partout, le titre
+ * commence donc au même endroit dans tous les produits ; la page choisit sa colonne.
+ *
+ * - par défaut, une colonne de lecture de 768 px (`max-w-3xl`), alignée à gauche : formulaires,
+ *   réglages, fiches, membres ;
+ * - `wide` : toute la largeur (1152 px au plus) pour les tableaux, les listes à colonnes, les
+ *   tableaux de bord et les grilles de cartes.
+ */
+export function Page({
+  title,
+  description,
+  actions,
+  breadcrumbs,
+  wide = false,
+  className,
+  children,
+}: {
+  title: ReactNode
+  description?: ReactNode
+  actions?: ReactNode
+  breadcrumbs?: Array<Crumb>
+  /** Tableaux, listes, tableaux de bord : toute la largeur plutôt que la colonne de lecture. */
+  wide?: boolean
+  className?: string
+  children?: ReactNode
+}): React.JSX.Element {
+  return (
+    <div
+      data-slot="page"
+      data-width={wide ? "wide" : "default"}
+      className={cn("w-full", !wide && "max-w-3xl", className)}
+    >
+      <PageHeader
+        title={title}
+        {...(description !== undefined ? { description } : {})}
+        {...(actions !== undefined ? { actions } : {})}
+        {...(breadcrumbs !== undefined ? { breadcrumbs } : {})}
+      />
+      {children !== undefined ? <div className="grid gap-6">{children}</div> : null}
+    </div>
+  )
+}
