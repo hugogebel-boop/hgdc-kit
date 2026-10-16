@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.11.1
+
+### Patch Changes
+
+- dd79dae: `TableHead` : l'icône de tri suit toujours le libellé, colonne de chiffres comprise (« CHF ↕ », plus « ↕ CHF »).
+
 ## 0.11.0
 
 ### Minor Changes
