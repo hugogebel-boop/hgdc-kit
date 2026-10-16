@@ -65,3 +65,20 @@ describe("styles.css", () => {
     expect(unknown).toEqual([])
   })
 })
+
+describe("contrôle éteint (WCAG 1.4.11)", () => {
+  // Gris achromatique : la luminance relative vaut L³ en OKLab.
+  function grey(selector: string, token: string): number {
+    const match = block(selector).match(new RegExp(String.raw`^\s*--${token}: oklch\(([\d.]+) 0 0\);`, "m"))
+    expect(match, `${selector} --${token} doit être un gris oklch opaque`).toBeTruthy()
+    return Number(match?.[1]) ** 3
+  }
+  const contrast = (a: number, b: number) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
+
+  for (const selector of [":root", ".dark"])
+    it(`${selector} : piste et bords éteints à 3:1 au moins du fond, d'une carte et de --muted`, () => {
+      const off = grey(selector, "control-off")
+      for (const surface of ["background", "card", "muted"])
+        expect(contrast(off, grey(selector, surface)), surface).toBeGreaterThanOrEqual(3)
+    })
+})

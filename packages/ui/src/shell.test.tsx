@@ -132,7 +132,7 @@ describe("Barre des produits", () => {
     vi.useRealTimers()
   })
 
-  it("liste les sept produits, Account en bas, chacun par son entrée", () => {
+  it("liste les sept produits, Account en tête, chacun par son entrée", () => {
     render(
       <AppShell product="mail" nav={null} accountHref="http://localhost:3000">
         Page
@@ -141,16 +141,16 @@ describe("Barre des produits", () => {
     const rail = screen.getByRole("navigation", { name: "Produits" })
     const links = within(rail).getAllByRole("link")
     expect(links.map((link) => link.textContent)).toEqual([
+      "Account",
       "Host, Préversion",
       "Mail",
       "Portal",
       "Status",
       "Analytics",
       "Docs",
-      "Account",
     ])
     const host = within(rail).getByRole("link", { name: /Host/ })
-    expect(host.getAttribute("href")).toBe(`https://host.hgdc.ch${PRODUCT_ENTRY_PATH}?next=/`)
+    expect(host.getAttribute("href")).toBe(`https://host.hgdc.ch${PRODUCT_ENTRY_PATH}?refresh=1&next=/`)
     expect(host.getAttribute("aria-current")).toBeNull()
     const mail = within(rail).getByRole("link", { name: "Mail" })
     expect(mail.getAttribute("aria-current")).toBe("page")
@@ -190,8 +190,12 @@ describe("Barre des produits", () => {
       vi.advanceTimersByTime(10)
     })
     expect(rail.dataset.expanded).toBe("")
+    // La barre latérale se plie le temps du survol : la barre prend sa place, sans recouvrir la page.
+    const shell = document.querySelector<HTMLElement>("[data-slot=app-shell]")
+    expect(shell?.dataset.railPeek).toBe("")
     fireEvent.pointerLeave(rail, { pointerType: "mouse" })
     expect(rail.dataset.expanded).toBeUndefined()
+    expect(shell?.dataset.railPeek).toBeUndefined()
 
     // Un passage plus court que le délai n'ouvre rien.
     fireEvent.pointerEnter(rail, { pointerType: "mouse" })

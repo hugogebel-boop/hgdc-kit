@@ -244,8 +244,8 @@ function SidebarHead({ product }: { product: FamilyProduct }): React.JSX.Element
 
 /**
  * La coque commune des consoles HGDC, celle de Host. Sur ordinateur, de gauche à droite : la barre
- * des produits de la famille (organisation en haut, pastilles, Account en bas, élargie au survol
- * par-dessus la page), la barre latérale du produit (sa marque, sa navigation, le compte en bas),
+ * des produits de la famille (organisation, Account, pastilles ; élargie au survol à la place
+ * de la barre latérale, qui se plie le temps du survol), la barre latérale du produit (sa marque, sa navigation, le compte en bas),
  * réductible en rail (`Ctrl+B`, mémorisé), et la page sur une carte. Sur téléphone : une barre en
  * haut, le menu dans un tiroir qui monte du bas et se referme quand on choisit une page ; les
  * produits restent dans le menu de l'avatar.
@@ -301,12 +301,15 @@ export function AppShell({
   mainClassName?: string
 }): React.JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false)
+  // Barre des produits élargie : la barre latérale se plie le temps du survol (ADR 0011).
+  const [railPeek, setRailPeek] = useState(false)
   useToggleShortcut()
 
   return (
     <ShellContext.Provider value={{ closeMobileNav: () => setMenuOpen(false) }}>
       <div
         data-slot="app-shell"
+        data-rail-peek={railPeek ? "" : undefined}
         className={cn(
           "min-h-dvh lg:grid lg:h-dvh lg:bg-shell",
           productRail ? "lg:grid-cols-[auto_auto_minmax(0,1fr)]" : "lg:grid-cols-[auto_minmax(0,1fr)]",
@@ -318,10 +321,17 @@ export function AppShell({
         >
           Aller au contenu
         </a>
-        {productRail ? <ProductRail current={product} organization={organization} accountHref={accountHref} /> : null}
+        {productRail ? (
+          <ProductRail
+            current={product}
+            organization={organization}
+            accountHref={accountHref}
+            onExpandedChange={setRailPeek}
+          />
+        ) : null}
         <aside
           aria-label="Barre latérale"
-          className="group/sidebar hidden overflow-hidden text-shell-foreground transition-[width] duration-(--duration-drawer) ease-ios motion-reduce:transition-none lg:flex lg:w-64 lg:flex-col lg:rail:w-16"
+          className="group/sidebar hidden overflow-hidden text-shell-foreground transition-[width] duration-(--duration-base) ease-ios motion-reduce:transition-none lg:flex lg:w-64 lg:flex-col lg:rail:w-16"
         >
           <SidebarHead product={product} />
           {!productRail && organization ? <div className="shrink-0 px-3 pb-1">{organization}</div> : null}

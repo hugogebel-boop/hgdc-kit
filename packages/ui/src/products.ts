@@ -31,7 +31,9 @@ export type HgdcCatalogProduct = {
   href: string
   /**
    * Entrée dans l'app avec la session HGDC Account (`PRODUCT_ENTRY_PATH`), sans page d'accueil
-   * ni bouton de connexion. Pour Account, sa racine.
+   * ni bouton de connexion : `https://<mot>.hgdc.ch/auth/hgdc?refresh=1&next=/`. `refresh=1`
+   * relit les organisations au passage (une organisation rejointe dans Account apparaît sans se
+   * reconnecter, ADR 0013). Pour Account, sa racine.
    */
   entryHref: string
   /** Une phrase, au tutoiement. */
@@ -55,6 +57,9 @@ export type HgdcCatalogProduct = {
  */
 export const PRODUCT_ENTRY_PATH = "/auth/hgdc"
 
+/** Requête de l'entrée depuis un autre produit : relire les organisations, arriver sur l'accueil. */
+export const PRODUCT_ENTRY_REFRESH_QUERY = "refresh=1&next=/"
+
 function product(word: string, pitch: string, icon: IconSvgElement, stage: ProductStage): HgdcCatalogProduct {
   const badge = word.toLowerCase()
   if (!isFamilyProduct(badge)) throw new Error(`@hgdc/ui/products : pas de pastille pour « ${word} »`)
@@ -65,7 +70,7 @@ function product(word: string, pitch: string, icon: IconSvgElement, stage: Produ
     name: word,
     subdomain,
     href,
-    entryHref: `${href}${PRODUCT_ENTRY_PATH}`,
+    entryHref: `${href}${PRODUCT_ENTRY_PATH}?${PRODUCT_ENTRY_REFRESH_QUERY}`,
     pitch,
     badge,
     icon,
@@ -149,10 +154,10 @@ export type ProductRailEntry = {
 }
 
 /**
- * Les entrées de la barre des produits : les produits ouverts du catalogue, puis Account, à part
- * en bas (le compte commun, pas un produit). Chaque produit pointe vers son entrée
- * `/auth/hgdc?next=/` (ADR 0010), Account vers sa racine (`accountHref` en développement). Le
- * produit courant pointe vers `/`, sans détour par l'entrée.
+ * Les entrées de la barre des produits : les produits ouverts du catalogue et Account, affiché en
+ * tête (le compte commun, pas un produit). Chaque produit pointe vers son entrée
+ * `/auth/hgdc?refresh=1&next=/` (ADR 0010, 0013), Account vers sa racine (`accountHref` en
+ * développement). Le produit courant pointe vers `/`, sans détour par l'entrée.
  */
 export function productRailEntries(
   options: {
@@ -169,9 +174,7 @@ export function productRailEntries(
     ...(item.stage === "preview" ? { hint: PRODUCT_STAGE_LABEL.preview } : {}),
   })
   return {
-    products: (options.catalog ?? HGDC_PRODUCTS)
-      .filter(isProductOpen)
-      .map((item) => entry(item, `${item.entryHref}?next=/`)),
+    products: (options.catalog ?? HGDC_PRODUCTS).filter(isProductOpen).map((item) => entry(item, item.entryHref)),
     account: entry(HGDC_ACCOUNT, options.accountHref ?? HGDC_ACCOUNT.entryHref),
   }
 }

@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest"
 
-import { HGDC_ENTRY_PATH, hgdcEntryUrl, safeNextPath } from "./index.ts"
+import {
+  HGDC_ENTRY_PATH,
+  hasSyncedMarker,
+  hgdcEntryUrl,
+  hgdcRefreshPath,
+  safeNextPath,
+  withSyncedMarker,
+  withoutSyncedMarker,
+} from "./index.ts"
 import { createHgdcEntry } from "./server.ts"
 
 describe("safeNextPath", () => {
@@ -55,6 +63,40 @@ describe("hgdcEntryUrl", () => {
       "https://mail.hgdc.ch/auth/hgdc?next=%2Fo%2Facme",
     )
     expect(hgdcEntryUrl("https://mail.hgdc.ch", "https://evil.ch")).toBe("https://mail.hgdc.ch/auth/hgdc")
+  })
+
+  it("avec `refresh`, relit les organisations et porte toujours `next`", () => {
+    expect(hgdcEntryUrl("https://host.hgdc.ch", undefined, { refresh: true })).toBe(
+      "https://host.hgdc.ch/auth/hgdc?refresh=1&next=%2F",
+    )
+    expect(hgdcEntryUrl("https://host.hgdc.ch", "/o/acme", { refresh: true })).toBe(
+      "https://host.hgdc.ch/auth/hgdc?refresh=1&next=%2Fo%2Facme",
+    )
+  })
+})
+
+describe("marqueur de resynchronisation", () => {
+  it("hgdcRefreshPath : chemin relatif, `next` filtré et sans marqueur", () => {
+    expect(hgdcRefreshPath("/o/acme")).toBe("/auth/hgdc?refresh=1&next=%2Fo%2Facme")
+    expect(hgdcRefreshPath("/o/acme?synced=1")).toBe("/auth/hgdc?refresh=1&next=%2Fo%2Facme")
+    expect(hgdcRefreshPath("https://evil.ch")).toBe("/auth/hgdc?refresh=1&next=%2F")
+  })
+
+  it("pose et retire `synced=1` sans toucher au reste", () => {
+    expect(withSyncedMarker("/o/acme")).toBe("/o/acme?synced=1")
+    expect(withSyncedMarker("/o/acme?tab=dns#haut")).toBe("/o/acme?tab=dns&synced=1#haut")
+    expect(withSyncedMarker("/o/acme?synced=1")).toBe("/o/acme?synced=1")
+    expect(withoutSyncedMarker("/o/acme?synced=1")).toBe("/o/acme")
+    expect(withoutSyncedMarker("/o/acme?tab=dns&synced=1#haut")).toBe("/o/acme?tab=dns#haut")
+  })
+
+  it("hasSyncedMarker lit une requête, une adresse ou des paramètres", () => {
+    expect(hasSyncedMarker("?synced=1")).toBe(true)
+    expect(hasSyncedMarker("synced=1")).toBe(true)
+    expect(hasSyncedMarker("/o/acme?synced=1#x")).toBe(true)
+    expect(hasSyncedMarker(new URLSearchParams({ synced: "1" }))).toBe(true)
+    expect(hasSyncedMarker("?synced=0")).toBe(false)
+    expect(hasSyncedMarker("")).toBe(false)
   })
 })
 
@@ -151,6 +193,37 @@ describe("createHgdcEntry", () => {
     expect(response.headers.get("location")).toBe(AUTHORIZE)
     expect(calls.map((c) => new URL(c.url).pathname)).toEqual(["/api/auth/get-session", "/api/auth/sign-in/oauth2"])
     expect(JSON.parse(calls[1]?.body ?? "").callbackURL).toBe("/")
+  })
+
+  it("`refresh=1` avec une session ouverte : repart vers Account, retour marqué `synced=1`", async () => {
+    const { calls, proxy } = fakeAuth({
+      session: () => json({ session: { id: "s" }, user: { id: "u" } }),
+      signIn: () => json({ url: AUTHORIZE, redirect: true }),
+    })
+    const entry = createHgdcEntry({ proxy, errorCallbackURL: "/sign-in?error=1" })
+    const response = await entry(
+      visit("/auth/hgdc?refresh=1&next=%2Fo%2Fbeta", { cookie: "__Secure-better-auth.session_token=t" }),
+    )
+    expect(response.headers.get("location")).toBe(AUTHORIZE)
+    expect(calls.map((c) => new URL(c.url).pathname)).toEqual(["/api/auth/sign-in/oauth2"])
+    expect(JSON.parse(calls[0]?.body ?? "").callbackURL).toBe("/o/beta?synced=1")
+  })
+
+  it("`refresh=1` sur un `next` déjà resynchronisé : pas de seconde boucle", async () => {
+    const { calls, proxy } = fakeAuth({ session: () => json({ session: { id: "s" } }) })
+    const entry = createHgdcEntry({ proxy, errorCallbackURL: "/sign-in?error=1" })
+    const response = await entry(
+      visit(`/auth/hgdc?refresh=1&next=${encodeURIComponent("/o/beta?synced=1")}`, { cookie: "s=1" }),
+    )
+    expect(response.headers.get("location")).toBe("/o/beta?synced=1")
+    expect(calls.map((c) => new URL(c.url).pathname)).toEqual(["/api/auth/get-session"])
+  })
+
+  it("`refresh=1` avec un `next` externe : retour sur l'accueil du produit", async () => {
+    const { calls, proxy } = fakeAuth({ signIn: () => json({ url: AUTHORIZE }) })
+    const entry = createHgdcEntry({ proxy, errorCallbackURL: "/sign-in?error=1" })
+    await entry(visit(`/auth/hgdc?refresh=1&next=${encodeURIComponent("//evil.ch")}`, { cookie: "s=1" }))
+    expect(JSON.parse(calls[0]?.body ?? "").callbackURL).toBe("/?synced=1")
   })
 
   it("`next` externe : remplacé par l'accueil du produit, jamais suivi", async () => {

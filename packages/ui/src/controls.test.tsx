@@ -9,6 +9,7 @@ import { Breadcrumbs, PageHeader } from "./page-header.tsx"
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "./popover.tsx"
 import { RadioGroup, RadioGroupItem } from "./radio-group.tsx"
 import { SecretReveal } from "./secret-reveal.tsx"
+import { Switch } from "./switch.tsx"
 import { Pending, Skeleton } from "./skeleton.tsx"
 import { Tabs, TabsList, TabsPanel, TabsTab } from "./tabs.tsx"
 
@@ -264,5 +265,25 @@ describe("SecretReveal", () => {
     fireEvent.click(screen.getByRole("button", { name: "C'est copié" }))
     expect(onDismiss).toHaveBeenCalledOnce()
     expect(document.body.textContent).not.toContain("sk_live_123")
+  })
+})
+
+describe("Switch", () => {
+  it("éteint : piste `control-off` visible ; désactivé : tout s'estompe, la piste reste", () => {
+    render(
+      <>
+        <Switch aria-label="Éteint" checked={false} />
+        <Switch aria-label="Allumé" checked />
+        <Switch aria-label="Désactivé" checked={false} disabled />
+      </>,
+    )
+    const off = screen.getByRole("switch", { name: "Éteint" })
+    expect(off.className).toContain("bg-control-off")
+    expect(off.className).not.toContain("bg-muted")
+    expect(screen.getByRole("switch", { name: "Allumé" }).hasAttribute("data-checked")).toBe(true)
+    const disabled = screen.getByRole("switch", { name: "Désactivé" })
+    expect(disabled.hasAttribute("data-disabled")).toBe(true)
+    expect(disabled.className).toContain("data-disabled:opacity-50")
+    expect(disabled.className).toContain("bg-control-off")
   })
 })

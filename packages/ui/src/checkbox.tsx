@@ -21,9 +21,9 @@ export function Checkbox({ className, indeterminate, ...props }: CheckboxPrimiti
       data-slot="checkbox"
       indeterminate={indeterminate}
       className={cn(
-        "touch-target peer grid size-5 shrink-0 place-items-center rounded-[0.4rem] border border-foreground/25 bg-background text-primary-foreground",
+        "touch-target peer grid size-5 shrink-0 place-items-center rounded-[0.4rem] border border-control-off bg-background text-primary-foreground",
         "transition-[background-color,border-color,box-shadow] duration-(--duration-fast) ease-out outline-none",
-        "hover:border-foreground/40 focus-visible:ring-3 focus-visible:ring-ring/50",
+        "hover:border-foreground/70 focus-visible:ring-3 focus-visible:ring-ring/50",
         "data-checked:border-primary data-checked:bg-primary data-indeterminate:border-primary data-indeterminate:bg-primary",
         "data-disabled:cursor-not-allowed data-disabled:opacity-50",
         "aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-invalid:border-destructive",

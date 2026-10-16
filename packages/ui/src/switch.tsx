@@ -34,8 +34,10 @@ export function Switch({
         "transition-colors duration-200 ease-ios",
         "outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2",
         "focus-visible:ring-offset-background",
-        "disabled:cursor-not-allowed disabled:opacity-50",
-        "bg-muted data-checked:bg-status-active",
+        // Désactivé : tout l'interrupteur s'estompe, la piste ne disparaît pas.
+        "disabled:cursor-not-allowed disabled:opacity-50 data-disabled:cursor-not-allowed data-disabled:opacity-50",
+        // Éteint : piste grise à 3:1 du fond, de la carte et de `--muted` ; allumé : l'accent d'état.
+        "bg-control-off data-checked:bg-status-active",
         className,
       )}
       {...props}

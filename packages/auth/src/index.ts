@@ -22,6 +22,19 @@ export const HGDC_ENTRY_PATH = "/auth/hgdc"
 /** Paramètre de l'entrée qui porte la page d'arrivée. */
 export const HGDC_ENTRY_NEXT_PARAM = "next"
 
+/**
+ * `refresh=1` sur l'entrée : repasser par Account même si la session du produit est ouverte. Le
+ * claim `organizations` n'est lu qu'à la création d'une session ; une organisation rejointe dans
+ * Account n'apparaît dans le produit qu'à la session suivante. La nouvelle session relit le claim.
+ */
+export const HGDC_ENTRY_REFRESH_PARAM = "refresh"
+
+/**
+ * Ajouté à `next` au retour d'un `refresh` (`?synced=1`) : la page sait que les organisations
+ * viennent d'être relues et ne relance pas l'entrée (une seule resynchronisation par navigation).
+ */
+export const HGDC_SYNCED_PARAM = "synced"
+
 const NEXT_MAX_LENGTH = 2048
 const NEXT_BASE = "https://next.invalid"
 
@@ -52,11 +65,61 @@ export function safeNextPath(value: string | null | undefined, fallback = "/"): 
  * Adresse de l'entrée commune d'un produit : `hgdcEntryUrl("https://mail.hgdc.ch", "/o/acme")`.
  * Sans `next` (ou `next` refusé), le produit ouvre sa page d'accueil connectée.
  */
-export function hgdcEntryUrl(productOrigin: string, next?: string): string {
+export function hgdcEntryUrl(productOrigin: string, next?: string, options: { refresh?: boolean } = {}): string {
   const url = new URL(HGDC_ENTRY_PATH, new URL(productOrigin).origin)
   const path = next === undefined ? "/" : safeNextPath(next)
-  if (path !== "/") url.searchParams.set(HGDC_ENTRY_NEXT_PARAM, path)
+  if (options.refresh) url.searchParams.set(HGDC_ENTRY_REFRESH_PARAM, "1")
+  if (path !== "/" || options.refresh) url.searchParams.set(HGDC_ENTRY_NEXT_PARAM, path)
   return url.toString()
+}
+
+/**
+ * Chemin relatif qui relit les organisations puis revient sur `next` :
+ * `/auth/hgdc?refresh=1&next=/o/acme`. Pour une page d'organisation inconnue du produit, avant
+ * d'afficher « introuvable », si `hasSyncedMarker` est faux.
+ */
+export function hgdcRefreshPath(next: string): string {
+  const params = new URLSearchParams({
+    [HGDC_ENTRY_REFRESH_PARAM]: "1",
+    [HGDC_ENTRY_NEXT_PARAM]: safeNextPath(withoutSyncedMarker(next)),
+  })
+  return `${HGDC_ENTRY_PATH}?${params.toString()}`
+}
+
+function searchParamsOf(search: string | URLSearchParams): URLSearchParams {
+  if (typeof search !== "string") return search
+  const query = search.includes("?") ? search.slice(search.indexOf("?") + 1).split("#")[0] : search
+  return new URLSearchParams(query)
+}
+
+/**
+ * Vrai si la page arrive d'une resynchronisation (`?synced=1`) : ne pas relancer l'entrée.
+ * Accepte une requête (`?a=1`), une adresse ou un chemin complet, ou des `URLSearchParams`.
+ */
+export function hasSyncedMarker(search: string | URLSearchParams): boolean {
+  return searchParamsOf(search).get(HGDC_SYNCED_PARAM) === "1"
+}
+
+/** `path` sans le marqueur `synced`, le reste de la requête et le fragment gardés. */
+export function withoutSyncedMarker(path: string): string {
+  const hashAt = path.indexOf("#")
+  const hash = hashAt === -1 ? "" : path.slice(hashAt)
+  const beforeHash = hashAt === -1 ? path : path.slice(0, hashAt)
+  const queryAt = beforeHash.indexOf("?")
+  if (queryAt === -1) return path
+  const params = new URLSearchParams(beforeHash.slice(queryAt + 1))
+  params.delete(HGDC_SYNCED_PARAM)
+  const query = params.toString()
+  return `${beforeHash.slice(0, queryAt)}${query ? `?${query}` : ""}${hash}`
+}
+
+/** `path` avec le marqueur `synced=1`, avant le fragment. */
+export function withSyncedMarker(path: string): string {
+  const clean = withoutSyncedMarker(path)
+  const hashAt = clean.indexOf("#")
+  const hash = hashAt === -1 ? "" : clean.slice(hashAt)
+  const beforeHash = hashAt === -1 ? clean : clean.slice(0, hashAt)
+  return `${beforeHash}${beforeHash.includes("?") ? "&" : "?"}${HGDC_SYNCED_PARAM}=1${hash}`
 }
 
 /** Rôles d'organisation, du plus faible au plus fort. */

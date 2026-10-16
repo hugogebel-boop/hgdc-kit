@@ -96,6 +96,7 @@ Sur ordinateur, la coque ouvre sur la barre des produits (ADR 0011) : organisati
 | `progress`      | `<Progress label="Envoi de la campagne" value={120} max={400} />` (`value={null}` : durée inconnue), `<Meter label="E-mails ce mois" value={8600} max={10000} />` (orange puis rouge près de la limite)                 |
 | `rank-bar`      | `<RankBar label="Pages les plus vues" items={[{ key, label: "/tarifs", value: 640, render: <Link … /> }]} limit={5} />`                                                                                                 |
 | `secret-reveal` | `<SecretReveal label="Clé d'API" value={key} onDismiss={forget} />` : affichée une fois, puis retirée de la page                                                                                                        |
+| `family-loader` | `<FamilyLoader page />` en `pendingComponent` d'une route, `<FamilyLoader size="lg" label="Ouverture du projet…" />` : le H de la famille qui se construit, après 200 ms. Dans un bouton : `Spinner`                    |
 | `skeleton`      | `<Pending pending={isLoading} fallback={<TableSkeleton columns={3} />}>…</Pending>` : après 200 ms, tenu 400 ms au moins                                                                                                |
 
 ## Listes, journaux et retours
