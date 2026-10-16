@@ -21,3 +21,22 @@ export const ProductRailShownContext: React.Context<boolean> = createContext<boo
 export function useProductRailShown(): boolean {
   return useContext(ProductRailShownContext)
 }
+
+/**
+ * Prévient la coque qu'un lien vers un autre produit (ou une autre adresse servie en document
+ * complet) vient d'être suivi : elle couvre aussitôt la zone de contenu du H de chargement, le
+ * temps que le navigateur ouvre l'autre produit. Sans coque, ne fait rien.
+ */
+export const ShellLeaveContext: React.Context<() => void> = createContext<() => void>(() => {})
+
+/** `onClick` d'un lien vers un autre produit : clic simple seulement (pas Ctrl, Cmd, Maj, molette). */
+export function useLeaveOnClick(): (event: React.MouseEvent<HTMLAnchorElement>) => void {
+  const leave = useContext(ShellLeaveContext)
+  return (event) => {
+    if (event.defaultPrevented || event.button !== 0) return
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+    const target = event.currentTarget.getAttribute("target")
+    if (target && target !== "_self") return
+    leave()
+  }
+}

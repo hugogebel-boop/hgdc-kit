@@ -389,3 +389,66 @@ export function membershipIsFresh(
   const { syncedAt } = membership
   return typeof syncedAt === "number" && now - syncedAt <= ttl
 }
+
+/**
+ * Durée pendant laquelle le navigateur reprend le jeton de session déjà lu plutôt que de le
+ * redemander au serveur : 5 minutes. Le client Convex renouvelle lui-même son jeton ; celui-ci ne
+ * sert qu'aux gardes de route et à amorcer le client.
+ */
+export const CLIENT_SESSION_TOKEN_TTL_MS: number = 5 * 60 * 1000
+
+export type SessionTokenCache = {
+  /** Jeton courant : au serveur, toujours relu ; au navigateur, repris s'il a moins de 5 minutes. */
+  read: () => Promise<string | null>
+  /** Amorce le cache avec le jeton du rendu serveur, à l'hydratation (la racine ne repasse pas par `read`). */
+  seed: (token: string | null | undefined) => void
+  /** Oublie le jeton (déconnexion sans rechargement). */
+  clear: () => void
+}
+
+/**
+ * Jeton de session pour le `beforeLoad` de la racine d'un produit TanStack Start. Sans cache, chaque
+ * navigation côté navigateur rappelait le serveur (`getAuth`) avant tout rendu : l'ancienne page
+ * restait figée le temps de l'aller-retour. Seule une session ouverte est gardée, jamais une absence
+ * de session ; les appels simultanés partagent la même requête.
+ *
+ * ```ts
+ * const session = createSessionTokenCache(() => getAuth())
+ * beforeLoad: async ({ context }) => {
+ *   const token = await session.read()
+ *   …
+ * }
+ * // composant racine : useEffect(() => session.seed(context.token), [context.token])
+ * ```
+ */
+export function createSessionTokenCache(
+  fetchToken: () => Promise<string | null>,
+  options: { ttlMs?: number; now?: () => number; isBrowser?: () => boolean } = {},
+): SessionTokenCache {
+  const ttl = options.ttlMs ?? CLIENT_SESSION_TOKEN_TTL_MS
+  const now = options.now ?? Date.now
+  const isBrowser = options.isBrowser ?? (() => typeof document !== "undefined")
+  let cached: { token: string; at: number } | null = null
+  let inflight: Promise<string | null> | null = null
+  return {
+    read: async () => {
+      if (!isBrowser()) return await fetchToken()
+      if (cached && now() - cached.at < ttl) return cached.token
+      inflight ??= fetchToken()
+        .then((token) => {
+          cached = token ? { token, at: now() } : null
+          return token
+        })
+        .finally(() => {
+          inflight = null
+        })
+      return await inflight
+    },
+    seed: (token) => {
+      if (isBrowser() && token && !cached) cached = { token, at: now() }
+    },
+    clear: () => {
+      cached = null
+    },
+  }
+}

@@ -481,90 +481,122 @@
 /* `FamilyLoader` : le H tricolore se construit (jambage gauche, barre, jambage droit), tient,
    s'efface, recommence. Les pièces sont coupées par `clip-path` (la forme ne change pas), un
    léger chevauchement lie les trois gestes. Visible après 200 ms seulement : pas de flash. */
+/* Chargeur de la famille (`FamilyLoader`) : silhouette grise du H, pièces remplies de leurs
+   dégradés. Géométrie du H sur 256 (FAMILY_MARK_SVG). Seul `transform` s'anime : compositeur,
+   fluide pendant qu'une page charge. */
 .family-loader {
-  opacity: 0;
-  animation: family-loader-in var(--duration-base) var(--ease-out) var(--family-loader-delay, 120ms) forwards;
+  --fl: var(--family-loader-size, 40px);
+  --fl-ghost: color-mix(in oklab, var(--foreground) var(--fl-ghost-mix, 11%), var(--background));
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  width: var(--fl);
+  height: var(--fl);
 }
-/* Le nom dans chaque raccourci : sans lui, lightningcss (minification de Vite) réduit
-   `animation: 1.8s infinite both` à `animation: none`. */
+/* Sur fond sombre, la silhouette a besoin d'un peu plus de lumière pour rester lisible. */
+.dark .family-loader {
+  --fl-ghost-mix: 19%;
+}
+.family-loader [data-piece] {
+  position: absolute;
+  overflow: hidden;
+  background: var(--fl-ghost);
+  /* Le coin arrondi découpe aussi le remplissage, sur sa propre couche. */
+  isolation: isolate;
+}
+.family-loader [data-piece="left"],
+.family-loader [data-piece="right"] {
+  top: calc(var(--fl) * 24 / 256);
+  width: calc(var(--fl) * 57 / 256);
+  height: calc(var(--fl) * 208 / 256);
+  border-radius: calc(var(--fl) * 18 / 256);
+}
 .family-loader [data-piece="left"] {
-  animation: family-loader-left 1.8s infinite both;
-}
-.family-loader [data-piece="bar"] {
-  animation: family-loader-bar 1.8s infinite both;
+  left: calc(var(--fl) * 43 / 256);
 }
 .family-loader [data-piece="right"] {
-  animation: family-loader-right 1.8s infinite both;
+  left: calc(var(--fl) * 156 / 256);
 }
-@keyframes family-loader-in {
-  to {
-    opacity: 1;
-  }
+.family-loader [data-piece="bar"] {
+  left: calc(var(--fl) * 67 / 256);
+  top: calc(var(--fl) * 107 / 256);
+  width: calc(var(--fl) * 122 / 256);
+  height: calc(var(--fl) * 43 / 256);
+  border-radius: calc(var(--fl) * 14 / 256);
 }
-@keyframes family-loader-left {
+.family-loader [data-fill] {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+.family-loader [data-piece="left"] [data-fill] {
+  background: linear-gradient(to bottom, #2c78fd, #7343fe);
+  animation: family-loader-rise 1.6s var(--ease-in-out) infinite both;
+}
+.family-loader [data-piece="right"] [data-fill] {
+  background: linear-gradient(to bottom, #fe5292, #ff9a46);
+  animation: family-loader-rise 1.6s var(--ease-in-out) 0.4s infinite both;
+}
+.family-loader [data-piece="bar"] [data-fill] {
+  background: linear-gradient(to right, #8145ff, #fe5292);
+  animation: family-loader-sweep 1.6s var(--ease-in-out) 0.2s infinite both;
+}
+/* Les jambes se remplissent par le bas, tiennent, puis la couleur continue de monter et laisse
+   la silhouette : le cycle suivant repart sans temps mort. */
+@keyframes family-loader-rise {
   0% {
-    clip-path: inset(100% 0 0 0);
-    opacity: 1;
-    animation-timing-function: var(--ease-out);
-  }
-  22%,
-  76% {
-    clip-path: inset(0 0 0 0);
-    opacity: 1;
-    animation-timing-function: var(--ease-out);
-  }
-  100% {
-    clip-path: inset(0 0 0 0);
-    opacity: 0;
-  }
-}
-@keyframes family-loader-bar {
-  0%,
-  16% {
-    clip-path: inset(0 100% 0 0);
-    opacity: 1;
-    animation-timing-function: var(--ease-out);
+    transform: translateY(101%);
   }
   38%,
-  80% {
-    clip-path: inset(0 0 0 0);
-    opacity: 1;
-    animation-timing-function: var(--ease-out);
+  62% {
+    transform: translateY(0);
   }
   100% {
-    clip-path: inset(0 0 0 0);
-    opacity: 0;
+    transform: translateY(-101%);
   }
 }
-@keyframes family-loader-right {
+/* La barre, de gauche à droite. */
+@keyframes family-loader-sweep {
+  0% {
+    transform: translateX(-101%);
+  }
+  38%,
+  62% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(101%);
+  }
+}
+@keyframes family-loader-glow {
   0%,
-  32% {
-    clip-path: inset(100% 0 0 0);
-    opacity: 1;
-    animation-timing-function: var(--ease-out);
-  }
-  54%,
-  84% {
-    clip-path: inset(0 0 0 0);
-    opacity: 1;
-    animation-timing-function: var(--ease-out);
-  }
   100% {
-    clip-path: inset(0 0 0 0);
-    opacity: 0;
+    opacity: 0.25;
   }
-}
-@keyframes family-loader-breathe {
   50% {
-    opacity: 0.45;
+    opacity: 1;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  /* Le H entier, qui respire lentement. */
-  .family-loader [data-piece] {
-    animation: none;
+  /* La silhouette reste, le remplissage pulse en place, sans mouvement. */
+  .family-loader [data-piece] [data-fill] {
+    transform: none;
+    animation: family-loader-glow 1.6s ease-in-out infinite both;
   }
-  .family-loader svg {
-    animation: family-loader-breathe 2.4s ease-in-out infinite;
-  }
+}
+/* Calque de chargement de la zone de contenu (`AppShell`) : opaque, au-dessus de l'ancienne page,
+   le H à une position fixe. Apparition courte, disparition plus courte encore. */
+[data-slot="app-shell-loading"] {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 100ms var(--ease-out),
+    visibility 0s linear 100ms;
+}
+[data-slot="app-shell-loading"][data-visible] {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 150ms var(--ease-out),
+    visibility 0s;
 }

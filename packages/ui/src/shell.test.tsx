@@ -367,15 +367,93 @@ describe("AccountMenu", () => {
 })
 
 describe("Chargement d'une page", () => {
-  it("routerPendingDefaults : PagePending après 120 ms, au moins 400 ms", () => {
+  const overlay = () => document.querySelector<HTMLElement>("[data-slot=app-shell-loading]")
+
+  it("routerPendingDefaults : préchargement au survol, chargement après 50 ms, au moins 300 ms", () => {
     expect(routerPendingDefaults).toEqual({
       defaultPendingComponent: PagePending,
-      defaultPendingMs: 120,
-      defaultPendingMinMs: 400,
+      defaultPendingMs: 50,
+      defaultPendingMinMs: 300,
+      defaultPreload: "intent",
+      defaultPreloadStaleTime: 0,
     })
   })
 
-  it("contentKey : la page qui charge ses données montre le H centré à la place de l'ancienne", async () => {
+  it("navigation en cours : la zone de contenu se couvre du H après 50 ms, la coque reste, au moins 300 ms", () => {
+    vi.useFakeTimers()
+    const { rerender } = render(
+      <AppShell product="host" nav={<p>Barre</p>} navigating>
+        <p>Ancienne page</p>
+      </AppShell>,
+    )
+    expect(overlay()?.dataset.visible).toBeUndefined()
+    act(() => {
+      vi.advanceTimersByTime(50)
+    })
+    expect(overlay()?.dataset.visible).toBe("")
+    expect(screen.getByRole("main").inert).toBe(true)
+    // La coque est toujours là.
+    expect(screen.getAllByText("Barre").length).toBeGreaterThan(0)
+    rerender(
+      <AppShell product="host" nav={<p>Barre</p>} navigating={false}>
+        <p>Nouvelle page</p>
+      </AppShell>,
+    )
+    act(() => {
+      vi.advanceTimersByTime(200)
+    })
+    expect(overlay()?.dataset.visible).toBe("")
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
+    expect(overlay()?.dataset.visible).toBeUndefined()
+    vi.useRealTimers()
+  })
+
+  it("une navigation rapide (préchargée) ne montre rien", () => {
+    vi.useFakeTimers()
+    const { rerender } = render(
+      <AppShell product="host" nav={null} navigating>
+        Page
+      </AppShell>,
+    )
+    act(() => {
+      vi.advanceTimersByTime(30)
+    })
+    rerender(
+      <AppShell product="host" nav={null} navigating={false}>
+        Page
+      </AppShell>,
+    )
+    act(() => {
+      vi.advanceTimersByTime(500)
+    })
+    expect(overlay()?.dataset.visible).toBeUndefined()
+    vi.useRealTimers()
+  })
+
+  it("PagePending dans la coque : même calque, la coque n'en superpose pas un second", () => {
+    vi.useFakeTimers()
+    render(
+      <AppShell product="host" nav={null} navigating>
+        <PagePending label="Chargement du projet" />
+      </AppShell>,
+    )
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
+    expect(overlay()?.dataset.visible).toBeUndefined()
+    const main = screen.getByRole("main")
+    expect(within(main).getByRole("status", { name: "Chargement du projet" })).toBeDefined()
+    vi.useRealTimers()
+  })
+
+  it("PagePending hors de la coque : le H centré dans l'écran", () => {
+    const { container } = render(<PagePending />)
+    expect(container.querySelector("[data-slot=family-loader-page]")).not.toBeNull()
+  })
+
+  it("contentKey : la page qui charge ses données montre le H à la place de l'ancienne", async () => {
     let resolve = () => {}
     const pending = new Promise<void>((r) => {
       resolve = r
@@ -390,20 +468,37 @@ describe("Chargement d'une page", () => {
         <p>Ancienne page</p>
       </AppShell>,
     )
-    expect(screen.getByText("Ancienne page")).toBeDefined()
     rerender(
       <AppShell product="host" nav={null} contentKey="/b">
         <SlowPage />
       </AppShell>,
     )
     expect(screen.queryByText("Ancienne page")).toBeNull()
-    const main = screen.getByRole("main")
-    expect(within(main).getByRole("status", { name: "Chargement…" })).toBeDefined()
+    expect(within(screen.getByRole("main")).getByRole("status", { name: "Chargement…" })).toBeDefined()
     ready = true
     await act(async () => {
       resolve()
       await pending
     })
     expect(await screen.findByText("Nouvelle page")).toBeDefined()
+  })
+
+  it("clic sur un autre produit dans la barre : le H couvre aussitôt la zone de contenu", () => {
+    render(
+      <AppShell product="host" nav={null}>
+        Page
+      </AppShell>,
+    )
+    const rail = screen.getByRole("navigation", { name: "Produits" })
+    const mail = within(rail).getByRole("link", { name: /Mail/ })
+    // Clic avec Ctrl (nouvel onglet) : la page reste.
+    fireEvent.click(mail, { ctrlKey: true })
+    expect(overlay()?.dataset.visible).toBeUndefined()
+    // Le navigateur de test ne quitte pas la page : on l'en empêche après la coque.
+    const stay = (event: MouseEvent) => event.preventDefault()
+    window.addEventListener("click", stay)
+    fireEvent.click(mail)
+    window.removeEventListener("click", stay)
+    expect(overlay()?.dataset.visible).toBe("")
   })
 })

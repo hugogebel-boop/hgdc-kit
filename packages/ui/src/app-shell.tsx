@@ -3,17 +3,35 @@ import PanelLeftCloseIcon from "@hugeicons/core-free-icons/PanelLeftCloseIcon"
 import PanelLeftOpenIcon from "@hugeicons/core-free-icons/PanelLeftOpenIcon"
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react"
 import { useRender } from "@base-ui/react/use-render"
-import { createContext, Suspense, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react"
+import {
+  createContext,
+  Suspense,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react"
 
 import { CommandMenuButton } from "./command-menu.tsx"
 import { Drawer, DrawerContent, DrawerTitle } from "./drawer.tsx"
 import type { FamilyProduct } from "./family-svg.ts"
 import { isApplePlatform, Kbd, KbdGroup } from "./kbd.tsx"
-import { PagePending } from "./page-pending.tsx"
+import {
+  CONTENT_LOADING_LAYER,
+  ContentLoadingContext,
+  ContentLoadingStage,
+  PAGE_PENDING_MIN_MS,
+  PAGE_PENDING_MS,
+  PagePending,
+  useDelayedFlag,
+} from "./page-pending.tsx"
 import { ProductBadge } from "./product-badge.tsx"
 import { ProductRail } from "./product-rail.tsx"
 import { HGDC_ACCOUNT, HGDC_PRODUCTS } from "./products.ts"
-import { ProductRailShownContext } from "./shell-placement.ts"
+import { ProductRailShownContext, ShellLeaveContext } from "./shell-placement.ts"
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip.tsx"
 import { cn } from "./cn.ts"
 
@@ -267,6 +285,7 @@ export function AppShell({
   searchLabel,
   children,
   contentKey,
+  navigating = false,
   mainClassName,
 }: {
   /** Le produit affiché (`"host"`) : sa marque en haut de la barre, « vous êtes ici » dans la barre des produits. */
@@ -305,6 +324,13 @@ export function AppShell({
    */
   contentKey?: string | undefined
   /**
+   * Une navigation vers une autre page est en cours (TanStack Router :
+   * `useRouterState({ select: (s) => s.isLoading && s.location.pathname !== s.resolvedLocation?.pathname })`).
+   * Au-delà de 50 ms, la zone de contenu se couvre du H centré, la coque restant en place : jamais
+   * l'ancienne page figée, quel que soit ce qui attend (session, loaders, code de la page).
+   */
+  navigating?: boolean
+  /**
    * @deprecated La largeur du contenu est la même dans toute la famille (`max-w-6xl`, ADR 0012) :
    * une page étroite passe par `Page` (`@hgdc/ui/page-header`), pas par la coque.
    */
@@ -315,99 +341,142 @@ export function AppShell({
   const [railPeek, setRailPeek] = useState(false)
   useToggleShortcut()
 
+  // Chargement de la zone de contenu : navigation en cours (après 50 ms, au moins 300 ms), ou départ
+  // vers un autre produit (aussitôt). Une page qui affiche déjà `PagePending` montre le même H au
+  // même endroit : le calque de la coque s'efface alors derrière lui.
+  const navigatingShown = useDelayedFlag(navigating, PAGE_PENDING_MS, PAGE_PENDING_MIN_MS)
+  const [leaving, setLeaving] = useState(false)
+  const [pagePending, setPagePending] = useState(0)
+  const registerPagePending = useCallback(() => {
+    setPagePending((count) => count + 1)
+    return () => setPagePending((count) => count - 1)
+  }, [])
+  const leave = useCallback(() => setLeaving(true), [])
+  useEffect(() => {
+    // Retour arrière depuis l'autre produit (cache de page) : la page revient telle quelle.
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) setLeaving(false)
+    }
+    window.addEventListener("pageshow", onPageShow)
+    return () => window.removeEventListener("pageshow", onPageShow)
+  }, [])
+  const loading = (navigatingShown || leaving) && pagePending === 0
+  const contentRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    // Sur ordinateur, la zone de contenu défile seule : le calque couvre sa partie visible, en haut.
+    if (loading && contentRef.current) contentRef.current.scrollTop = 0
+  }, [loading])
+
   return (
     <ShellContext.Provider value={{ closeMobileNav: () => setMenuOpen(false) }}>
       <ProductRailShownContext value={productRail}>
-        <div
-          data-slot="app-shell"
-          data-rail-peek={railPeek ? "" : undefined}
-          className={cn(
-            "min-h-dvh lg:grid lg:h-dvh lg:bg-shell",
-            productRail ? "lg:grid-cols-[auto_auto_minmax(0,1fr)]" : "lg:grid-cols-[auto_minmax(0,1fr)]",
-          )}
-        >
-          <a
-            href="#contenu"
-            className="sr-only z-50 rounded-xl bg-background px-4 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:ring-2 focus:ring-ring"
+        <ShellLeaveContext value={leave}>
+          <div
+            data-slot="app-shell"
+            data-rail-peek={railPeek ? "" : undefined}
+            className={cn(
+              "min-h-dvh lg:grid lg:h-dvh lg:bg-shell",
+              productRail ? "lg:grid-cols-[auto_auto_minmax(0,1fr)]" : "lg:grid-cols-[auto_minmax(0,1fr)]",
+            )}
           >
-            Aller au contenu
-          </a>
-          {productRail ? (
-            <ProductRail
-              current={product}
-              organization={organization}
-              accountHref={accountHref}
-              onExpandedChange={setRailPeek}
-            />
-          ) : null}
-          <aside
-            aria-label="Barre latérale"
-            className="group/sidebar hidden overflow-hidden text-shell-foreground transition-[width] duration-(--duration-base) ease-ios motion-reduce:transition-none lg:flex lg:w-64 lg:flex-col lg:rail:w-16"
-          >
-            <SidebarHead product={product} />
-            {!productRail && organization ? <div className="shrink-0 px-3 pb-1">{organization}</div> : null}
-            {nav}
-            {sidebarFooter ? <div className="grid gap-0.5 px-3 pt-1 pb-3">{sidebarFooter}</div> : null}
-          </aside>
-
-          <div className="flex min-h-dvh flex-col lg:min-h-0 lg:p-2 lg:pl-0">
-            <div className="flex flex-1 flex-col lg:min-h-0 lg:overflow-y-auto lg:rounded-xl lg:bg-background">
-              <header className="sticky top-[env(safe-area-inset-top,0px)] z-30 flex h-14 shrink-0 items-center gap-1 border-b border-foreground/5 bg-background px-2 sm:px-4 lg:top-0">
-                <button
-                  type="button"
-                  onClick={() => setMenuOpen(true)}
-                  aria-label="Ouvrir le menu"
-                  className="touch-target grid size-10 shrink-0 place-items-center rounded-xl text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 lg:hidden"
-                >
-                  <HugeiconsIcon icon={Menu01Icon} aria-hidden className="size-5" />
-                </button>
-                {/* Sur téléphone, la marque du produit est toujours là : pastille et nom. */}
-                <div data-slot="app-shell-brand" className="flex shrink-0 items-center gap-2 pr-1 lg:hidden">
-                  <ProductBadge product={product} className="size-6" />
-                  <span className="font-heading text-[0.9375rem] font-semibold">{productName(product)}</span>
-                </div>
-                <div className="flex min-w-0 flex-1 items-center gap-2">{header}</div>
-                {onSearch ? (
-                  <CommandMenuButton
-                    onClick={onSearch}
-                    compact="mobile"
-                    className="shrink-0 lg:w-96 lg:max-w-none"
-                    {...(searchLabel !== undefined ? { label: searchLabel } : {})}
-                  />
-                ) : null}
-              </header>
-              <main
-                id="contenu"
-                tabIndex={-1}
-                className={cn(
-                  "mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-16 outline-none sm:px-6 lg:px-10 lg:pt-8",
-                  mainClassName,
-                )}
-              >
-                {contentKey === undefined ? (
-                  children
-                ) : (
-                  <Suspense key={contentKey} fallback={<PagePending />}>
-                    {children}
-                  </Suspense>
-                )}
-              </main>
-            </div>
-          </div>
-
-          <Drawer side="bottom" open={menuOpen} onOpenChange={setMenuOpen}>
-            <DrawerContent className="lg:hidden">
-              <DrawerTitle className="sr-only">Menu</DrawerTitle>
-              {organization ? <div className="px-3 pt-1">{organization}</div> : null}
+            <a
+              href="#contenu"
+              className="sr-only z-50 rounded-xl bg-background px-4 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:ring-2 focus:ring-ring"
+            >
+              Aller au contenu
+            </a>
+            {productRail ? (
+              <ProductRail
+                current={product}
+                organization={organization}
+                accountHref={accountHref}
+                onExpandedChange={setRailPeek}
+              />
+            ) : null}
+            <aside
+              aria-label="Barre latérale"
+              className="group/sidebar hidden overflow-hidden text-shell-foreground transition-[width] duration-(--duration-base) ease-ios motion-reduce:transition-none lg:flex lg:w-64 lg:flex-col lg:rail:w-16"
+            >
+              <SidebarHead product={product} />
+              {!productRail && organization ? <div className="shrink-0 px-3 pb-1">{organization}</div> : null}
               {nav}
-              {sidebarFooter ? (
-                <div className="grid gap-0.5 border-t border-foreground/5 px-3 pt-2 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
-                  {sidebarFooter}
+              {sidebarFooter ? <div className="grid gap-0.5 px-3 pt-1 pb-3">{sidebarFooter}</div> : null}
+            </aside>
+
+            <div className="flex min-h-dvh flex-col lg:min-h-0 lg:p-2 lg:pl-0">
+              <div
+                ref={contentRef}
+                className="relative flex flex-1 flex-col lg:min-h-0 lg:overflow-y-auto lg:rounded-xl lg:bg-background"
+              >
+                <header className="sticky top-[env(safe-area-inset-top,0px)] z-30 flex h-14 shrink-0 items-center gap-1 border-b border-foreground/5 bg-background px-2 sm:px-4 lg:top-0">
+                  <button
+                    type="button"
+                    onClick={() => setMenuOpen(true)}
+                    aria-label="Ouvrir le menu"
+                    className="touch-target grid size-10 shrink-0 place-items-center rounded-xl text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 lg:hidden"
+                  >
+                    <HugeiconsIcon icon={Menu01Icon} aria-hidden className="size-5" />
+                  </button>
+                  {/* Sur téléphone, la marque du produit est toujours là : pastille et nom. */}
+                  <div data-slot="app-shell-brand" className="flex shrink-0 items-center gap-2 pr-1 lg:hidden">
+                    <ProductBadge product={product} className="size-6" />
+                    <span className="font-heading text-[0.9375rem] font-semibold">{productName(product)}</span>
+                  </div>
+                  <div className="flex min-w-0 flex-1 items-center gap-2">{header}</div>
+                  {onSearch ? (
+                    <CommandMenuButton
+                      onClick={onSearch}
+                      compact="mobile"
+                      className="shrink-0 lg:w-96 lg:max-w-none"
+                      {...(searchLabel !== undefined ? { label: searchLabel } : {})}
+                    />
+                  ) : null}
+                </header>
+                <div
+                  data-slot="app-shell-loading"
+                  data-visible={loading ? "" : undefined}
+                  aria-hidden={!loading}
+                  className={CONTENT_LOADING_LAYER}
+                >
+                  <ContentLoadingStage label="Chargement…" />
                 </div>
-              ) : null}
-            </DrawerContent>
-          </Drawer>
-        </div>
+                <main
+                  id="contenu"
+                  tabIndex={-1}
+                  aria-busy={loading || pagePending > 0 ? true : undefined}
+                  inert={loading || undefined}
+                  className={cn(
+                    "mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-16 outline-none sm:px-6 lg:px-10 lg:pt-8",
+                    mainClassName,
+                  )}
+                >
+                  <ContentLoadingContext value={registerPagePending}>
+                    {contentKey === undefined ? (
+                      children
+                    ) : (
+                      <Suspense key={contentKey} fallback={<PagePending />}>
+                        {children}
+                      </Suspense>
+                    )}
+                  </ContentLoadingContext>
+                </main>
+              </div>
+            </div>
+
+            <Drawer side="bottom" open={menuOpen} onOpenChange={setMenuOpen}>
+              <DrawerContent className="lg:hidden">
+                <DrawerTitle className="sr-only">Menu</DrawerTitle>
+                {organization ? <div className="px-3 pt-1">{organization}</div> : null}
+                {nav}
+                {sidebarFooter ? (
+                  <div className="grid gap-0.5 border-t border-foreground/5 px-3 pt-2 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
+                    {sidebarFooter}
+                  </div>
+                ) : null}
+              </DrawerContent>
+            </Drawer>
+          </div>
+        </ShellLeaveContext>
       </ProductRailShownContext>
     </ShellContext.Provider>
   )

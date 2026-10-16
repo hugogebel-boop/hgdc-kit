@@ -32,7 +32,7 @@ import { MENU_LINK_ITEM } from "./org-switcher.tsx"
 import type { FamilyProduct } from "./family-svg.ts"
 import { ProductBadge } from "./product-badge.tsx"
 import { productMenuEntries } from "./products.ts"
-import { useProductRailShown } from "./shell-placement.ts"
+import { useLeaveOnClick, useProductRailShown } from "./shell-placement.ts"
 import { useTheme, type Theme } from "./theme.tsx"
 
 export type HgdcProduct = {
@@ -95,6 +95,7 @@ export function AccountMenu({
   const { theme, setTheme } = useTheme()
   const products = productsProp ?? productMenuEntries({ current: currentProduct, accountHref })
   const railShown = useProductRailShown()
+  const leaveOnClick = useLeaveOnClick()
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -193,7 +194,12 @@ export function AccountMenu({
                     <HugeiconsIcon icon={Tick02Icon} aria-label="Produit ouvert" />
                   </DropdownMenuItem>
                 ) : (
-                  <MenuPrimitive.LinkItem key={product.name} href={product.href} className={MENU_LINK_ITEM}>
+                  <MenuPrimitive.LinkItem
+                    key={product.name}
+                    href={product.href}
+                    onClick={leaveOnClick}
+                    className={MENU_LINK_ITEM}
+                  >
                     <ProductMenuIcon product={product} />
                     <span className="flex-1">{product.name}</span>
                     {product.hint ? (
