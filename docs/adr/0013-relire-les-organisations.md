@@ -22,4 +22,4 @@ Un produit recopie les organisations de la personne depuis le claim `organizatio
 - Passer d'un produit à l'autre coûte trois redirections de plus quand la session du produit existait déjà.
 - Si la session d'Account a expiré, changer de produit demande de se reconnecter à Account, même avec une session produit ouverte.
 - Chaque changement de produit crée une session de plus dans le produit d'arrivée, jusqu'à leur expiration.
-- Un retrait d'Account n'est toujours appliqué qu'à la reconnexion ou à la péremption de l'appartenance (`MEMBERSHIP_TTL_MS`).
+- Un retrait d'Account n'était appliqué qu'à la reconnexion ou à la péremption de l'appartenance (`MEMBERSHIP_TTL_MS`) : depuis l'ADR 0014, Account le pousse aux produits et il s'applique tout de suite.
