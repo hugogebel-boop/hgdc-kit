@@ -2,11 +2,14 @@ import type { GenericOAuthConfig } from "better-auth/plugins/generic-oauth"
 
 import {
   HGDC_ENTRY_NEXT_PARAM,
+  HGDC_ENTRY_REFRESH_PARAM,
   HGDC_ISSUER,
   HGDC_PROVIDER_ID,
   HGDC_SCOPES,
+  hasSyncedMarker,
   parseHgdcProfile,
   safeNextPath,
+  withSyncedMarker,
 } from "./index.ts"
 
 /** En-tête qui porte le `sec-fetch-mode` du navigateur à travers le proxy. */
@@ -142,6 +145,12 @@ function authorizationUrl(body: unknown): string | null {
  * - Sinon : la connexion HGDC part aussitôt (même appel que `HgdcSignInButton`, fait par le
  *   serveur), retour vers `next`. Si la session d'Account est ouverte et le produit déjà
  *   autorisé, Account renvoie sans formulaire : trois redirections, aucun clic.
+ * - `refresh=1` (`HGDC_ENTRY_REFRESH_PARAM`) : la connexion HGDC part même si la session du
+ *   produit est ouverte. La nouvelle session relit le claim `organizations` (crochet
+ *   `session.create.before`) ; retour vers `next?synced=1` (`HGDC_SYNCED_PARAM`), pour que la
+ *   page ne relance pas l'entrée. Un `next` qui porte déjà `synced=1` ne relance rien : pas de
+ *   boucle. L'ancienne session n'est pas révoquée : si Account ne répond pas, la personne garde
+ *   son accès, et la session expire seule (`SESSION_TTL_SECONDS`).
  *
  * `next` est filtré par `safeNextPath` (chemin du produit seulement, pas de redirection ouverte),
  * puis better-auth le revérifie contre ses `trustedOrigins`.
@@ -162,9 +171,12 @@ export function createHgdcEntry(options: HgdcEntryOptions): (request: Request) =
   return async (request) => {
     const url = new URL(request.url)
     const next = safeNextPath(url.searchParams.get(HGDC_ENTRY_NEXT_PARAM))
+    // Un `next` déjà marqué revient d'une resynchronisation : on n'en relance pas une autre.
+    const refresh = url.searchParams.get(HGDC_ENTRY_REFRESH_PARAM) === "1" && !hasSyncedMarker(next)
+    const callbackURL = refresh ? withSyncedMarker(next) : next
     const cookies: string[] = []
     try {
-      if (request.headers.has("cookie")) {
+      if (!refresh && request.headers.has("cookie")) {
         const session = await options.proxy(
           new Request(`${url.origin}${basePath}/get-session`, { headers: internalHeaders(request, url.origin) }),
         )
@@ -178,7 +190,7 @@ export function createHgdcEntry(options: HgdcEntryOptions): (request: Request) =
         new Request(`${url.origin}${basePath}/sign-in/oauth2`, {
           method: "POST",
           headers,
-          body: JSON.stringify({ providerId: HGDC_PROVIDER_ID, callbackURL: next, errorCallbackURL }),
+          body: JSON.stringify({ providerId: HGDC_PROVIDER_ID, callbackURL, errorCallbackURL }),
         }),
       )
       const target = signIn.ok ? authorizationUrl(await readJson(signIn)) : null

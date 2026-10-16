@@ -19,8 +19,11 @@
 
 @custom-variant dark (&:is(.dark *));
 /* Barre latérale réduite en rail : `data-sidebar="rail"` sur <html>, posé avant la première
-   peinture par `sidebarInitScript` (`@hgdc/ui/app-shell`). */
-@custom-variant rail (&:where([data-sidebar="rail"] *));
+   peinture par `sidebarInitScript` (`@hgdc/ui/app-shell`), ou `data-rail-peek` sur la coque le
+   temps que la barre des produits est élargie (ADR 0011). */
+@custom-variant rail (&:where([data-sidebar="rail"] *, [data-rail-peek] *));
+/* Pliée par la personne seulement (pas le temps du survol de la barre des produits). */
+@custom-variant folded (&:where([data-sidebar="rail"] *));
 
 /* Courbes et durées. Pas d'ease-in : il démarre lentement à l'instant où l'œil regarde. */
 @theme {
@@ -57,6 +60,7 @@
   --color-destructive: var(--destructive);
   --color-border: var(--border);
   --color-input: var(--input);
+  --color-control-off: var(--control-off);
   --color-ring: var(--ring);
   --color-shell: var(--shell);
   --color-shell-foreground: var(--shell-foreground);
@@ -129,6 +133,9 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
+  /* Contrôle éteint (piste d'interrupteur, bord de case et de bouton radio) : 3:1 au moins contre
+     le fond, une carte et `--muted` (WCAG 1.4.11, vérifié par contrast.test.ts). */
+  --control-off: oklch(0.62 0 0);
   --ring: var(--accent);
   /* Coque de l'application : barre latérale et en-tête. */
   --shell: oklch(0.955 0 0);
@@ -196,6 +203,7 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
+  --control-off: oklch(0.57 0 0);
   --shell: oklch(0.08 0 0);
   --shell-foreground: oklch(0.985 0 0);
   --shell-muted-foreground: oklch(0.708 0 0);
@@ -467,5 +475,100 @@
     animation: none;
     width: 100%;
     opacity: 0.35;
+  }
+}
+
+/* `FamilyLoader` : le H tricolore se construit (jambage gauche, barre, jambage droit), tient,
+   s'efface, recommence. Les pièces sont coupées par `clip-path` (la forme ne change pas), un
+   léger chevauchement lie les trois gestes. Visible après 200 ms seulement : pas de flash. */
+.family-loader {
+  opacity: 0;
+  animation: family-loader-in var(--duration-base) var(--ease-out) var(--family-loader-delay, 200ms) forwards;
+}
+.family-loader [data-piece] {
+  animation: 1.8s infinite both;
+}
+.family-loader [data-piece="left"] {
+  animation-name: family-loader-left;
+}
+.family-loader [data-piece="bar"] {
+  animation-name: family-loader-bar;
+}
+.family-loader [data-piece="right"] {
+  animation-name: family-loader-right;
+}
+@keyframes family-loader-in {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes family-loader-left {
+  0% {
+    clip-path: inset(100% 0 0 0);
+    opacity: 1;
+    animation-timing-function: var(--ease-out);
+  }
+  24%,
+  74% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+    animation-timing-function: var(--ease-out);
+  }
+  90%,
+  100% {
+    clip-path: inset(0 0 0 0);
+    opacity: 0;
+  }
+}
+@keyframes family-loader-bar {
+  0%,
+  16% {
+    clip-path: inset(0 100% 0 0);
+    opacity: 1;
+    animation-timing-function: var(--ease-out);
+  }
+  40%,
+  77% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+    animation-timing-function: var(--ease-out);
+  }
+  93%,
+  100% {
+    clip-path: inset(0 0 0 0);
+    opacity: 0;
+  }
+}
+@keyframes family-loader-right {
+  0%,
+  32% {
+    clip-path: inset(100% 0 0 0);
+    opacity: 1;
+    animation-timing-function: var(--ease-out);
+  }
+  56%,
+  80% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+    animation-timing-function: var(--ease-out);
+  }
+  96%,
+  100% {
+    clip-path: inset(0 0 0 0);
+    opacity: 0;
+  }
+}
+@keyframes family-loader-breathe {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Le H entier, qui respire lentement. */
+  .family-loader [data-piece] {
+    animation: none;
+  }
+  .family-loader svg {
+    animation: family-loader-breathe 2.4s ease-in-out infinite;
   }
 }

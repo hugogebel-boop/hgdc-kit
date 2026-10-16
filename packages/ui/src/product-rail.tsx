@@ -33,15 +33,18 @@ function ProductLink({ entry }: { entry: ProductRailEntry }): React.JSX.Element 
 
 /**
  * La barre des produits de la famille, tout à gauche de la coque sur ordinateur : organisation en
- * haut, pastilles des produits, Account en bas. 56 px de large ; au survol (après un court délai
- * d'intention) ou au focus clavier, elle s'élargit par-dessus la page et écrit le nom de chaque
- * produit, sans rien décaler. Elle se referme dès que la souris sort.
+ * haut, Account, puis les pastilles des produits. 56 px de large ; au survol (après un court délai
+ * d'intention) ou au focus clavier, elle s'élargit et écrit le nom de chaque produit. Elle ne
+ * recouvre jamais la page : `AppShell` plie la barre latérale du produit le temps du survol, la
+ * barre prend exactement la place libérée (248 px) ; si la barre latérale est déjà pliée, elle
+ * pousse la page (220 px). Tout revient dès que la souris sort.
  */
 export function ProductRail({
   current,
   organization,
   accountHref,
   catalog,
+  onExpandedChange,
 }: {
   /** Le mot du produit affiché (« host ») : marqué en teinte. */
   current?: string | undefined
@@ -50,8 +53,13 @@ export function ProductRail({
   /** Adresse d'Account (un Account local en développement). */
   accountHref?: string | undefined
   catalog?: ReadonlyArray<HgdcCatalogProduct> | undefined
+  /** Prévenu à chaque ouverture et fermeture : `AppShell` y plie sa barre latérale. */
+  onExpandedChange?: ((expanded: boolean) => void) | undefined
 }): React.JSX.Element {
   const [expanded, setExpanded] = useState(false)
+  useEffect(() => {
+    onExpandedChange?.(expanded)
+  }, [expanded, onExpandedChange])
   const ref = useRef<HTMLElement>(null)
   const { products, account } = productRailEntries({ current, accountHref, catalog })
 
@@ -102,17 +110,22 @@ export function ProductRail({
   }, [])
 
   return (
-    <div data-slot="product-rail" className="relative hidden w-14 shrink-0 lg:block">
+    <div
+      data-slot="product-rail"
+      data-expanded={expanded ? "" : undefined}
+      className={cn(
+        "hidden w-14 shrink-0 overflow-hidden lg:block",
+        // Même durée et même courbe que la barre latérale qui se plie : la somme des deux largeurs
+        // reste constante (56 + 256 = 248 + 64), la page ne bouge pas.
+        "transition-[width] duration-(--duration-base) ease-ios motion-reduce:transition-none",
+        "data-expanded:w-62 folded:data-expanded:w-55",
+      )}
+    >
       <nav
         ref={ref}
         aria-label="Produits"
         data-expanded={expanded ? "" : undefined}
-        className={cn(
-          "group/rail absolute inset-y-0 left-0 z-40 flex w-14 flex-col gap-2 overflow-hidden bg-shell-rail px-2 py-3 text-shell-foreground",
-          "transition-[width,box-shadow] duration-(--duration-base) ease-ios motion-reduce:transition-none",
-          // L'ombre seulement quand elle flotte ; en sombre, où l'ombre ne se voit pas, un filet.
-          "data-expanded:w-55 data-expanded:shadow-xl data-expanded:shadow-black/10 dark:data-expanded:shadow-black/50 dark:data-expanded:ring-1 dark:data-expanded:ring-white/8",
-        )}
+        className="group/rail flex h-full w-full flex-col gap-2 overflow-hidden bg-shell-rail px-2 py-3 text-shell-foreground"
       >
         {organization ? (
           <>
@@ -120,13 +133,12 @@ export function ProductRail({
             <div aria-hidden className="mx-2 h-px shrink-0 bg-foreground/8" />
           </>
         ) : null}
+        {/* Account en tête, sous l'organisation : en bas, personne ne le voyait. */}
         <ul className="grid min-h-0 gap-1 overflow-x-hidden overflow-y-auto">
+          <ProductLink entry={account} />
           {products.map((entry) => (
             <ProductLink key={entry.badge} entry={entry} />
           ))}
-        </ul>
-        <ul className="mt-auto grid">
-          <ProductLink entry={account} />
         </ul>
       </nav>
     </div>

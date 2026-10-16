@@ -1,0 +1,64 @@
+// @vitest-environment happy-dom
+import { readFileSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
+import { cleanup, render, screen } from "@testing-library/react"
+import { afterEach, describe, expect, it } from "vitest"
+
+import { FamilyLoader } from "./family-loader.tsx"
+import { FAMILY_MARK_SVG } from "./family-svg.ts"
+
+afterEach(cleanup)
+
+const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "styles.css"), "utf8")
+
+describe("FamilyLoader", () => {
+  it("s'annonce « Chargement… » en `role=status`", () => {
+    render(<FamilyLoader />)
+    const status = screen.getByRole("status", { name: "Chargement…" })
+    expect(status.dataset.slot).toBe("family-loader")
+    expect(status.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true")
+  })
+
+  it("reprend exactement les trois pièces du H de la famille", () => {
+    const { container } = render(<FamilyLoader />)
+    const pieces = [...container.querySelectorAll("rect")].map((rect) =>
+      ["x", "y", "width", "height", "rx"].map((name) => `${name}="${rect.getAttribute(name)}"`).join(" "),
+    )
+    expect(pieces).toHaveLength(3)
+    for (const piece of pieces) expect(FAMILY_MARK_SVG).toContain(piece)
+  })
+
+  it("donne à chaque instance ses propres dégradés", () => {
+    const { container } = render(
+      <>
+        <FamilyLoader />
+        <FamilyLoader size="lg" label="Ouverture du projet…" />
+      </>,
+    )
+    const ids = [...container.querySelectorAll("linearGradient")].map((g) => g.id)
+    expect(new Set(ids).size).toBe(6)
+    for (const rect of container.querySelectorAll("rect")) {
+      const ref = rect.getAttribute("fill")?.match(/^url\(#(.+)\)$/)?.[1]
+      expect(ids).toContain(ref)
+    }
+    expect(screen.getByRole("status", { name: "Ouverture du projet…" })).toBeDefined()
+  })
+
+  it("attend 200 ms avant d'apparaître, réglable", () => {
+    render(<FamilyLoader delay={500} />)
+    expect(screen.getByRole("status").style.getPropertyValue("--family-loader-delay")).toBe("500ms")
+    expect(css).toMatch(/\.family-loader \{[^}]*opacity: 0;[^}]*var\(--family-loader-delay, 200ms\)/)
+  })
+
+  it("mouvement réduit : les pièces ne bougent plus, le H respire", () => {
+    const reduced = css.slice(css.lastIndexOf("@media (prefers-reduced-motion: reduce)"))
+    expect(reduced).toMatch(/\.family-loader \[data-piece\] \{\s*animation: none;/)
+    expect(reduced).toMatch(/\.family-loader svg \{\s*animation: family-loader-breathe/)
+  })
+
+  it("`page` le centre dans un bloc de la hauteur de l'écran", () => {
+    const { container } = render(<FamilyLoader page />)
+    expect(container.firstElementChild?.getAttribute("data-slot")).toBe("family-loader-page")
+  })
+})
