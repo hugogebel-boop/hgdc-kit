@@ -12,6 +12,7 @@ import { OrgMark, RoleBadge } from "./org-switcher.tsx"
 import { Page } from "./page-header.tsx"
 import { RadioGroup, RadioGroupItem } from "./radio-group.tsx"
 import { ResourceItem, ResourceList } from "./resource-list.tsx"
+import { Table, TableHead, TableHeader, TableRow } from "./table.tsx"
 
 afterEach(cleanup)
 
@@ -123,5 +124,22 @@ describe("États et rôles", () => {
     const snippet = container.querySelector("[data-slot=snippet]") as HTMLElement
     expect(snippet.className).toContain("max-w-full")
     expect((snippet.querySelector("pre") as HTMLElement).className).toContain("overflow-x-auto")
+  })
+
+  it("pose l'icône de tri après le libellé, colonne de chiffres comprise", () => {
+    render(
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead numeric sort="none" onSort={() => {}}>
+              CHF
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+      </Table>,
+    )
+    const button = screen.getByRole("button", { name: "CHF" })
+    expect(button.firstChild?.textContent).toBe("CHF")
+    expect(button.className).not.toContain("flex-row-reverse")
   })
 })
