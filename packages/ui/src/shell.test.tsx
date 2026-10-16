@@ -206,6 +206,53 @@ describe("Barre des produits", () => {
     expect(rail.dataset.expanded).toBeUndefined()
   })
 
+  it("reste élargie tant qu'un menu ouvert depuis la barre est ouvert, se replie à sa fermeture", async () => {
+    vi.useFakeTimers()
+    render(
+      <AppShell
+        product="host"
+        organization={
+          <OrgSwitcher
+            organizations={[
+              { id: "a", name: "Acme" },
+              { id: "b", name: "Beta" },
+            ]}
+            activeId="a"
+            onSelect={() => {}}
+          />
+        }
+        nav={null}
+      >
+        Page
+      </AppShell>,
+    )
+    const rail = screen.getByRole("navigation", { name: "Produits" })
+    const shell = document.querySelector<HTMLElement>("[data-slot=app-shell]")
+    fireEvent.pointerEnter(rail, { pointerType: "mouse" })
+    act(() => {
+      vi.advanceTimersByTime(PRODUCT_RAIL_OPEN_DELAY)
+    })
+    vi.useRealTimers()
+    expect(rail.dataset.expanded).toBe("")
+
+    const trigger = within(rail).getByRole("button", { name: "Organisation Acme, changer d'organisation" })
+    fireEvent.click(trigger)
+    await screen.findByRole("menuitem", { name: /Beta/ })
+    // La souris quitte la barre pour aller dans le menu (dans un portail) : la barre reste élargie.
+    fireEvent.pointerLeave(rail, { pointerType: "mouse" })
+    await vi.waitFor(() => expect(trigger.getAttribute("aria-expanded")).toBe("true"))
+    expect(rail.dataset.expanded).toBe("")
+    expect(shell?.dataset.railPeek).toBe("")
+
+    // Organisation choisie à la souris, menu fermé, souris dehors : la barre se replie.
+    const beta = screen.getByRole("menuitem", { name: /Beta/ })
+    fireEvent.pointerDown(beta, { pointerType: "mouse" })
+    fireEvent.click(beta)
+    await vi.waitFor(() => expect(trigger.getAttribute("aria-expanded")).not.toBe("true"))
+    await vi.waitFor(() => expect(rail.dataset.expanded).toBeUndefined())
+    expect(shell?.dataset.railPeek).toBeUndefined()
+  })
+
   it("se coupe par `productRail={false}`, l'organisation passe dans la barre latérale", () => {
     render(
       <AppShell

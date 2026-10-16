@@ -37,7 +37,8 @@ function ProductLink({ entry }: { entry: ProductRailEntry }): React.JSX.Element 
  * d'intention) ou au focus clavier, elle s'élargit et écrit le nom de chaque produit. Elle ne
  * recouvre jamais la page : `AppShell` plie la barre latérale du produit le temps du survol, la
  * barre prend exactement la place libérée (248 px) ; si la barre latérale est déjà pliée, elle
- * pousse la page (220 px). Tout revient dès que la souris sort.
+ * pousse la page (220 px). Un menu ouvert depuis la barre (sélecteur d'organisation) la garde
+ * élargie ; tout revient quand la souris est sortie et que le menu est fermé.
  */
 export function ProductRail({
   current,
@@ -56,15 +57,21 @@ export function ProductRail({
   /** Prévenu à chaque ouverture et fermeture : `AppShell` y plie sa barre latérale. */
   onExpandedChange?: ((expanded: boolean) => void) | undefined
 }): React.JSX.Element {
-  const [expanded, setExpanded] = useState(false)
+  // Trois raisons de rester élargie : le survol (après le délai d'intention), le focus clavier, et
+  // un menu ouvert depuis la barre (sélecteur d'organisation ou tout autre) : la souris qui quitte
+  // la barre pour aller dans le menu ne doit pas la replier sous elle.
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const expanded = hovered || focused || menuOpen
   useEffect(() => {
     onExpandedChange?.(expanded)
   }, [expanded, onExpandedChange])
   const ref = useRef<HTMLElement>(null)
   const { products, account } = productRailEntries({ current, accountHref, catalog })
 
-  // Écouteurs natifs : la barre est un repère `nav`, pas un contrôle ; c'est son survol et le
-  // focus de ses liens qui l'élargissent.
+  // Écouteurs natifs : la barre est un repère `nav`, pas un contrôle ; c'est son survol, le focus
+  // de ses liens et les menus qu'elle ouvre qui l'élargissent.
   useEffect(() => {
     const rail = ref.current
     if (!rail) return
@@ -76,24 +83,41 @@ export function ProductRail({
     const onEnter = (event: PointerEvent) => {
       if (event.pointerType !== "mouse") return
       cancel()
-      timer = window.setTimeout(() => setExpanded(true), PRODUCT_RAIL_OPEN_DELAY)
+      timer = window.setTimeout(() => setHovered(true), PRODUCT_RAIL_OPEN_DELAY)
     }
     const onLeave = () => {
       cancel()
-      setExpanded(false)
+      setHovered(false)
     }
-    // Au clavier seulement : un clic de souris ne laisse pas la barre ouverte.
+    // Au clavier seulement : un clic de souris ne laisse pas la barre ouverte, ni le focus rendu au
+    // déclencheur quand un menu ouvert à la souris se ferme. La dernière interaction fait foi.
+    let keyboard = false
+    const onDocKey = () => {
+      keyboard = true
+    }
+    const onDocPointer = () => {
+      keyboard = false
+    }
     const onFocusIn = (event: FocusEvent) => {
-      if (event.target && focusVisible(event.target)) setExpanded(true)
+      if (keyboard && event.target && focusVisible(event.target)) setFocused(true)
     }
     const onFocusOut = (event: FocusEvent) => {
-      if (!(event.relatedTarget instanceof Node) || !rail.contains(event.relatedTarget)) setExpanded(false)
+      if (!(event.relatedTarget instanceof Node) || !rail.contains(event.relatedTarget)) setFocused(false)
     }
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return
       cancel()
-      setExpanded(false)
+      setHovered(false)
+      setFocused(false)
     }
+    // Un menu ouvert depuis la barre : son déclencheur porte `aria-expanded="true"` (Base UI, Radix,
+    // natif). Le menu lui-même vit dans un portail, hors de la barre : on suit donc le déclencheur.
+    const syncMenu = () => setMenuOpen(rail.querySelector('[aria-expanded="true"]') !== null)
+    const observer = new MutationObserver(syncMenu)
+    observer.observe(rail, { subtree: true, attributes: true, attributeFilter: ["aria-expanded"], childList: true })
+    syncMenu()
+    document.addEventListener("keydown", onDocKey, true)
+    document.addEventListener("pointerdown", onDocPointer, true)
     rail.addEventListener("pointerenter", onEnter)
     rail.addEventListener("pointerleave", onLeave)
     rail.addEventListener("focusin", onFocusIn)
@@ -101,6 +125,9 @@ export function ProductRail({
     rail.addEventListener("keydown", onKey)
     return () => {
       cancel()
+      observer.disconnect()
+      document.removeEventListener("keydown", onDocKey, true)
+      document.removeEventListener("pointerdown", onDocPointer, true)
       rail.removeEventListener("pointerenter", onEnter)
       rail.removeEventListener("pointerleave", onLeave)
       rail.removeEventListener("focusin", onFocusIn)
