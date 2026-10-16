@@ -73,12 +73,13 @@ export const latestJwks = internalAction({
 })
 ```
 
-```sh
-npx convex run authKeys:latestJwks --prod | npx convex env set JWKS --prod
-npx convex deploy
-```
+Convex refuse un push dont `auth.config.ts` lit une variable absente : la mise en place se fait en deux temps, sur chaque déploiement (prod et dev).
 
-Sans `JWKS`, la configuration retombe sur l'adresse : un déploiement de développement marche sans rien poser. La variable contient la clé privée chiffrée : elle ne sort jamais du déploiement (ni affichée, ni copiée ailleurs). Après une rotation des clés, relancer les deux commandes.
+1. Déployer `authKeys.ts` et le plugin `convex({ authConfig, jwks: process.env.JWKS })`, `auth.config.ts` inchangé (le plugin accepte une variable absente).
+2. Poser la variable : `npx convex run authKeys:latestJwks --prod | npx convex env set JWKS --prod` (sans `--prod` pour le dev).
+3. Passer `jwks: process.env.JWKS` à `getAuthConfigProvider` et redéployer.
+
+Un nouveau déploiement (préversion, local) pose `JWKS` avant son premier push. La variable contient la clé privée chiffrée : elle ne sort jamais du déploiement (ni affichée, ni copiée ailleurs). Après une rotation des clés, reposer la variable puis redéployer.
 
 ## Entrée commune `/auth/hgdc`
 
