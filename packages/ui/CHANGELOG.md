@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.10.2
+
+### Patch Changes
+
+- 115d511: UptimeBar: the legend under the 90-day bar wraps on narrow screens instead of overflowing.
+
 ## 0.10.1
 
 ### Patch Changes
