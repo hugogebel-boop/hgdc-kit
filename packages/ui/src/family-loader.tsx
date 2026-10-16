@@ -6,17 +6,18 @@ const SIZES = { sm: "size-6", md: "size-10", lg: "size-16" } as const
 
 /**
  * Le chargement d'une page : le H tricolore de la H family se construit, tient, s'efface, en
- * boucle (CSS seul, `styles.css`). La forme et les dégradés sont ceux de `FAMILY_MARK_SVG`.
- * Il n'apparaît qu'après 200 ms (`delay`) : une page rapide ne le montre jamais, et sa place est
+ * boucle (CSS seul, `styles.css`), par-dessus son fantôme (le H à 15 %, toujours visible : la
+ * boucle n'a jamais de trou). La forme et les dégradés sont ceux de `FAMILY_MARK_SVG`.
+ * Il n'apparaît qu'après 120 ms (`delay`) : une page rapide ne le montre jamais, et sa place est
  * réservée dès le départ, rien ne saute. Mouvement réduit : le H entier respire.
  *
- * Pour une page ou une route entière (`pendingComponent`, `Pending` de page) ; dans un bouton ou
- * une ligne, `Spinner` reste la règle. `page` le centre dans la hauteur visible.
+ * Pour une page ou une route entière (`PagePending`, `routerPendingDefaults`) ; dans un bouton ou
+ * une ligne, `Spinner` reste la règle. `page` le centre dans la zone de contenu, en taille `lg`.
  */
 export function FamilyLoader({
-  size = "md",
+  size,
   label = "Chargement…",
-  delay = 200,
+  delay = 120,
   page = false,
   className,
 }: {
@@ -24,7 +25,7 @@ export function FamilyLoader({
   label?: string
   /** Attente avant d'apparaître, en millisecondes. */
   delay?: number
-  /** Centré dans un bloc de la hauteur de l'écran, pour un chargement de page. */
+  /** Centré dans la zone de contenu (sous l'en-tête de la coque), en taille `lg` par défaut. */
   page?: boolean
   className?: string
 }): React.JSX.Element {
@@ -35,7 +36,11 @@ export function FamilyLoader({
       role="status"
       aria-label={label}
       data-slot="family-loader"
-      className={cn("family-loader inline-grid shrink-0 place-items-center", SIZES[size], !page && className)}
+      className={cn(
+        "family-loader inline-grid shrink-0 place-items-center",
+        SIZES[size ?? (page ? "lg" : "md")],
+        !page && className,
+      )}
       style={{ ["--family-loader-delay" as string]: `${delay}ms` }}
     >
       <svg viewBox="0 0 256 256" aria-hidden className="size-full overflow-visible">
@@ -53,6 +58,12 @@ export function FamilyLoader({
             <stop offset="1" stopColor="#fe5292" />
           </linearGradient>
         </defs>
+        {/* Le fantôme : le H entier, pâle, sous les pièces qui se construisent. */}
+        <g data-ghost opacity="0.15">
+          <rect x="43" y="24" width="57" height="208" rx="18" fill={`url(#${id}l)`} />
+          <rect x="156" y="24" width="57" height="208" rx="18" fill={`url(#${id}r)`} />
+          <rect x="67" y="107" width="122" height="43" rx="14" fill={`url(#${id}b)`} />
+        </g>
         <rect data-piece="left" x="43" y="24" width="57" height="208" rx="18" fill={`url(#${id}l)`} />
         <rect data-piece="right" x="156" y="24" width="57" height="208" rx="18" fill={`url(#${id}r)`} />
         <rect data-piece="bar" x="67" y="107" width="122" height="43" rx="14" fill={`url(#${id}b)`} />
@@ -61,7 +72,12 @@ export function FamilyLoader({
   )
   if (!page) return loader
   return (
-    <div data-slot="family-loader-page" className={cn("grid min-h-[60dvh] w-full place-items-center", className)}>
+    // Hauteur visible moins l'en-tête (56 px) et les marges de la zone de contenu : centré dans
+    // l'espace sous l'en-tête, pas en haut à gauche.
+    <div
+      data-slot="family-loader-page"
+      className={cn("grid min-h-[calc(100dvh-10rem)] w-full place-items-center", className)}
+    >
       {loader}
     </div>
   )

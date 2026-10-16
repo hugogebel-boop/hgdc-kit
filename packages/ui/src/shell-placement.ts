@@ -11,3 +11,13 @@ export const ShellPlacementContext: React.Context<ShellPlacement> = createContex
 export function useShellPlacement(): ShellPlacement {
   return useContext(ShellPlacementContext)
 }
+
+/**
+ * Vrai quand la coque affiche la barre des produits (sur ordinateur) : les produits y sont déjà,
+ * le menu du compte ne les répète pas au-delà de `lg`.
+ */
+export const ProductRailShownContext: React.Context<boolean> = createContext<boolean>(false)
+
+export function useProductRailShown(): boolean {
+  return useContext(ProductRailShownContext)
+}
