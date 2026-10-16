@@ -202,6 +202,16 @@ describe("Sparkline", () => {
 describe("UptimeBar", () => {
   const days = [0, 1, 2].map((i) => ({ date: Date.UTC(2026, 9, 10 + i), status: "operational" as const }))
 
+  it("légende qui passe à la ligne : un long résumé ne déborde pas sur un téléphone", () => {
+    const { container } = render(
+      <UptimeBar days={days} summary="99,95 % de disponibilité sur 90 jours, deux incidents résolus" />,
+    )
+    const legend = container.querySelector("[data-slot=uptime-legend]")
+    expect(legend?.className).toContain("flex-wrap")
+    expect(legend?.textContent).toContain("deux incidents résolus")
+    expect(legend?.querySelector(".min-w-0")?.textContent).toContain("99,95 %")
+  })
+
   it("ne fait qu'un arrêt de tabulation, les flèches passent d'un jour à l'autre", () => {
     render(<UptimeBar days={days} />)
     const buttons = screen.getAllByRole("button")

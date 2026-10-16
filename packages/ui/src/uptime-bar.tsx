@@ -105,10 +105,17 @@ export function UptimeBar({
           </li>
         ))}
       </ol>
-      <div aria-hidden className="flex items-center justify-between gap-2 text-xs text-muted-foreground tabular-nums">
-        <span>{days.length > 0 ? `il y a ${days.length} jours` : null}</span>
-        {summary ? <span className="text-foreground">{summary}</span> : null}
-        <span>Aujourd'hui</span>
+      {/* Passe à la ligne sur un téléphone : un résumé long ne déborde pas à 360 px. */}
+      <div
+        aria-hidden
+        data-slot="uptime-legend"
+        className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-muted-foreground tabular-nums"
+      >
+        <span className="shrink-0">{days.length > 0 ? `il y a ${days.length} jours` : null}</span>
+        {summary ? (
+          <span className="min-w-0 text-center text-pretty break-words text-foreground">{summary}</span>
+        ) : null}
+        <span className="shrink-0">Aujourd'hui</span>
       </div>
     </div>
   )
