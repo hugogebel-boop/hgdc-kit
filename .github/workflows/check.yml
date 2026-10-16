@@ -4,17 +4,28 @@
 #   jobs:
 #     check:
 #       uses: hugogebel-boop/hgdc-kit/.github/workflows/check.yml@<sha> # main
+#
+# Machine : `runner` reçoit les étiquettes de `runs-on`, en JSON. Par défaut une machine
+# de GitHub. Un produit privé qui dispose d'un runner auto-hébergé y passe ses étiquettes
+# (guide « Adopter le kit », section 4). Le kit, public, ne s'en sert jamais pour
+# lui-même : un runner auto-hébergé exécuterait le code d'une PR venue d'un fork.
 name: Check
 
 on:
   workflow_call:
+    inputs:
+      runner:
+        description: Étiquettes de `runs-on`, en JSON (`["ubuntu-latest"]`, `["self-hosted", "x"]`).
+        type: string
+        required: false
+        default: '["ubuntu-latest"]'
 
 permissions:
   contents: read
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(inputs.runner) }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

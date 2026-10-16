@@ -88,6 +88,18 @@ jobs:
 
 Exiger le statut `check / check` dans la protection de `main` : sans lui, la fusion automatique passerait outre une CI rouge.
 
+Le check tourne par défaut sur une machine de GitHub. Un produit **privé** qui a son propre runner auto-hébergé l'y envoie par l'entrée `runner`, les étiquettes de `runs-on` en JSON. Une variable de dépôt permet de revenir sur GitHub sans toucher au workflow :
+
+```yaml
+jobs:
+  check:
+    uses: hugogebel-boop/hgdc-kit/.github/workflows/check.yml@<sha> # main
+    with:
+      runner: ${{ vars.HGDC_RUNNER || '["self-hosted", "<étiquette>"]' }}
+```
+
+Jamais pour un dépôt public, le kit compris : un runner auto-hébergé exécuterait le code de n'importe quelle PR venue d'un fork.
+
 ## 5. Renovate et propagation
 
 ```json
