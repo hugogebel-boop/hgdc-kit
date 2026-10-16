@@ -485,17 +485,16 @@
   opacity: 0;
   animation: family-loader-in var(--duration-base) var(--ease-out) var(--family-loader-delay, 200ms) forwards;
 }
-.family-loader [data-piece] {
-  animation: 1.8s infinite both;
-}
+/* Le nom dans chaque raccourci : sans lui, lightningcss (minification de Vite) réduit
+   `animation: 1.8s infinite both` à `animation: none`. */
 .family-loader [data-piece="left"] {
-  animation-name: family-loader-left;
+  animation: family-loader-left 1.8s infinite both;
 }
 .family-loader [data-piece="bar"] {
-  animation-name: family-loader-bar;
+  animation: family-loader-bar 1.8s infinite both;
 }
 .family-loader [data-piece="right"] {
-  animation-name: family-loader-right;
+  animation: family-loader-right 1.8s infinite both;
 }
 @keyframes family-loader-in {
   to {
