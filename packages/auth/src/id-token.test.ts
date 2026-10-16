@@ -46,6 +46,10 @@ describe("verifiedOrganizationsFromIdToken", () => {
   it("rend aussi les claims du profil", () => {
     expect(verifyHgdcIdToken(token(valid), expected).claims.sub).toBe("u1")
   })
+
+  it("rend l'instant d'émission (iat) en millisecondes, à recopier en syncedAt", () => {
+    expect(verifyHgdcIdToken(token(valid), expected).issuedAt).toBe((valid.iat as number) * 1000)
+  })
 })
 
 describe("verifyHgdcIdToken : émetteur", () => {
