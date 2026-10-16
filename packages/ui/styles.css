@@ -483,7 +483,7 @@
    léger chevauchement lie les trois gestes. Visible après 200 ms seulement : pas de flash. */
 .family-loader {
   opacity: 0;
-  animation: family-loader-in var(--duration-base) var(--ease-out) var(--family-loader-delay, 200ms) forwards;
+  animation: family-loader-in var(--duration-base) var(--ease-out) var(--family-loader-delay, 120ms) forwards;
 }
 /* Le nom dans chaque raccourci : sans lui, lightningcss (minification de Vite) réduit
    `animation: 1.8s infinite both` à `animation: none`. */
@@ -507,13 +507,12 @@
     opacity: 1;
     animation-timing-function: var(--ease-out);
   }
-  24%,
-  74% {
+  22%,
+  76% {
     clip-path: inset(0 0 0 0);
     opacity: 1;
     animation-timing-function: var(--ease-out);
   }
-  90%,
   100% {
     clip-path: inset(0 0 0 0);
     opacity: 0;
@@ -526,13 +525,12 @@
     opacity: 1;
     animation-timing-function: var(--ease-out);
   }
-  40%,
-  77% {
+  38%,
+  80% {
     clip-path: inset(0 0 0 0);
     opacity: 1;
     animation-timing-function: var(--ease-out);
   }
-  93%,
   100% {
     clip-path: inset(0 0 0 0);
     opacity: 0;
@@ -545,13 +543,12 @@
     opacity: 1;
     animation-timing-function: var(--ease-out);
   }
-  56%,
-  80% {
+  54%,
+  84% {
     clip-path: inset(0 0 0 0);
     opacity: 1;
     animation-timing-function: var(--ease-out);
   }
-  96%,
   100% {
     clip-path: inset(0 0 0 0);
     opacity: 0;

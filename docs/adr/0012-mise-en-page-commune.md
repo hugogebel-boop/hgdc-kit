@@ -23,3 +23,7 @@ La vérification visuelle des sept produits en production a montré la même coq
 
 - Chaque produit monte `@hgdc/ui` 0.11 : il remplace son `CommandMenuButton` par `onSearch`, retire `mainClassName`, sa marque mobile et ses fonctions d'initiales, et passe ses variantes locales de page, de badge de rôle et d'état vide sur celles du kit.
 - Une page étroite qui contient un tableau devient `wide` ; un formulaire en pleine largeur passe dans la colonne de lecture.
+
+## Chargement d'une page (2026-10-16)
+
+Changer de page ne garde jamais l'ancienne page figée : dès qu'une navigation attend ses données plus de 120 ms, la zone de contenu (la coque reste en place) montre le H de la famille centré sous l'en-tête (`PagePending`, `@hgdc/ui/page-pending`), au moins 400 ms pour ne pas clignoter, puis la nouvelle page. Deux réglages communs à chaque produit : `routerPendingDefaults` dans `createRouter` (le défaut de TanStack Router attend 1 s), et `contentKey={location.pathname}` sur `AppShell`, une frontière `Suspense` neuve par page qui couvre les données chargées dans les composants (`useSuspenseQuery`), qu'une navigation en transition React aurait sinon cachées derrière l'ancienne page. Les petits états (boutons, lignes) gardent `Spinner`.

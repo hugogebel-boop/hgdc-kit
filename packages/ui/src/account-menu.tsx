@@ -32,6 +32,7 @@ import { MENU_LINK_ITEM } from "./org-switcher.tsx"
 import type { FamilyProduct } from "./family-svg.ts"
 import { ProductBadge } from "./product-badge.tsx"
 import { productMenuEntries } from "./products.ts"
+import { useProductRailShown } from "./shell-placement.ts"
 import { useTheme, type Theme } from "./theme.tsx"
 
 export type HgdcProduct = {
@@ -58,7 +59,8 @@ const THEMES: ReadonlyArray<Theme> = ["light", "dark", "system"]
  * l'avatar seul, pour une barre du haut. Le produit passe les actions ; le thème passe par
  * `ThemeProvider`.
  *
- * « Produits » liste par défaut Account et les produits ouverts du catalogue
+ * « Produits » (masquée au-delà de `lg` dans une coque qui affiche la barre des produits, où ils
+ * sont déjà ; gardée sur téléphone) liste par défaut Account et les produits ouverts du catalogue
  * (`productMenuEntries`, `@hgdc/ui/products`), avec `product` coché. `products` remplace cette
  * liste ; `products={[]}` la retire.
  */
@@ -92,6 +94,7 @@ export function AccountMenu({
 }): React.JSX.Element {
   const { theme, setTheme } = useTheme()
   const products = productsProp ?? productMenuEntries({ current: currentProduct, accountHref })
+  const railShown = useProductRailShown()
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -178,8 +181,9 @@ export function AccountMenu({
         ) : null}
         {products.length ? (
           <>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
+            {/* Sur ordinateur, la barre des produits les montre déjà : la section reste pour le téléphone. */}
+            <DropdownMenuSeparator className={railShown ? "lg:hidden" : undefined} />
+            <DropdownMenuGroup className={railShown ? "lg:hidden" : undefined}>
               <DropdownMenuLabel>Produits</DropdownMenuLabel>
               {products.map((product) =>
                 product.current ? (

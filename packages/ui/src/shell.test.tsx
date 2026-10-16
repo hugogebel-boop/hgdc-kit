@@ -7,6 +7,7 @@ import { AccountMenu } from "./account-menu.tsx"
 import { AppShell, SidebarNav, SidebarNavItem, toggleSidebar } from "./app-shell.tsx"
 import { CommandMenu, matchCommand } from "./command-menu.tsx"
 import { OrgSwitcher } from "./org-switcher.tsx"
+import { PagePending, routerPendingDefaults } from "./page-pending.tsx"
 import { PRODUCT_RAIL_OPEN_DELAY } from "./product-rail.tsx"
 import { PRODUCT_ENTRY_PATH } from "./products.ts"
 
@@ -320,5 +321,89 @@ describe("AccountMenu", () => {
     expect(screen.getByRole("menuitem", { name: "Mail" }).getAttribute("href")).toBe("https://mail.example")
     fireEvent.click(screen.getByRole("menuitem", { name: "Se déconnecter" }))
     expect(onSignOut).toHaveBeenCalledOnce()
+  })
+
+  it("dans une coque avec la barre des produits : section Produits masquée au-delà de lg, gardée sur téléphone", async () => {
+    const menu = (
+      <AccountMenu
+        user={{ name: "Hugo Gebel", email: "hugo@example.ch" }}
+        onSignOut={() => {}}
+        products={[
+          { name: "Host", href: "https://host.example", current: true },
+          { name: "Mail", href: "https://mail.example" },
+        ]}
+      />
+    )
+    const { unmount } = render(
+      <AppShell product="host" nav={null} sidebarFooter={menu}>
+        Page
+      </AppShell>,
+    )
+    const aside = screen.getByRole("complementary", { name: "Barre latérale" })
+    fireEvent.click(within(aside).getByRole("button", { name: "Compte de Hugo Gebel" }))
+    const mail = await screen.findByRole("menuitem", { name: "Mail" })
+    // Toujours dans le menu (téléphone, < lg), caché par `lg:hidden` (≥ lg, la barre les montre).
+    const group = mail.closest("[role=group]")
+    expect(group?.className).toContain("lg:hidden")
+    expect(
+      screen.getByRole("menuitem", { name: "Se déconnecter" }).closest("[role=group]")?.className ?? "",
+    ).not.toContain("lg:hidden")
+    unmount()
+
+    // Sans barre des produits (`productRail={false}`), la section reste visible partout.
+    render(
+      <AppShell product="account" productRail={false} nav={null} sidebarFooter={menu}>
+        Page
+      </AppShell>,
+    )
+    fireEvent.click(
+      within(screen.getByRole("complementary", { name: "Barre latérale" })).getByRole("button", {
+        name: "Compte de Hugo Gebel",
+      }),
+    )
+    const mailAgain = await screen.findByRole("menuitem", { name: "Mail" })
+    expect(mailAgain.closest("[role=group]")?.className ?? "").not.toContain("lg:hidden")
+  })
+})
+
+describe("Chargement d'une page", () => {
+  it("routerPendingDefaults : PagePending après 120 ms, au moins 400 ms", () => {
+    expect(routerPendingDefaults).toEqual({
+      defaultPendingComponent: PagePending,
+      defaultPendingMs: 120,
+      defaultPendingMinMs: 400,
+    })
+  })
+
+  it("contentKey : la page qui charge ses données montre le H centré à la place de l'ancienne", async () => {
+    let resolve = () => {}
+    const pending = new Promise<void>((r) => {
+      resolve = r
+    })
+    let ready = false
+    function SlowPage(): React.JSX.Element {
+      if (!ready) throw pending
+      return <p>Nouvelle page</p>
+    }
+    const { rerender } = render(
+      <AppShell product="host" nav={null} contentKey="/a">
+        <p>Ancienne page</p>
+      </AppShell>,
+    )
+    expect(screen.getByText("Ancienne page")).toBeDefined()
+    rerender(
+      <AppShell product="host" nav={null} contentKey="/b">
+        <SlowPage />
+      </AppShell>,
+    )
+    expect(screen.queryByText("Ancienne page")).toBeNull()
+    const main = screen.getByRole("main")
+    expect(within(main).getByRole("status", { name: "Chargement…" })).toBeDefined()
+    ready = true
+    await act(async () => {
+      resolve()
+      await pending
+    })
+    expect(await screen.findByText("Nouvelle page")).toBeDefined()
   })
 })

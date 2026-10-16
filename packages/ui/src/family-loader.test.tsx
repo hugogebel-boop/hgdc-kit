@@ -23,7 +23,7 @@ describe("FamilyLoader", () => {
 
   it("reprend exactement les trois pièces du H de la famille", () => {
     const { container } = render(<FamilyLoader />)
-    const pieces = [...container.querySelectorAll("rect")].map((rect) =>
+    const pieces = [...container.querySelectorAll("rect[data-piece]")].map((rect) =>
       ["x", "y", "width", "height", "rx"].map((name) => `${name}="${rect.getAttribute(name)}"`).join(" "),
     )
     expect(pieces).toHaveLength(3)
@@ -46,10 +46,28 @@ describe("FamilyLoader", () => {
     expect(screen.getByRole("status", { name: "Ouverture du projet…" })).toBeDefined()
   })
 
-  it("attend 200 ms avant d'apparaître, réglable", () => {
+  it("attend 120 ms avant d'apparaître, réglable", () => {
+    render(<FamilyLoader />)
+    expect(screen.getByRole("status").style.getPropertyValue("--family-loader-delay")).toBe("120ms")
+    cleanup()
     render(<FamilyLoader delay={500} />)
     expect(screen.getByRole("status").style.getPropertyValue("--family-loader-delay")).toBe("500ms")
-    expect(css).toMatch(/\.family-loader \{[^}]*opacity: 0;[^}]*var\(--family-loader-delay, 200ms\)/)
+    expect(css).toMatch(/\.family-loader \{[^}]*opacity: 0;[^}]*var\(--family-loader-delay, 120ms\)/)
+  })
+
+  it("garde le fantôme du H sous les pièces : la boucle n'a jamais de trou", () => {
+    const { container } = render(<FamilyLoader />)
+    const ghost = container.querySelector("[data-ghost]")
+    expect(ghost?.getAttribute("opacity")).toBe("0.15")
+    expect(ghost?.querySelectorAll("rect")).toHaveLength(3)
+    // Le fantôme n'est jamais animé ni masqué en mouvement normal.
+    expect(css).not.toMatch(/\[data-ghost\][^{]*\{[^}]*animation/)
+  })
+
+  it("en page : taille lg (64 px) et centré sous l'en-tête", () => {
+    const { container } = render(<FamilyLoader page />)
+    expect(screen.getByRole("status").className).toContain("size-16")
+    expect(container.firstElementChild?.className).toContain("place-items-center")
   })
 
   it("mouvement réduit : les pièces ne bougent plus, le H respire", () => {
