@@ -1,5 +1,12 @@
 # @hgdc/ui
 
+## 0.11.2
+
+### Patch Changes
+
+- e20962f: `DestructiveDialog` : le champ de confirmation s'annonce « Tape <nom> pour confirmer », sans le libellé du bouton Copier.
+- 1d7c53a: `PageHeader` : sans description, les actions s'alignent en haut. Un bouton plus haut que le titre le poussait de 3 px vers le bas ; le titre commence maintenant au même endroit dans tous les produits.
+
 ## 0.11.1
 
 ### Patch Changes
