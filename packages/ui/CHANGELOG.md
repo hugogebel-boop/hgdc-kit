@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.14.2
+
+### Patch Changes
+
+- db0b77a: `AppShell` : le calque de navigation ne réapparaît plus un instant quand une page qui montrait `PagePending` arrive ; il s'efface derrière `PagePending` (même H, même place) sans revenir.
+
 ## 0.14.1
 
 ### Patch Changes
