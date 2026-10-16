@@ -109,3 +109,31 @@ export const routerPendingDefaults: {
   defaultPreload: "intent",
   defaultPreloadStaleTime: 0,
 }
+
+/** Ce que `shellNavigation` lit dans l'état de TanStack Router (`useRouterState`). */
+export type RouterNavigationState = {
+  status: string
+  isLoading: boolean
+  location: { pathname: string }
+  resolvedLocation?: { pathname: string } | undefined
+}
+
+/**
+ * Props de chargement d'`AppShell` tirées de l'état du routeur :
+ *
+ * ```tsx
+ * const navigation = useRouterState({ select: shellNavigation, structuralSharing: true })
+ * <AppShell {...navigation} … />
+ * ```
+ *
+ * `navigating` : une autre page est demandée et pas encore affichée (pas une simple mise à jour
+ * des paramètres de la page ouverte). `contentKey` : la page affichée, pas celle qui charge, pour
+ * que l'ancienne page ne se remonte pas avant d'être remplacée.
+ */
+export function shellNavigation(state: RouterNavigationState): { navigating: boolean; contentKey: string } {
+  const shown = state.resolvedLocation?.pathname ?? state.location.pathname
+  return {
+    navigating: (state.isLoading || state.status === "pending") && state.location.pathname !== shown,
+    contentKey: shown,
+  }
+}
