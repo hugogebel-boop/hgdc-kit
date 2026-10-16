@@ -82,7 +82,12 @@ export function PageHeader({
   return (
     <header data-slot="page-header" className={cn("mb-8 grid gap-3", className)}>
       {breadcrumbs?.length ? <Breadcrumbs items={breadcrumbs} /> : null}
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      {/* Calées en bas sous une description ; sans elle, un bouton (40 px) plus haut que le titre
+          (37 px) le pousserait de 3 px : le titre doit commencer au même endroit partout. */}
+      <div
+        data-slot="page-header-row"
+        className={cn("flex flex-wrap justify-between gap-4", description ? "items-end" : "items-start")}
+      >
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-[28px]">{title}</h1>
           {description ? <p className="mt-1.5 max-w-prose text-sm text-muted-foreground">{description}</p> : null}

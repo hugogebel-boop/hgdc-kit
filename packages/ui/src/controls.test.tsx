@@ -63,6 +63,18 @@ describe("PageHeader", () => {
     expect(nav.querySelector("[aria-current=page]")?.textContent).toBe("Déploiements")
   })
 
+  it("garde le titre en haut quand l'action est plus haute que lui", () => {
+    const { container, rerender } = render(
+      <PageHeader title="Projets" actions={<button type="button">Nouveau</button>} />,
+    )
+    const row = () => container.querySelector("[data-slot=page-header-row]")
+    expect(row()?.className).toContain("items-start")
+    rerender(
+      <PageHeader title="Projets" description="Tous les projets" actions={<button type="button">Nouveau</button>} />,
+    )
+    expect(row()?.className).toContain("items-end")
+  })
+
   it("accepte le lien du routeur du produit", () => {
     render(
       <Breadcrumbs
