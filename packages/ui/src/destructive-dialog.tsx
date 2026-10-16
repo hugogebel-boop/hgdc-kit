@@ -1,7 +1,7 @@
 import Copy01Icon from "@hugeicons/core-free-icons/Copy01Icon"
 import Tick02Icon from "@hugeicons/core-free-icons/Tick02Icon"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { useId, useRef, useState, type ReactNode } from "react"
+import { useRef, useState, type ReactNode } from "react"
 import { toast } from "sonner"
 
 import { Button } from "./button.tsx"
@@ -81,7 +81,6 @@ export function DestructiveDialog({
   const view = shown.current
   const [typed, setTyped] = useState("")
   const [pending, setPending] = useState(false)
-  const inputId = useId()
   const ready = !pending && (view.name === undefined || matchesConfirmation(typed, view.name))
 
   const [wasOpen, setWasOpen] = useState(open)
@@ -132,11 +131,12 @@ export function DestructiveDialog({
               void confirm()
             }}
           >
-            <label htmlFor={inputId} className="text-[15px] leading-7 text-muted-foreground">
+            {/* Pas de <label> : le bouton Copier y entrerait dans le nom accessible du champ. */}
+            <p className="text-[15px] leading-7 text-muted-foreground">
               Tape <NameChip name={view.name} /> pour confirmer.
-            </label>
+            </p>
             <Input
-              id={inputId}
+              aria-label={`Tape ${view.name} pour confirmer`}
               autoFocus
               autoComplete="off"
               autoCapitalize="off"
