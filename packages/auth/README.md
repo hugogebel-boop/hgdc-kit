@@ -111,13 +111,18 @@ Le claim `organizations` n'est lu qu'à la création d'une session (étape 1 ci-
 - Barre et menu des produits (`@hgdc/ui/products`) : `https://<mot>.hgdc.ch/auth/hgdc?refresh=1&next=/`. Chaque passage d'un produit à l'autre resynchronise.
 - Page d'une organisation inconnue du produit (ou dont la personne n'est pas membre localement) : une seule redirection vers `hgdcRefreshPath("/o/acme")` avant d'afficher « introuvable ». Au retour, `next` porte `?synced=1` : `hasSyncedMarker(location.search)` vrai, la page affiche « introuvable » au lieu de relancer. L'entrée elle-même ne relance jamais un `next` déjà marqué : pas de boucle.
 
-```ts
-import { hasSyncedMarker, hgdcRefreshPath } from "@hgdc/auth"
+```tsx
+// Côté client, une fois les organisations chargées
+import { useOrganizationRefresh } from "@hgdc/auth/react"
 
-if (org === null && !hasSyncedMarker(window.location.search)) {
-  window.location.replace(hgdcRefreshPath(`/o/${slug}`))
-  return null
-}
+const refreshing = useOrganizationRefresh(viewer !== undefined && !space)
+if (refreshing) return <FamilyLoader page />
+if (!space) return <NotFound />
+
+// Dans un loader ou un beforeLoad (rendu serveur compris)
+import { hasSyncedMarker, hgdcRefreshPath } from "@hgdc/auth"
+if (!organization && !hasSyncedMarker(location.searchStr))
+  throw redirect({ href: hgdcRefreshPath(location.href), reloadDocument: true })
 ```
 
 - L'ancienne session n'est pas révoquée : si Account ne répond pas, la personne garde son accès, et la session expire seule (`SESSION_TTL_SECONDS`).

@@ -1,6 +1,6 @@
-import { useState, type ButtonHTMLAttributes, type ReactElement } from "react"
+import { useEffect, useState, type ButtonHTMLAttributes, type ReactElement } from "react"
 
-import { HGDC_PROVIDER_ID } from "./index.ts"
+import { HGDC_PROVIDER_ID, hasSyncedMarker, hgdcRefreshPath } from "./index.ts"
 
 /** Ce que le bouton utilise du client better-auth (plugin `genericOAuthClient`). */
 export type HgdcAuthClient = {
@@ -112,4 +112,29 @@ export function HgdcSignInButton({
       <span>{pending ? "Redirection vers Account…" : label}</span>
     </button>
   )
+}
+
+/**
+ * Page d'une organisation inconnue du produit, ou dont la personne n'est pas membre dans sa copie :
+ * une invitation acceptée dans Account n'y arrive qu'à la session suivante (ADR 0013). Quand
+ * `unknown` est vrai, part une fois vers `/auth/hgdc?refresh=1&next=<page>` et rend `true` (afficher
+ * un chargement). Au retour (`?synced=1`), rend `false` : afficher « introuvable ».
+ *
+ * Côté client seulement : à appeler une fois la liste des organisations chargée.
+ *
+ * ```tsx
+ * const refreshing = useOrganizationRefresh(viewer !== undefined && !space)
+ * if (refreshing) return <FamilyLoader page />
+ * if (!space) return <NotFound />
+ * ```
+ */
+export function useOrganizationRefresh(unknown: boolean): boolean {
+  const synced = typeof window === "undefined" || hasSyncedMarker(window.location.search)
+  const refreshing = unknown && !synced
+  useEffect(() => {
+    if (!refreshing) return
+    const { pathname, search, hash } = window.location
+    window.location.replace(hgdcRefreshPath(`${pathname}${search}${hash}`))
+  }, [refreshing])
+  return refreshing
 }
