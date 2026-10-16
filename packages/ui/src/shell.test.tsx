@@ -7,7 +7,7 @@ import { AccountMenu } from "./account-menu.tsx"
 import { AppShell, SidebarNav, SidebarNavItem, toggleSidebar } from "./app-shell.tsx"
 import { CommandMenu, matchCommand } from "./command-menu.tsx"
 import { OrgSwitcher } from "./org-switcher.tsx"
-import { PagePending, routerPendingDefaults } from "./page-pending.tsx"
+import { PagePending, routerPendingDefaults, shellNavigation } from "./page-pending.tsx"
 import { PRODUCT_RAIL_OPEN_DELAY } from "./product-rail.tsx"
 import { PRODUCT_ENTRY_PATH } from "./products.ts"
 
@@ -500,5 +500,26 @@ describe("Chargement d'une page", () => {
     fireEvent.click(mail)
     window.removeEventListener("click", stay)
     expect(overlay()?.dataset.visible).toBe("")
+  })
+})
+
+describe("shellNavigation", () => {
+  it("ne signale qu'un changement de page, et garde la page affichée comme clé", () => {
+    const at = (pathname: string) => ({ pathname })
+    expect(
+      shellNavigation({ status: "pending", isLoading: true, location: at("/b"), resolvedLocation: at("/a") }),
+    ).toEqual({ navigating: true, contentKey: "/a" })
+    // Mise à jour de la page ouverte (recherche, filtres) : pas de calque.
+    expect(
+      shellNavigation({ status: "pending", isLoading: true, location: at("/a"), resolvedLocation: at("/a") }),
+    ).toEqual({ navigating: false, contentKey: "/a" })
+    expect(
+      shellNavigation({ status: "idle", isLoading: false, location: at("/b"), resolvedLocation: at("/b") }),
+    ).toEqual({ navigating: false, contentKey: "/b" })
+    // Premier rendu, rien de résolu encore.
+    expect(shellNavigation({ status: "idle", isLoading: false, location: at("/a") })).toEqual({
+      navigating: false,
+      contentKey: "/a",
+    })
   })
 })
