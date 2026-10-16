@@ -1,5 +1,11 @@
 # @hgdc/auth
 
+## 0.6.1
+
+### Patch Changes
+
+- 3d260ac: README : clés JWKS statiques côté Convex, pour que la vérification du jeton ne refasse pas une requête à chaque appel HTTP.
+
 ## 0.6.0
 
 ### Minor Changes
