@@ -344,7 +344,6 @@ export function AppShell({
   // Chargement de la zone de contenu : navigation en cours (après 50 ms, au moins 300 ms), ou départ
   // vers un autre produit (aussitôt). Une page qui affiche déjà `PagePending` montre le même H au
   // même endroit : le calque de la coque s'efface alors derrière lui.
-  const navigatingShown = useDelayedFlag(navigating, PAGE_PENDING_MS, PAGE_PENDING_MIN_MS)
   const [leaving, setLeaving] = useState(false)
   const [pagePending, setPagePending] = useState(0)
   const registerPagePending = useCallback(() => {
@@ -360,7 +359,11 @@ export function AppShell({
     window.addEventListener("pageshow", onPageShow)
     return () => window.removeEventListener("pageshow", onPageShow)
   }, [])
-  const loading = (navigatingShown || leaving) && pagePending === 0
+  // Le calque attend 50 ms et reste au moins 300 ms ; quand la page prend le relais avec
+  // `PagePending` (même H, même place, même phase), il s'efface derrière elle sans que rien ne bouge,
+  // et ne revient pas quand la page arrive.
+  const navigatingShown = useDelayedFlag(navigating && pagePending === 0, PAGE_PENDING_MS, PAGE_PENDING_MIN_MS)
+  const loading = navigatingShown || leaving
   const contentRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     // Sur ordinateur, la zone de contenu défile seule : le calque couvre sa partie visible, en haut.
