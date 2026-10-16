@@ -4,6 +4,7 @@ import UnfoldMoreIcon from "@hugeicons/core-free-icons/UnfoldMoreIcon"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Menu as MenuPrimitive } from "@base-ui/react/menu"
 
+import { Badge } from "./badge.tsx"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./dropdown-menu.tsx"
+import { initials } from "./initials.ts"
 import { useShellPlacement } from "./shell-placement.ts"
 import { cn } from "./cn.ts"
 
@@ -25,11 +27,31 @@ export const ORG_ROLE_LABEL: Record<OrgRole, string> = {
   member: "Membre",
 }
 
+/**
+ * Le rôle d'une personne dans l'organisation, le même badge dans tous les produits : neutre,
+ * monochrome (l'accent violet ne marque pas un rôle). `title` : ce que le rôle permet.
+ */
+export function RoleBadge({
+  orgRole: role,
+  title,
+  className,
+}: {
+  orgRole: OrgRole
+  title?: string
+  className?: string
+}): React.JSX.Element {
+  return (
+    <Badge tone="neutral" data-role={role} title={title} className={className}>
+      {ORG_ROLE_LABEL[role]}
+    </Badge>
+  )
+}
+
 export type Organization = {
   id: string
   name: string
   role?: OrgRole
-  /** URL d'un logo carré ; sans logo, les deux premières lettres du nom. */
+  /** URL d'un logo carré ; sans logo, les initiales du nom (`initials`). */
   logo?: string
 }
 
@@ -37,7 +59,7 @@ export type Organization = {
 export const MENU_LINK_ITEM: string =
   "relative flex cursor-default items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium outline-hidden select-none focus:bg-muted focus:text-foreground data-highlighted:bg-muted max-lg:min-h-11 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
 
-/** Marque d'une organisation : son logo, ou ses deux premières lettres sur un carré arrondi. */
+/** Marque d'une organisation : son logo, ou ses initiales (`initials`) sur un carré arrondi. */
 export function OrgMark({
   org,
   className,
@@ -55,7 +77,7 @@ export function OrgMark({
         className,
       )}
     >
-      {org.name.slice(0, 2)}
+      {initials(org.name)}
     </span>
   )
 }

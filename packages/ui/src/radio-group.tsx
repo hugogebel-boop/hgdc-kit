@@ -30,7 +30,7 @@ export function RadioGroupItem({ className, ...props }: RadioPrimitive.Root.Prop
         "data-checked:border-primary data-checked:bg-primary",
         "data-disabled:cursor-not-allowed data-disabled:opacity-50",
         "aria-invalid:border-destructive data-invalid:border-destructive",
-        "dark:bg-white/[0.04]",
+        "dark:bg-white/[0.04] dark:data-checked:bg-primary",
         className,
       )}
       {...props}

@@ -27,6 +27,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "./dropdown-menu.tsx"
+import { initials } from "./initials.ts"
 import { MENU_LINK_ITEM } from "./org-switcher.tsx"
 import type { FamilyProduct } from "./family-svg.ts"
 import { ProductBadge } from "./product-badge.tsx"
@@ -50,15 +51,6 @@ export type HgdcProduct = {
 export type AccountUser = { name: string; email: string; image?: string | null }
 
 const THEMES: ReadonlyArray<Theme> = ["light", "dark", "system"]
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-}
 
 /**
  * Le menu du compte, en bas de la barre latérale : profil, sécurité, thème, raccourcis, autres
@@ -121,7 +113,7 @@ export function AccountMenu({
       >
         <Avatar>
           {user.image ? <AvatarImage src={user.image} alt="" /> : null}
-          <AvatarFallback className="text-xs font-semibold uppercase">{initials(user.name)}</AvatarFallback>
+          <AvatarFallback className="text-xs font-semibold uppercase">{initials(user.name, user.email)}</AvatarFallback>
         </Avatar>
         {variant === "row" ? (
           <span className="min-w-0 flex-1 lg:rail:hidden">

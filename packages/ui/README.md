@@ -41,7 +41,7 @@ Primitives déjà là : `avatar` `badge` `button` `dialog` `drawer` `dropdown-me
 
 | Import         | Exemple                                                                                                                                                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `app-shell`    | `<AppShell product="mail" organization={<OrgSwitcher …/>} nav={<SidebarNav label="Projet">…</SidebarNav>} sidebarFooter={<AccountMenu …/>}>`                                                                                    |
+| `app-shell`    | `<AppShell product="mail" organization={<OrgSwitcher …/>} nav={<SidebarNav label="Projet">…</SidebarNav>} sidebarFooter={<AccountMenu …/>} onSearch={() => setOpen(true)}>`                                                     |
 |                | `<SidebarNavItem icon={Rocket01Icon} label="Déploiements" render={<Link to="/deployments" />} />`                                                                                                                               |
 | `org-switcher` | `<OrgSwitcher organizations={orgs} activeId={org.id} onSelect={go} createHref="/organisations/nouvelle" />`                                                                                                                     |
 | `account-menu` | `<AccountMenu user={user} onProfile={…} onSecurity={…} onSignOut={signOut} product="Mail" />` : Account et les produits ouverts du catalogue, Mail coché                                                                        |
@@ -49,8 +49,21 @@ Primitives déjà là : `avatar` `badge` `button` `dialog` `drawer` `dropdown-me
 | `products`     | `HGDC_PRODUCTS` (mot, nom, sous-domaine, phrase, pastille `badge`, icône, état, `entryHref`), `HGDC_ACCOUNT`, `productMenuEntries({ current: "Mail" })` : chaque produit du menu pointe vers son entrée `/auth/hgdc` (ADR 0010) |
 | `kbd`          | `<KbdGroup><Kbd>Ctrl</Kbd><Kbd>K</Kbd></KbdGroup>`                                                                                                                                                                              |
 | `page-header`  | `<PageHeader title="Domaines" breadcrumbs={[{ label: "Acme", render: <Link to="/o/acme" /> }, { label: "Domaines" }]} actions={<Button>Ajouter</Button>} />`                                                                    |
+| `page-header`  | `<Page title="Réglages">…</Page>` (colonne de lecture de 768 px), `<Page title="Projets" wide actions={…}>…</Page>` (tableaux, listes, tableaux de bord)                                                                        |
+| `member-item`  | `<ResourceList><MemberItem name={m.name} email={m.email} orgRole={m.role} isMe={m.isMe} /></ResourceList>` : avatar à initiales, « (toi) », `RoleBadge`                                                                         |
+| `initials`     | `initials("Test vérif")` donne « TV » : la même règle pour une personne et une organisation (`OrgMark`, `AccountMenu`, `MemberItem`)                                                                                            |
 
 Le menu « Produits » et la palette (`badge` d'une commande) montrent la pastille de chaque produit.
+
+### Mise en page (ADR 0012)
+
+Une seule règle dans les sept produits, posée par la coque :
+
+- **Barre du haut** : sur téléphone, menu puis marque du produit (pastille et mot), toujours. Puis le contexte du produit (`header`, à gauche : sélecteur de projet). La recherche passe par `onSearch` : toujours à droite, 384 px sur ordinateur, la loupe seule sous `lg`. Ne pas poser `CommandMenuButton` dans `header`.
+- **Contenu** : la même boîte partout (`max-w-6xl`, marges `px-4`, `sm:px-6`, `lg:px-10`), donc le titre au même endroit. Pas de `mainClassName` (déprécié).
+- **Largeur d'une page** : `Page`, alignée à gauche. Par défaut une colonne de lecture de 768 px (formulaires, réglages, fiches, membres) ; `wide` pour les tableaux, listes à colonnes, tableaux de bord et grilles de cartes.
+- **États vides** : `<Empty variant="card">` pour une page vide, icône monochrome (`EmptyMedia variant="icon"`), sans teinte de couleur.
+- **Rôles et initiales** : `RoleBadge` (neutre), `MemberItem`, `initials`. Jamais une fonction d'initiales ou un badge de rôle dans un produit.
 
 ## Identité H family
 
