@@ -38,3 +38,7 @@ Le bouton qui réduit la barre latérale posait deux problèmes. Il était plus 
 | Survol, barre latérale pliée                                | ![](captures/rail-light-survol-pliee.png)   | ![](captures/rail-dark-survol-pliee.png)   |
 | Contrôles éteints, allumés, désactivés (fond, carte, muted) | ![](captures/controles-light.png)           | ![](captures/controles-dark.png)           |
 | `FamilyLoader`, un cycle en 12 images (150 ms)              | ![](captures/loader-light-planche.png)      | ![](captures/loader-dark-planche.png)      |
+
+## Changer de produit (2026-10-16)
+
+Chaque produit vit sur son domaine : un clic dans la barre ou dans le menu du compte ouvre un document neuf, la coque ne peut pas survivre. Pour qu'il se passe quelque chose tout de suite, la coque couvre sa zone de contenu du H de chargement dès le clic simple (pas Ctrl, Cmd, Maj ni la molette), puis le navigateur ouvre l'autre produit, qui rend sa coque dès le rendu serveur. Un retour arrière (cache de page) rend la page telle quelle.

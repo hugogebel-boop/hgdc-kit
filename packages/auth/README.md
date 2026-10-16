@@ -2,13 +2,13 @@
 
 Connexion d'un produit de la famille à Account (OIDC) : bouton « Se connecter avec H family », configuration du client better-auth, proxy `/api/auth` pour TanStack Start et gardes Convex.
 
-| Import              | Contenu                                                                                                                                                                                                                                                                                                                                                           |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@hgdc/auth`        | `HGDC_ISSUER`, `HGDC_PROVIDER_ID`, `HGDC_SCOPES`, entrée commune (`HGDC_ENTRY_PATH`, `safeNextPath`, `hgdcEntryUrl`), rôles (`highestRole`, `hasRole`), `parseHgdcProfile`, `verifiedOrganizationsFromIdToken`, `verifyHgdcIdToken`, `planOrganizationSync`, fraîcheur (`membershipIsFresh`, `SESSION_TTL_SECONDS`, `MEMBERSHIP_TTL_MS`, `KEY_MEMBERSHIP_TTL_MS`) |
-| `@hgdc/auth/server` | `hgdcProvider` (plugin `genericOAuth`), `createAuthProxy`, `restoreFetchMode`, `createHgdcEntry`                                                                                                                                                                                                                                                                  |
-| `@hgdc/auth/convex` | `requireIdentity`, `requireOrgMember`, `isAuthError`, `authErrorReason`, `AUTH_ERROR_MESSAGES`                                                                                                                                                                                                                                                                    |
-| `@hgdc/auth/events` | Événements poussés par Account : `ACCOUNT_EVENTS_PATH`, `signAccountEvent`, `verifyAccountEvent`, `handleAccountEventRequest`, `accountEventSchema`, `accountEventIsStale`, `ACCOUNT_EVENT_RETENTION_MS`, et pour Convex `vAccountEvent`, `accountEventsTable`                                                                                                    |
-| `@hgdc/auth/react`  | `HgdcSignInButton`, `startHgdcSignIn`, `HgdcMark` (le H tricolore de la famille, `HGDC_MARK_SVG`)                                                                                                                                                                                                                                                                 |
+| Import              | Contenu                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@hgdc/auth`        | `HGDC_ISSUER`, `HGDC_PROVIDER_ID`, `HGDC_SCOPES`, entrée commune (`HGDC_ENTRY_PATH`, `safeNextPath`, `hgdcEntryUrl`), rôles (`highestRole`, `hasRole`), `parseHgdcProfile`, `verifiedOrganizationsFromIdToken`, `verifyHgdcIdToken`, `planOrganizationSync`, fraîcheur (`membershipIsFresh`, `SESSION_TTL_SECONDS`, `MEMBERSHIP_TTL_MS`, `KEY_MEMBERSHIP_TTL_MS`), `createSessionTokenCache` |
+| `@hgdc/auth/server` | `hgdcProvider` (plugin `genericOAuth`), `createAuthProxy`, `restoreFetchMode`, `createHgdcEntry`                                                                                                                                                                                                                                                                                             |
+| `@hgdc/auth/convex` | `requireIdentity`, `requireOrgMember`, `isAuthError`, `authErrorReason`, `AUTH_ERROR_MESSAGES`                                                                                                                                                                                                                                                                                               |
+| `@hgdc/auth/events` | Événements poussés par Account : `ACCOUNT_EVENTS_PATH`, `signAccountEvent`, `verifyAccountEvent`, `handleAccountEventRequest`, `accountEventSchema`, `accountEventIsStale`, `ACCOUNT_EVENT_RETENTION_MS`, et pour Convex `vAccountEvent`, `accountEventsTable`                                                                                                                               |
+| `@hgdc/auth/react`  | `HgdcSignInButton`, `startHgdcSignIn`, `HgdcMark` (le H tricolore de la famille, `HGDC_MARK_SVG`)                                                                                                                                                                                                                                                                                            |
 
 Pairs : better-auth 1.6, convex 1.46+, React 19 (chacun facultatif selon l'import).
 
@@ -130,6 +130,29 @@ if (!organization && !hasSyncedMarker(location.searchStr))
 - Lien vers un produit avec relecture : `hgdcEntryUrl(origin, "/o/acme", { refresh: true })`.
 
 Décisions : ADR 0010, ADR 0013.
+
+## Session dans le `beforeLoad` de la racine
+
+Sans cache, chaque navigation côté navigateur rappelait le serveur (`getAuth`) avant tout rendu : l'ancienne page restait figée, et TanStack Router n'affiche aucun chargement pendant un `beforeLoad`. `createSessionTokenCache` reprend au navigateur une session ouverte pendant 5 minutes (le client Convex renouvelle lui-même son jeton), relit toujours au serveur, et s'amorce avec le jeton du rendu serveur :
+
+```ts
+const session = createSessionTokenCache(() => getAuth())
+
+export const Route = createRootRouteWithContext<…>()({
+  beforeLoad: async ({ context }) => {
+    const token = await session.read()
+    if (token) context.convexQueryClient.serverHttpClient?.setAuth(token)
+    return { isAuthenticated: Boolean(token), token }
+  },
+  component: () => {
+    const context = Route.useRouteContext()
+    useEffect(() => session.seed(context.token), [context.token])
+    …
+  },
+})
+```
+
+Une absence de session n'est jamais gardée. Déconnexion : recharger la page, ou `session.clear()`.
 
 ## Garder une fonction Convex
 

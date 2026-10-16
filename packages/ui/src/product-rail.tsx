@@ -2,17 +2,20 @@ import { useEffect, useRef, useState, type ReactNode } from "react"
 
 import { ProductBadge } from "./product-badge.tsx"
 import { productRailEntries, type HgdcCatalogProduct, type ProductRailEntry } from "./products.ts"
-import { ShellPlacementContext } from "./shell-placement.ts"
+import { ShellPlacementContext, useLeaveOnClick } from "./shell-placement.ts"
 import { cn } from "./cn.ts"
 
 /** Délai d'intention avant d'élargir la barre au survol : un passage de souris ne l'ouvre pas. */
 export const PRODUCT_RAIL_OPEN_DELAY = 150
 
 function ProductLink({ entry }: { entry: ProductRailEntry }): React.JSX.Element {
+  // Chaque produit s'ouvre en document complet : la coque montre le H dès le clic.
+  const leaveOnClick = useLeaveOnClick()
   return (
     <li>
       <a
         href={entry.href}
+        onClick={leaveOnClick}
         aria-current={entry.current ? "page" : undefined}
         className={cn(
           "flex h-10 items-center gap-3 rounded-xl px-2 text-shell-muted outline-none transition-colors duration-(--duration-fast) ease-out",

@@ -7,97 +7,88 @@ import { transform } from "lightningcss"
 import { afterEach, describe, expect, it } from "vitest"
 
 import { FamilyLoader } from "./family-loader.tsx"
-import { FAMILY_MARK_SVG } from "./family-svg.ts"
 
 afterEach(cleanup)
 
 const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "styles.css"), "utf8")
+
+const minified = transform({
+  filename: "styles.css",
+  code: Buffer.from(css),
+  minify: true,
+  errorRecovery: true,
+  targets: { chrome: 111 << 16, safari: 16 << 16, firefox: 128 << 16 },
+}).code.toString()
+
+/** Les règles minifiées hors mouvement réduit. */
+const normal = minified.slice(0, minified.indexOf("@media (prefers-reduced-motion:reduce){.family-loader"))
 
 describe("FamilyLoader", () => {
   it("s'annonce « Chargement… » en `role=status`", () => {
     render(<FamilyLoader />)
     const status = screen.getByRole("status", { name: "Chargement…" })
     expect(status.dataset.slot).toBe("family-loader")
-    expect(status.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true")
   })
 
-  it("reprend exactement les trois pièces du H de la famille", () => {
+  it("dessine les trois pièces du H, chacune avec sa couche de remplissage", () => {
     const { container } = render(<FamilyLoader />)
-    const pieces = [...container.querySelectorAll("rect[data-piece]")].map((rect) =>
-      ["x", "y", "width", "height", "rx"].map((name) => `${name}="${rect.getAttribute(name)}"`).join(" "),
-    )
-    expect(pieces).toHaveLength(3)
-    for (const piece of pieces) expect(FAMILY_MARK_SVG).toContain(piece)
+    const pieces = [...container.querySelectorAll("[data-piece]")]
+    expect(pieces.map((piece) => piece.getAttribute("data-piece"))).toEqual(["left", "right", "bar"])
+    for (const piece of pieces) expect(piece.querySelector("[data-fill]")).not.toBeNull()
   })
 
-  it("donne à chaque instance ses propres dégradés", () => {
-    const { container } = render(
-      <>
-        <FamilyLoader />
-        <FamilyLoader size="lg" label="Ouverture du projet…" />
-      </>,
-    )
-    const ids = [...container.querySelectorAll("linearGradient")].map((g) => g.id)
-    expect(new Set(ids).size).toBe(6)
-    for (const rect of container.querySelectorAll("rect")) {
-      const ref = rect.getAttribute("fill")?.match(/^url\(#(.+)\)$/)?.[1]
-      expect(ids).toContain(ref)
-    }
-    expect(screen.getByRole("status", { name: "Ouverture du projet…" })).toBeDefined()
+  it("garde la géométrie du H de la famille (sur 256)", () => {
+    for (const value of ["* 43 / 256", "* 156 / 256", "* 57 / 256", "* 208 / 256", "* 67 / 256", "* 107 / 256"])
+      expect(css).toContain(value)
   })
 
-  it("attend 120 ms avant d'apparaître, réglable", () => {
-    render(<FamilyLoader />)
-    expect(screen.getByRole("status").style.getPropertyValue("--family-loader-delay")).toBe("120ms")
+  it("64 px en page, 40 px par défaut, 24 px en petit", () => {
+    const size = () => screen.getByRole("status").style.getPropertyValue("--family-loader-size")
+    render(<FamilyLoader page />)
+    expect(size()).toBe("64px")
     cleanup()
-    render(<FamilyLoader delay={500} />)
-    expect(screen.getByRole("status").style.getPropertyValue("--family-loader-delay")).toBe("500ms")
-    expect(css).toMatch(/\.family-loader \{[^}]*opacity: 0;[^}]*var\(--family-loader-delay, 120ms\)/)
+    render(<FamilyLoader />)
+    expect(size()).toBe("40px")
+    cleanup()
+    render(<FamilyLoader size="sm" />)
+    expect(size()).toBe("24px")
   })
 
-  it("garde le fantôme du H sous les pièces : la boucle n'a jamais de trou", () => {
-    const { container } = render(<FamilyLoader />)
-    const ghost = container.querySelector("[data-ghost]")
-    expect(ghost?.getAttribute("opacity")).toBe("0.15")
-    expect(ghost?.querySelectorAll("rect")).toHaveLength(3)
-    // Le fantôme n'est jamais animé ni masqué en mouvement normal.
-    expect(css).not.toMatch(/\[data-ghost\][^{]*\{[^}]*animation/)
+  it("silhouette toujours visible : la pièce elle-même est grise, seul le remplissage bouge", () => {
+    expect(normal).toMatch(/\.family-loader \[data-piece\]\{[^}]*background:var\(--fl-ghost\)/)
+    expect(normal).not.toMatch(/\.family-loader \[data-piece\]\{[^}]*animation/)
   })
 
-  it("en page : taille lg (64 px) et centré sous l'en-tête", () => {
-    const { container } = render(<FamilyLoader page />)
-    expect(screen.getByRole("status").className).toContain("size-16")
-    expect(container.firstElementChild?.className).toContain("place-items-center")
-  })
-
-  it("mouvement réduit : les pièces ne bougent plus, le H respire", () => {
-    const reduced = css.slice(css.lastIndexOf("@media (prefers-reduced-motion: reduce)"))
-    expect(reduced).toMatch(/\.family-loader \[data-piece\] \{\s*animation: none;/)
-    expect(reduced).toMatch(/\.family-loader svg \{\s*animation: family-loader-breathe/)
-  })
-
-  it("minifié comme dans les produits (lightningcss, Vite), chaque pièce garde son animation", () => {
-    const minified = transform({
-      filename: "styles.css",
-      code: Buffer.from(css),
-      minify: true,
-      errorRecovery: true,
-      targets: { chrome: 111 << 16, safari: 16 << 16, firefox: 128 << 16 },
-    }).code.toString()
-    const reducedAt = minified.indexOf("@media (prefers-reduced-motion:reduce){.family-loader")
-    expect(reducedAt).toBeGreaterThan(-1)
-    const normal = minified.slice(0, reducedAt)
-    for (const piece of ["left", "bar", "right"]) {
-      const rule = normal.match(new RegExp(String.raw`\.family-loader \[data-piece=${piece}\]\{([^}]*)\}`))?.[1]
-      expect(rule, piece).toMatch(new RegExp(String.raw`^animation:[^;]*\bfamily-loader-${piece}\b`))
-      expect(rule, piece).toContain("infinite")
+  it("minifié comme dans les produits (lightningcss, Vite) : chaque remplissage garde son animation, transform seul", () => {
+    for (const [piece, name] of [
+      ["left", "family-loader-rise"],
+      ["right", "family-loader-rise"],
+      ["bar", "family-loader-sweep"],
+    ] as const) {
+      const rule = normal.match(
+        new RegExp(String.raw`\.family-loader \[data-piece=${piece}\] \[data-fill\]\{([^}]*)\}`),
+      )?.[1]
+      expect(rule, piece).toMatch(new RegExp(String.raw`animation:[^;]*\b${name}\b[^;]*infinite`))
     }
-    expect(normal).not.toMatch(/\.family-loader \[data-piece[^\]]*\]\{animation:none/)
-    expect(minified.slice(reducedAt)).toMatch(/\.family-loader \[data-piece\]\{animation:none\}/)
+    expect(normal).not.toMatch(/\.family-loader[^{]*\{[^}]*animation:none/)
+    for (const name of ["family-loader-rise", "family-loader-sweep"]) {
+      const keyframes = minified.match(new RegExp(String.raw`@keyframes ${name}\{(.*?)\}\}`))?.[1] ?? ""
+      expect(keyframes).toContain("transform")
+      expect(keyframes).not.toMatch(/clip-path|opacity|height|width/)
+    }
   })
 
-  it("`page` le centre dans un bloc de la hauteur de l'écran", () => {
+  it("mouvement réduit : le remplissage pulse en place, sans mouvement", () => {
+    const reduced = minified.slice(minified.indexOf("@media (prefers-reduced-motion:reduce){.family-loader"))
+    const rule = reduced.match(/\[data-fill\]\{([^}]*)\}/)?.[1] ?? ""
+    expect(rule).toContain("transform:none")
+    expect(rule).toMatch(/animation:[^;]*family-loader-glow/)
+  })
+
+  it("`page` le centre dans l'écran", () => {
     const { container } = render(<FamilyLoader page />)
-    expect(container.firstElementChild?.getAttribute("data-slot")).toBe("family-loader-page")
+    const wrapper = container.firstElementChild
+    expect(wrapper?.getAttribute("data-slot")).toBe("family-loader-page")
+    expect(wrapper?.className).toContain("place-items-center")
   })
 })

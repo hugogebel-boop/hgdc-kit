@@ -1,84 +1,62 @@
-import { useId } from "react"
+import { useEffect, useLayoutEffect, useRef } from "react"
 
 import { cn } from "./cn.ts"
 
-const SIZES = { sm: "size-6", md: "size-10", lg: "size-16" } as const
+const SIZES = { sm: 24, md: 40, lg: 64 } as const
 
 /**
- * Le chargement d'une page : le H tricolore de la H family se construit, tient, s'efface, en
- * boucle (CSS seul, `styles.css`), par-dessus son fantôme (le H à 15 %, toujours visible : la
- * boucle n'a jamais de trou). La forme et les dégradés sont ceux de `FAMILY_MARK_SVG`.
- * Il n'apparaît qu'après 120 ms (`delay`) : une page rapide ne le montre jamais, et sa place est
- * réservée dès le départ, rien ne saute. Mouvement réduit : le H entier respire.
+ * Le chargement d'une page : la silhouette grise du H de la famille, toujours visible, dont les
+ * trois pièces se remplissent de leurs dégradés tricolores l'une après l'autre, puis se vident, en
+ * boucle (1,6 s). CSS seul (`styles.css`) et seulement `transform` : l'animation tourne sur le
+ * compositeur et reste fluide pendant qu'une page charge. Mouvement réduit : la silhouette reste,
+ * le remplissage pulse doucement.
  *
- * Pour une page ou une route entière (`PagePending`, `routerPendingDefaults`) ; dans un bouton ou
- * une ligne, `Spinner` reste la règle. `page` le centre dans la zone de contenu, en taille `lg`.
+ * Dans la coque (`AppShell`), un chargement de page passe par `PagePending`, qui affiche ce H à une
+ * position fixe au centre de la zone de contenu. Ailleurs, `page` le centre dans l'écran. Dans un
+ * bouton ou une ligne, `Spinner` reste la règle.
  */
 export function FamilyLoader({
   size,
   label = "Chargement…",
-  delay = 120,
   page = false,
   className,
 }: {
+  /** `sm` 24 px, `md` 40 px, `lg` 64 px. Par défaut `lg` en page, `md` sinon. */
   size?: keyof typeof SIZES
   label?: string
-  /** Attente avant d'apparaître, en millisecondes. */
-  delay?: number
-  /** Centré dans la zone de contenu (sous l'en-tête de la coque), en taille `lg` par défaut. */
+  /** Centré dans l'écran, pour un chargement hors de la coque. */
   page?: boolean
   className?: string
 }): React.JSX.Element {
-  // Ids des dégradés propres à chaque instance : deux loaders ne se volent pas leurs couleurs.
-  const id = useId().replace(/[^\w-]/g, "")
+  const px = SIZES[size ?? (page ? "lg" : "md")]
+  const ref = useRef<HTMLSpanElement>(null)
+  // Tous les H de la page battent en phase, calés sur l'horloge du document : passer du calque de
+  // navigation de la coque à celui de la page, ou du rendu serveur à l'hydratation, ne saute pas.
+  useIsomorphicLayoutEffect(() => {
+    for (const animation of ref.current?.getAnimations?.({ subtree: true }) ?? []) animation.startTime = 0
+  }, [])
   const loader = (
     <span
+      ref={ref}
       role="status"
       aria-label={label}
       data-slot="family-loader"
-      className={cn(
-        "family-loader inline-grid shrink-0 place-items-center",
-        SIZES[size ?? (page ? "lg" : "md")],
-        !page && className,
-      )}
-      style={{ ["--family-loader-delay" as string]: `${delay}ms` }}
+      className={cn("family-loader", !page && className)}
+      style={{ ["--family-loader-size" as string]: `${px}px` }}
     >
-      <svg viewBox="0 0 256 256" aria-hidden className="size-full overflow-visible">
-        <defs>
-          <linearGradient id={`${id}l`} x1="0" y1="24" x2="0" y2="232" gradientUnits="userSpaceOnUse">
-            <stop offset="0" stopColor="#2c78fd" />
-            <stop offset="1" stopColor="#7343fe" />
-          </linearGradient>
-          <linearGradient id={`${id}r`} x1="0" y1="24" x2="0" y2="232" gradientUnits="userSpaceOnUse">
-            <stop offset="0" stopColor="#fe5292" />
-            <stop offset="1" stopColor="#ff9a46" />
-          </linearGradient>
-          <linearGradient id={`${id}b`} x1="64" y1="0" x2="192" y2="0" gradientUnits="userSpaceOnUse">
-            <stop offset="0" stopColor="#8145ff" />
-            <stop offset="1" stopColor="#fe5292" />
-          </linearGradient>
-        </defs>
-        {/* Le fantôme : le H entier, pâle, sous les pièces qui se construisent. */}
-        <g data-ghost opacity="0.15">
-          <rect x="43" y="24" width="57" height="208" rx="18" fill={`url(#${id}l)`} />
-          <rect x="156" y="24" width="57" height="208" rx="18" fill={`url(#${id}r)`} />
-          <rect x="67" y="107" width="122" height="43" rx="14" fill={`url(#${id}b)`} />
-        </g>
-        <rect data-piece="left" x="43" y="24" width="57" height="208" rx="18" fill={`url(#${id}l)`} />
-        <rect data-piece="right" x="156" y="24" width="57" height="208" rx="18" fill={`url(#${id}r)`} />
-        <rect data-piece="bar" x="67" y="107" width="122" height="43" rx="14" fill={`url(#${id}b)`} />
-      </svg>
+      {(["left", "right", "bar"] as const).map((piece) => (
+        <span key={piece} data-piece={piece} aria-hidden>
+          <span data-fill />
+        </span>
+      ))}
     </span>
   )
   if (!page) return loader
   return (
-    // Hauteur visible moins l'en-tête (56 px) et les marges de la zone de contenu : centré dans
-    // l'espace sous l'en-tête, pas en haut à gauche.
-    <div
-      data-slot="family-loader-page"
-      className={cn("grid min-h-[calc(100dvh-10rem)] w-full place-items-center", className)}
-    >
+    <div data-slot="family-loader-page" className={cn("grid min-h-dvh w-full place-items-center", className)}>
       {loader}
     </div>
   )
 }
+
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect
