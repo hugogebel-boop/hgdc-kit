@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.14.1
+
+### Patch Changes
+
+- f67d6a8: `shellNavigation` (`@hgdc/ui/page-pending`) : les props `navigating` et `contentKey` d'`AppShell` tirées de l'état de TanStack Router (`useRouterState({ select: shellNavigation })`), sans la recopier dans chaque produit.
+
 ## 0.14.0
 
 ### Minor Changes
