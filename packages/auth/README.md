@@ -7,6 +7,7 @@ Connexion d'un produit de la famille à Account (OIDC) : bouton « Se connecter 
 | `@hgdc/auth`        | `HGDC_ISSUER`, `HGDC_PROVIDER_ID`, `HGDC_SCOPES`, entrée commune (`HGDC_ENTRY_PATH`, `safeNextPath`, `hgdcEntryUrl`), rôles (`highestRole`, `hasRole`), `parseHgdcProfile`, `verifiedOrganizationsFromIdToken`, `verifyHgdcIdToken`, `planOrganizationSync`, fraîcheur (`membershipIsFresh`, `SESSION_TTL_SECONDS`, `MEMBERSHIP_TTL_MS`, `KEY_MEMBERSHIP_TTL_MS`) |
 | `@hgdc/auth/server` | `hgdcProvider` (plugin `genericOAuth`), `createAuthProxy`, `restoreFetchMode`, `createHgdcEntry`                                                                                                                                                                                                                                                                  |
 | `@hgdc/auth/convex` | `requireIdentity`, `requireOrgMember`, `isAuthError`, `authErrorReason`, `AUTH_ERROR_MESSAGES`                                                                                                                                                                                                                                                                    |
+| `@hgdc/auth/events` | Événements poussés par Account : `ACCOUNT_EVENTS_PATH`, `signAccountEvent`, `verifyAccountEvent`, `handleAccountEventRequest`, `accountEventSchema`, `accountEventIsStale`, `ACCOUNT_EVENT_RETENTION_MS`, et pour Convex `vAccountEvent`, `accountEventsTable`                                                                                                    |
 | `@hgdc/auth/react`  | `HgdcSignInButton`, `startHgdcSignIn`, `HgdcMark` (le H tricolore de la famille, `HGDC_MARK_SVG`)                                                                                                                                                                                                                                                                 |
 
 Pairs : better-auth 1.6, convex 1.46+, React 19 (chacun facultatif selon l'import).
@@ -192,5 +193,49 @@ load: async (ctx, { organizationId, userId }) => {
 ```
 
 `verifyHgdcIdToken` rend aussi les claims du profil (nom, adresse, photo) pour les recopier. La signature n'est pas revérifiée : le jeton arrive du point de jeton d'Account, reçu en TLS par le serveur (OpenID Connect Core 3.1.3.7, point 6) ; le contrôle de fraîcheur empêche qu'un ancien jeton resté dans la table `account` rejoue des organisations. Une clé d'API vit hors session : `membershipIsFresh(member, now, KEY_MEMBERSHIP_TTL_MS)` lui laisse 30 jours. Les copies périmées se purgent par un cron.
+
+## Appliquer les événements d'Account
+
+Account pousse les retraits, changements de rôle et suppressions d'organisation à chaque produit, sans attendre la session suivante (ADR 0014). Le produit expose `POST /hgdc/v1/account-events` sur son déploiement Convex :
+
+```ts
+// convex/http.ts
+import { ACCOUNT_EVENTS_PATH, handleAccountEventRequest } from "@hgdc/auth/events"
+
+http.route({
+  path: ACCOUNT_EVENTS_PATH,
+  method: "POST",
+  handler: httpAction(async (ctx, request) =>
+    handleAccountEventRequest(request, {
+      secret: process.env.ACCOUNT_EVENTS_SECRET,
+      apply: (event) => ctx.runMutation(internal.organizations.applyAccountEvent, { event }),
+    }),
+  ),
+})
+
+// convex/schema.ts : accountEvents: accountEventsTable (de @hgdc/auth/events)
+
+// convex/organizations.ts
+export const applyAccountEvent = internalMutation({
+  args: { event: vAccountEvent },
+  handler: async (ctx, { event }) => {
+    const seen = await ctx.db
+      .query("accountEvents")
+      .withIndex("by_event_id", (q) => q.eq("eventId", event.id))
+      .first()
+    if (seen) return "duplicate"
+    await ctx.db.insert("accountEvents", { eventId: event.id, type: event.type, receivedAt: Date.now() })
+    // personne locale : compte better-auth `providerId: "hgdc"`, `accountId: event.userId`
+    // member.removed : retirer l'appartenance, sauf si accountEventIsStale(event, membre.syncedAt)
+    // member.role_changed : rôle et syncedAt = max(syncedAt, event.occurredAt) ; ne crée jamais d'appartenance
+    // organization.deleted : retirer toutes les appartenances, garder les données de l'espace
+    return "applied"
+  },
+})
+```
+
+Le secret (32 caractères au moins) est propre au produit : `ACCOUNT_EVENTS_SECRET` chez lui, `ACCOUNT_EVENTS_SECRET_<PRODUIT>` chez Account avec l'adresse de l'endpoint. Sans secret, l'endpoint répond 503 et Account réessaie (1, 5, 15, 60 minutes). Une signature invalide, un horodatage à plus de 5 minutes ou un corps altéré rendent 401 ; un identifiant déjà traité, `duplicate`. Les identifiants se purgent après `ACCOUNT_EVENT_RETENTION_MS` (cron, index `by_received`).
+
+Les gardes doivent lire l'appartenance à chaque requête (chargeur de `requireOrgMember`) : c'est ce qui rend le retrait immédiat.
 
 Tous droits réservés, Hugo Gebel Développement Conseil.
