@@ -5,17 +5,23 @@ import {
   ACCOUNT_EVENT_HEADERS,
   ACCOUNT_EVENT_MAX_BYTES,
   accountEventIsStale,
+  accountEventOutcomeOf,
   handleAccountEventRequest,
   newAccountEventId,
+  readBodyText,
   signAccountEvent,
   verifyAccountEvent,
   type AccountEvent,
+  type AccountEventOutcome,
   type vAccountEvent,
+  type vAccountEventOutcome,
 } from "./events.ts"
 
 const secret = "s".repeat(43)
 const now = 1_800_000_000_000
 const url = "https://produit.convex.site/hgdc/v1/account-events"
+const audience = "host" as const
+const expected = { secret, now, audience }
 
 const removed: AccountEvent = {
   id: "0123456789abcdef0123456789abcdef",
@@ -26,16 +32,37 @@ const removed: AccountEvent = {
   reason: "removed",
 }
 
-async function signedRequest(event: AccountEvent = removed, at = now, key = secret) {
-  const { body, headers } = await signAccountEvent(event, { secret: key, now: at })
+async function signedRequest(
+  event: AccountEvent = removed,
+  options: { at?: number; key?: string; to?: "host" | "mail"; legacy?: boolean } = {},
+) {
+  const { body, headers } = await signAccountEvent(event, {
+    secret: options.key ?? secret,
+    now: options.at ?? now,
+    audience: options.to ?? audience,
+    legacy: options.legacy,
+  })
   return { body, headers, request: new Request(url, { method: "POST", headers, body }) }
 }
 
+async function hmacHex(payload: string) {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  )
+  const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload))
+  return [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("")
+}
+
 describe("signAccountEvent / verifyAccountEvent", () => {
-  it("accepte une requête signée et rend l'événement", async () => {
+  it("accepte une requête signée pour ce produit et rend l'événement", async () => {
     const { request, headers } = await signedRequest()
-    expect(headers[ACCOUNT_EVENT_HEADERS.signature]).toMatch(/^v1=[0-9a-f]{64}$/)
-    expect(await verifyAccountEvent(request, { secret, now })).toEqual({ ok: true, event: removed })
+    expect(headers[ACCOUNT_EVENT_HEADERS.signature]).toMatch(/^v2=[0-9a-f]{64}$/)
+    expect(headers[ACCOUNT_EVENT_HEADERS.audience]).toBe("host")
+    expect(await verifyAccountEvent(request, expected)).toEqual({ ok: true, event: removed })
   })
 
   it("accepte chaque type d'événement", async () => {
@@ -46,20 +73,48 @@ describe("signAccountEvent / verifyAccountEvent", () => {
     ]
     for (const event of events) {
       const { request } = await signedRequest(event)
-      expect(await verifyAccountEvent(request, { secret, now })).toEqual({ ok: true, event })
+      expect(await verifyAccountEvent(request, expected)).toEqual({ ok: true, event })
     }
   })
 
+  it("refuse un événement signé pour un autre produit, même avec le même secret", async () => {
+    const { request } = await signedRequest(removed, { to: "mail" })
+    expect(await verifyAccountEvent(request, expected)).toMatchObject({ ok: false, status: 401 })
+  })
+
+  it("refuse un en-tête d'audience changé (elle est dans le MAC)", async () => {
+    const { body, headers } = await signedRequest(removed, { to: "mail" })
+    const request = new Request(url, {
+      method: "POST",
+      headers: { ...headers, [ACCOUNT_EVENT_HEADERS.audience]: "host" },
+      body,
+    })
+    expect(await verifyAccountEvent(request, expected)).toMatchObject({ ok: false, status: 401 })
+  })
+
+  it("format de transition (`legacy`) : v1 et v2 envoyés, seul v2 compte", async () => {
+    const { request, headers } = await signedRequest(removed, { legacy: true })
+    expect(headers[ACCOUNT_EVENT_HEADERS.signature]).toMatch(/^v1=/)
+    expect(headers[ACCOUNT_EVENT_HEADERS.signatureV2]).toMatch(/^v2=/)
+    expect(await verifyAccountEvent(request, expected)).toEqual({ ok: true, event: removed })
+  })
+
+  it("refuse l'ancien format v1 seul (sans audience)", async () => {
+    const { body, headers } = await signedRequest(removed, { legacy: true })
+    const { [ACCOUNT_EVENT_HEADERS.signatureV2]: _v2, ...v1Only } = headers
+    const request = new Request(url, { method: "POST", headers: v1Only, body })
+    expect(await verifyAccountEvent(request, expected)).toMatchObject({ ok: false, status: 401 })
+  })
+
   it("refuse un autre secret", async () => {
-    const { request } = await signedRequest(removed, now, "t".repeat(43))
-    expect(await verifyAccountEvent(request, { secret, now })).toMatchObject({ ok: false, status: 401 })
+    const { request } = await signedRequest(removed, { key: "t".repeat(43) })
+    expect(await verifyAccountEvent(request, expected)).toMatchObject({ ok: false, status: 401 })
   })
 
   it("refuse un corps altéré", async () => {
     const { body, headers } = await signedRequest()
-    const altered = body.replace('"sub1"', '"sub2"')
-    const request = new Request(url, { method: "POST", headers, body: altered })
-    expect(await verifyAccountEvent(request, { secret, now })).toMatchObject({ ok: false, status: 401 })
+    const request = new Request(url, { method: "POST", headers, body: body.replace('"sub1"', '"sub2"') })
+    expect(await verifyAccountEvent(request, expected)).toMatchObject({ ok: false, status: 401 })
   })
 
   it("refuse un identifiant d'en-tête changé (il est dans le MAC)", async () => {
@@ -69,136 +124,171 @@ describe("signAccountEvent / verifyAccountEvent", () => {
       headers: { ...headers, [ACCOUNT_EVENT_HEADERS.id]: "ffffffffffffffffffffffffffffffff" },
       body,
     })
-    expect(await verifyAccountEvent(request, { secret, now })).toMatchObject({ ok: false, status: 401 })
+    expect(await verifyAccountEvent(request, expected)).toMatchObject({ ok: false, status: 401 })
   })
 
   it("refuse un horodatage hors de la fenêtre de 5 minutes, dans les deux sens", async () => {
     for (const at of [now - 301_000, now + 301_000]) {
-      const { request } = await signedRequest(removed, at)
-      expect(await verifyAccountEvent(request, { secret, now })).toMatchObject({ ok: false, status: 401 })
+      const { request } = await signedRequest(removed, { at })
+      expect(await verifyAccountEvent(request, expected)).toMatchObject({ ok: false, status: 401 })
     }
-    const { request } = await signedRequest(removed, now - 299_000)
-    expect(await verifyAccountEvent(request, { secret, now })).toMatchObject({ ok: true })
+    const { request } = await signedRequest(removed, { at: now - 299_000 })
+    expect(await verifyAccountEvent(request, expected)).toMatchObject({ ok: true })
+  })
+
+  it("refuse un occurredAt à plus de 5 minutes dans le futur", async () => {
+    const future = { ...removed, occurredAt: now + 301_000 }
+    expect(await verifyAccountEvent((await signedRequest(future)).request, expected)).toMatchObject({
+      ok: false,
+      status: 400,
+    })
+    const soon = { ...removed, occurredAt: now + 299_000 }
+    expect(await verifyAccountEvent((await signedRequest(soon)).request, expected)).toMatchObject({ ok: true })
   })
 
   it("refuse une signature absente ou mal formée", async () => {
     const { body, headers } = await signedRequest()
-    for (const signature of ["", "v1=", "v0=abc", headers[ACCOUNT_EVENT_HEADERS.signature]!.toUpperCase()]) {
+    for (const signature of ["", "v2=", "v1=abc", headers[ACCOUNT_EVENT_HEADERS.signature]!.toUpperCase()]) {
       const request = new Request(url, {
         method: "POST",
         headers: { ...headers, [ACCOUNT_EVENT_HEADERS.signature]: signature },
         body,
       })
-      expect(await verifyAccountEvent(request, { secret, now })).toMatchObject({ ok: false, status: 401 })
+      expect(await verifyAccountEvent(request, expected)).toMatchObject({ ok: false, status: 401 })
     }
   })
 
-  it("refuse un corps trop grand avant de calculer quoi que ce soit", async () => {
-    const request = new Request(url, { method: "POST", body: "x".repeat(ACCOUNT_EVENT_MAX_BYTES + 1) })
-    expect(await verifyAccountEvent(request, { secret, now })).toMatchObject({ ok: false, status: 413 })
+  it("refuse un corps trop grand, déclaré ou non", async () => {
+    const big = "x".repeat(ACCOUNT_EVENT_MAX_BYTES + 1)
+    expect(await verifyAccountEvent(new Request(url, { method: "POST", body: big }), expected)).toMatchObject({
+      ok: false,
+      status: 413,
+    })
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (let i = 0; i < 10; i++) controller.enqueue(new TextEncoder().encode("x".repeat(1024)))
+        controller.close()
+      },
+    })
+    const chunked = new Request(url, { method: "POST", body: stream, duplex: "half" } as RequestInit)
+    expect(await verifyAccountEvent(chunked, expected)).toMatchObject({ ok: false, status: 413 })
   })
 
   it("refuse un corps signé mais invalide, ou dont l'id diffère de l'en-tête", async () => {
-    const id = removed.id
     const timestamp = String(Math.floor(now / 1000))
-    const sign = async (body: string, eventId = id) => {
-      const key = await crypto.subtle.importKey(
-        "raw",
-        new TextEncoder().encode(secret),
-        { name: "HMAC", hash: "SHA-256" },
-        false,
-        ["sign"],
-      )
-      const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${eventId}.${timestamp}.${body}`))
-      const hex = [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("")
-      return new Request(url, {
+    const sign = async (body: string, eventId = removed.id) =>
+      new Request(url, {
         method: "POST",
         headers: {
           [ACCOUNT_EVENT_HEADERS.id]: eventId,
           [ACCOUNT_EVENT_HEADERS.timestamp]: timestamp,
-          [ACCOUNT_EVENT_HEADERS.signature]: `v1=${hex}`,
+          [ACCOUNT_EVENT_HEADERS.audience]: audience,
+          [ACCOUNT_EVENT_HEADERS.signature]: `v2=${await hmacHex(`v2.${audience}.${eventId}.${timestamp}.${body}`)}`,
         },
         body,
       })
-    }
     for (const body of [
       "pas du json",
       JSON.stringify({ ...removed, role: "owner" }),
       JSON.stringify({ ...removed, type: "x" }),
     ])
-      expect(await verifyAccountEvent(await sign(body), { secret, now })).toMatchObject({ ok: false, status: 400 })
-    const otherId = "ffffffffffffffffffffffffffffffff"
-    expect(await verifyAccountEvent(await sign(JSON.stringify(removed), otherId), { secret, now })).toMatchObject({
-      ok: false,
-      status: 400,
-    })
+      expect(await verifyAccountEvent(await sign(body), expected)).toMatchObject({ ok: false, status: 400 })
+    expect(
+      await verifyAccountEvent(await sign(JSON.stringify(removed), "ffffffffffffffffffffffffffffffff"), expected),
+    ).toMatchObject({ ok: false, status: 400 })
   })
 
-  it("exige un secret assez long des deux côtés", async () => {
-    await expect(signAccountEvent(removed, { secret: "court", now })).rejects.toThrow(/trop court/)
+  it("exige un secret assez long et une audience connue", async () => {
+    await expect(signAccountEvent(removed, { secret: "court", now, audience })).rejects.toThrow(/trop court/)
     const { request } = await signedRequest()
-    await expect(verifyAccountEvent(request, { secret: "court", now })).rejects.toThrow(/trop court/)
+    await expect(verifyAccountEvent(request, { ...expected, secret: "court" })).rejects.toThrow(/trop court/)
+    await expect(signAccountEvent(removed, { secret, now, audience: "inconnu" as unknown as "host" })).rejects.toThrow(
+      /Audience/,
+    )
   })
 
   it("refuse de signer un événement invalide", async () => {
-    await expect(signAccountEvent({ ...removed, id: "court" }, { secret, now })).rejects.toThrow(/Too small|Invalid|id/)
+    await expect(signAccountEvent({ ...removed, id: "court" }, { secret, now, audience })).rejects.toThrow(
+      /Too small|Invalid|id/,
+    )
+  })
+})
+
+describe("readBodyText", () => {
+  it("lit un corps sous le plafond et s'arrête au-delà", async () => {
+    expect(await readBodyText(new Request(url, { method: "POST", body: "é" }), 2)).toEqual({ ok: true, text: "é" })
+    expect(await readBodyText(new Request(url, { method: "POST", body: "éé" }), 3)).toEqual({
+      ok: false,
+      reason: "too_large",
+    })
+    expect(await readBodyText(new Request(url, { method: "POST" }), 3)).toEqual({ ok: true, text: "" })
   })
 })
 
 describe("handleAccountEventRequest", () => {
-  it("applique un événement valide et rend le résultat", async () => {
-    const { request } = await signedRequest()
+  const run = async (request: Request, outcome: AccountEventOutcome = "applied") => {
     const applied: AccountEvent[] = []
     const response = await handleAccountEventRequest(request, {
+      audience,
       secret,
       now,
       apply: async (event) => {
         applied.push(event)
-        return "applied"
+        return outcome
       },
     })
+    return { response, applied }
+  }
+
+  it("applique un événement valide et rend l'issue", async () => {
+    const { response, applied } = await run((await signedRequest()).request)
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ status: "applied" })
     expect(applied).toEqual([removed])
   })
 
-  it("rend le doublon tel que la mutation le signale (rejeu du même id)", async () => {
-    const seen = new Set<string>()
-    const apply = async (event: AccountEvent) => {
-      if (seen.has(event.id)) return "duplicate" as const
-      seen.add(event.id)
-      return "applied" as const
-    }
-    const first = await handleAccountEventRequest((await signedRequest()).request, { secret, now, apply })
-    const replay = await handleAccountEventRequest((await signedRequest(removed, now + 1000)).request, {
-      secret,
-      now,
-      apply,
-    })
-    expect(await first.json()).toEqual({ status: "applied" })
-    expect(await replay.json()).toEqual({ status: "duplicate" })
+  it("rend une issue ignorée avec sa raison", async () => {
+    const { response } = await run((await signedRequest()).request, "ignored:unknown_user")
+    expect(await response.json()).toEqual({ status: "ignored", reason: "unknown_user" })
   })
 
-  it("401 sans appeler apply sur une signature invalide", async () => {
-    const { request } = await signedRequest(removed, now, "t".repeat(43))
-    let called = false
-    const response = await handleAccountEventRequest(request, {
-      secret,
-      now,
-      apply: async () => {
-        called = true
-        return "applied"
-      },
-    })
-    expect(response.status).toBe(401)
-    expect(await response.json()).toEqual({ error: "unauthorized" })
-    expect(called).toBe(false)
+  it("rend le doublon tel que la mutation le signale (rejeu du même id)", async () => {
+    const { response } = await run((await signedRequest(removed, { at: now + 1000 })).request, "duplicate")
+    expect(await response.json()).toEqual({ status: "duplicate" })
+  })
+
+  it("401 sans appeler apply sur une signature invalide ou une autre audience", async () => {
+    for (const request of [
+      (await signedRequest(removed, { key: "t".repeat(43) })).request,
+      (await signedRequest(removed, { to: "mail" })).request,
+    ]) {
+      const { response, applied } = await run(request)
+      expect(response.status).toBe(401)
+      expect(await response.json()).toEqual({ error: "unauthorized" })
+      expect(applied).toEqual([])
+    }
   })
 
   it("503 tant que le secret n'est pas posé", async () => {
-    const { request } = await signedRequest()
-    const response = await handleAccountEventRequest(request, { secret: undefined, now, apply: async () => "applied" })
+    const response = await handleAccountEventRequest((await signedRequest()).request, {
+      audience,
+      secret: undefined,
+      now,
+      apply: async () => "applied",
+    })
     expect(response.status).toBe(503)
+  })
+})
+
+describe("accountEventOutcomeOf", () => {
+  it("lit la réponse d'un produit", () => {
+    expect(accountEventOutcomeOf({ status: "applied" })).toBe("applied")
+    expect(accountEventOutcomeOf({ status: "duplicate" })).toBe("duplicate")
+    expect(accountEventOutcomeOf({ status: "ignored", reason: "stale" })).toBe("ignored:stale")
+    expect(accountEventOutcomeOf({ status: "ignored", reason: "autre" })).toBeNull()
+    // Réponse d'un produit d'avant 0.9 : illisible.
+    expect(accountEventOutcomeOf({ status: "ignored" })).toBeNull()
+    expect(accountEventOutcomeOf(null)).toBeNull()
   })
 })
 
@@ -216,12 +306,13 @@ describe("newAccountEventId", () => {
   it("rend un identifiant accepté par le schéma, différent à chaque appel", async () => {
     const a = newAccountEventId()
     expect(a).not.toBe(newAccountEventId())
-    await expect(signAccountEvent({ ...removed, id: a }, { secret, now })).resolves.toBeTruthy()
+    await expect(signAccountEvent({ ...removed, id: a }, { secret, now, audience })).resolves.toBeTruthy()
   })
 })
 
-describe("vAccountEvent", () => {
-  it("décrit le même type que le schéma Zod", () => {
+describe("validateurs Convex", () => {
+  it("décrivent les mêmes types que le module", () => {
     expectTypeOf<Infer<typeof vAccountEvent>>().toEqualTypeOf<AccountEvent>()
+    expectTypeOf<Infer<typeof vAccountEventOutcome>>().toEqualTypeOf<AccountEventOutcome>()
   })
 })

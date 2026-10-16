@@ -303,11 +303,15 @@ function payloadOf(idToken: string): Record<string, unknown> {
  * La signature n'est pas revérifiée : le jeton vient du point de jeton d'Account, reçu par le
  * serveur en TLS (point 6). Le contrôle de fraîcheur empêche qu'un jeton ancien, que
  * better-auth n'aurait pas réécrit, rejoue des organisations périmées.
+ *
+ * `issuedAt` (`iat` en millisecondes) est l'instant où Account a lu les organisations : c'est lui,
+ * pas l'heure de la copie, qui doit devenir le `syncedAt` des appartenances recopiées
+ * (`accountEventIsStale` le compare aux événements poussés par Account).
  */
 export function verifyHgdcIdToken(
   idToken: string,
   expected: IdTokenExpectation,
-): { claims: Record<string, unknown>; organizations: HgdcOrganization[] } {
+): { claims: Record<string, unknown>; organizations: HgdcOrganization[]; issuedAt: number } {
   if (!expected.issuer || !expected.clientId)
     throw new Error("verifyHgdcIdToken : émetteur ou clientId attendu manquant (HGDC_CLIENT_ID ?).")
   const claims = payloadOf(idToken)
@@ -332,7 +336,7 @@ export function verifyHgdcIdToken(
   const result = organizationsClaim.safeParse(claims)
   if (!result.success)
     throw new HgdcIdTokenError("invalid_claims", `Organisations HGDC invalides : ${z.prettifyError(result.error)}`)
-  return { claims, organizations: result.data.organizations ?? [] }
+  return { claims, organizations: result.data.organizations ?? [], issuedAt: iat * 1000 }
 }
 
 /**

@@ -183,7 +183,7 @@ const claimed = verifiedOrganizationsFromIdToken(hgdc.idToken ?? "", {
   now: Date.now(),
 }) // lève HgdcIdTokenError : émetteur, audience (clientId), iat de plus de 10 minutes
 const plan = planOrganizationSync(claimed, membershipsOfThisUser)
-// mutation interne : plan.upsert (espace + appartenance), plan.remove, et syncedAt = Date.now() partout
+// mutation interne : plan.upsert (espace + appartenance), plan.remove, et syncedAt = issuedAt partout (iat du jeton, verifyHgdcIdToken), jamais Date.now()
 
 // chargeur de requireOrgMember
 load: async (ctx, { organizationId, userId }) => {
@@ -207,6 +207,7 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) =>
     handleAccountEventRequest(request, {
+      audience: "host", // le produit : signé par Account, vérifié ici
       secret: process.env.ACCOUNT_EVENTS_SECRET,
       apply: (event) => ctx.runMutation(internal.organizations.applyAccountEvent, { event }),
     }),
@@ -218,6 +219,7 @@ http.route({
 // convex/organizations.ts
 export const applyAccountEvent = internalMutation({
   args: { event: vAccountEvent },
+  returns: vAccountEventOutcome, // "applied" | "duplicate" | "ignored:<raison>"
   handler: async (ctx, { event }) => {
     const seen = await ctx.db
       .query("accountEvents")
@@ -229,12 +231,15 @@ export const applyAccountEvent = internalMutation({
     // member.removed : retirer l'appartenance, sauf si accountEventIsStale(event, membre.syncedAt)
     // member.role_changed : rôle et syncedAt = max(syncedAt, event.occurredAt) ; ne crée jamais d'appartenance
     // organization.deleted : retirer toutes les appartenances, garder les données de l'espace
+    // rien à appliquer : "ignored:unknown_organization" | "ignored:unknown_user" | "ignored:not_member" | "ignored:stale"
     return "applied"
   },
 })
 ```
 
-Le secret (32 caractères au moins) est propre au produit : `ACCOUNT_EVENTS_SECRET` chez lui, `ACCOUNT_EVENTS_SECRET_<PRODUIT>` chez Account avec l'adresse de l'endpoint. Sans secret, l'endpoint répond 503 et Account réessaie (1, 5, 15, 60 minutes). Une signature invalide, un horodatage à plus de 5 minutes ou un corps altéré rendent 401 ; un identifiant déjà traité, `duplicate`. Les identifiants se purgent après `ACCOUNT_EVENT_RETENTION_MS` (cron, index `by_received`).
+Le secret (32 caractères au moins) est propre au produit : `ACCOUNT_EVENTS_SECRET` chez lui, `ACCOUNT_EVENTS_SECRET_<PRODUIT>` chez Account avec l'adresse de l'endpoint. La signature `v2=` couvre l'audience (`x-hgdc-audience`, le produit destinataire) : un événement signé pour un autre produit rend 401. Le corps est lu en flux et plafonné à 8 Ko (`readBodyText`, réutilisable). Sans secret, l'endpoint répond 503 et Account réessaie (1, 5, 15, 60 minutes). Une signature invalide ou d'une autre audience, ou un horodatage à plus de 5 minutes rendent 401 ; un corps invalide ou un `occurredAt` à plus de 5 minutes dans le futur, 400. La réponse 200 porte l'issue : `{"status":"applied"}`, `{"status":"duplicate"}` ou `{"status":"ignored","reason":…}` (`unknown_organization`, `unknown_user`, `not_member`, `stale`), journalisée en avertissement chez le produit ; Account remonte à GlitchTip un retrait ignoré pour une autre raison que `unknown_organization`. Les identifiants se purgent après `ACCOUNT_EVENT_RETENTION_MS` (cron, index `by_received`).
+
+Ordre : `accountEventIsStale(event, syncedAt)` compare l'événement à `syncedAt`, qui doit être l'`iat` du jeton lu à la connexion (`verifyHgdcIdToken(...).issuedAt`) et non l'heure de la copie : un jeton émis avant un retrait mais lu après ne doit pas le masquer.
 
 Les gardes doivent lire l'appartenance à chaque requête (chargeur de `requireOrgMember`) : c'est ce qui rend le retrait immédiat.
 
