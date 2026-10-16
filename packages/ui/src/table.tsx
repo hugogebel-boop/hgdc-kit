@@ -99,7 +99,6 @@ function TableHead({
           className={cn(
             "-mx-1.5 inline-flex items-center gap-1 rounded-md px-1.5 py-1 outline-none transition-colors duration-(--duration-fast) ease-out hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50",
             direction !== "none" && "text-foreground",
-            numeric && "flex-row-reverse",
           )}
         >
           {children}
