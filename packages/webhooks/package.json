@@ -1,6 +1,6 @@
 {
   "name": "@hgdc/webhooks",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Webhooks signés au format Standard Webhooks pour les produits HGDC : signature et vérification, secret whsec_, garde SSRF des adresses, calendrier de reprises. Fonctions pures.",
   "license": "UNLICENSED",
   "homepage": "https://github.com/hugogebel-boop/hgdc-kit/tree/main/packages/webhooks#readme",
