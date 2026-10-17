@@ -1,5 +1,11 @@
 # @hgdc/auth
 
+## 0.11.0
+
+### Minor Changes
+
+- cc1c3df: The default label of `HgdcSignInButton` becomes "Se connecter avec HGDC" (HGDC is the company name, not "H family").
+
 ## 0.10.0
 
 ### Minor Changes
