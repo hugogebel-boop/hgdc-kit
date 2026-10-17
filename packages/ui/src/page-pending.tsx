@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useState } from "react"
 
-import { FamilyLoader } from "./family-loader.tsx"
+import { FamilyLoaderRootContext, PageLoadingPlaceholder } from "./family-loader.tsx"
 
 /**
  * Délai avant de couvrir l'ancienne page pendant une navigation : une navigation préchargée
@@ -13,47 +13,50 @@ export const PAGE_PENDING_MIN_MS = 300
 
 /**
  * Calque de chargement de la zone de contenu : sous l'en-tête de la coque (56 px), sur toute la
- * largeur, opaque. Le H y est centré dans la hauteur visible et y reste (`sticky`) : même place
- * pour le calque de navigation de la coque et pour `PagePending`, donc aucun saut de l'un à l'autre.
+ * largeur, opaque. Il cache l'ancienne page ; le H, lui, est celui du document
+ * (`FamilyLoaderRoot`), en position fixe, au même pixel dans tous les états.
  */
 export const CONTENT_LOADING_LAYER = "absolute inset-x-0 top-14 bottom-0 z-20 bg-background"
-const CONTENT_LOADING_STAGE =
-  "sticky top-14 grid h-[calc(100dvh-3.5rem)] place-items-center lg:h-[calc(100dvh-1rem-3.5rem)]"
 
-/** Le H centré dans la zone de contenu (calque de `CONTENT_LOADING_LAYER`). */
+/**
+ * @deprecated Le H d'un chargement de page est celui du document (`FamilyLoaderRoot`, ADR 0015) :
+ * la scène ne garde qu'un texte pour les lecteurs d'écran.
+ */
 export function ContentLoadingStage({ label }: { label: string }): React.JSX.Element {
   return (
-    <div className={CONTENT_LOADING_STAGE}>
-      <FamilyLoader size="lg" label={label} />
-    </div>
+    <span role="status" className="sr-only">
+      {label}
+    </span>
   )
 }
 
 /**
- * Fourni par `AppShell` autour de la zone de contenu : `PagePending` s'y signale, pour que la coque
- * n'affiche pas son propre calque de navigation par-dessus.
+ * Fourni par `AppShell` autour de la zone de contenu : `PagePending` s'y signale, la coque couvre
+ * alors la zone de contenu et montre le H du document.
  */
 export const ContentLoadingContext: React.Context<(() => () => void) | null> = createContext<(() => () => void) | null>(
   null,
 )
 
 /**
- * Le chargement d'une page. Dans la coque (`AppShell`) : le H centré sur un calque opaque de la
- * zone de contenu, la coque restant en place, dès le rendu serveur. Hors de la coque : le H centré
- * dans l'écran. Composant de `pendingComponent` (TanStack Router, `routerPendingDefaults`), repli
- * de la frontière `Suspense` de la coque, et état de chargement d'une page qui lit ses données.
+ * Le chargement d'une page : le H de la famille, au centre de la zone de contenu de la coque, au
+ * même pixel et à la même phase dans tous les états (calque de navigation de la coque, attente
+ * d'une route, frontière `Suspense`, rendu serveur, page d'entrée, produit d'à côté). Ce composant
+ * ne dessine pas de H : il marque la place de la page (`data-slot="page-pending"`) et le H du
+ * document (`FamilyLoaderRoot`) s'affiche, dès le HTML du serveur. Dans la coque, la coque s'en
+ * charge ; hors de la coque, le cadre de la coque est dessiné autour du H.
+ *
+ * Composant de `pendingComponent` (TanStack Router, `routerPendingDefaults`), repli de la frontière
+ * `Suspense` de la coque, et état de chargement d'une page qui lit ses données.
  */
 export function PagePending({ label = "Chargement…" }: { label?: string }): React.JSX.Element {
   const register = useContext(ContentLoadingContext)
+  const hasRoot = useContext(FamilyLoaderRootContext)
   useIsomorphicLayoutEffect(() => register?.(), [register])
-  if (!register) return <FamilyLoader page label={label} />
+  if (!register) return <PageLoadingPlaceholder label={label} hasRoot={hasRoot} />
   return (
     // La place de la page est gardée : le pied de page ne remonte pas sous le calque.
-    <div data-slot="page-pending" className="min-h-[calc(100dvh-10rem)]">
-      <div className={CONTENT_LOADING_LAYER}>
-        <ContentLoadingStage label={label} />
-      </div>
-    </div>
+    <div data-slot="page-pending" role="status" aria-label={label} className="min-h-[calc(100dvh-10rem)]" />
   )
 }
 
