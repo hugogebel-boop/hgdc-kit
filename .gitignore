@@ -11,3 +11,4 @@ dist
 # Ne jamais versionner : codes de récupération, exports de comptes.
 *recovery*
 *.txt
+.loader-showcase

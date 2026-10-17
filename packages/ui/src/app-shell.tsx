@@ -9,6 +9,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -17,16 +18,15 @@ import {
 
 import { CommandMenuButton } from "./command-menu.tsx"
 import { Drawer, DrawerContent, DrawerTitle } from "./drawer.tsx"
+import { FamilyLoaderHost, FamilyLoaderRootContext } from "./family-loader.tsx"
 import type { FamilyProduct } from "./family-svg.ts"
 import { isApplePlatform, Kbd, KbdGroup } from "./kbd.tsx"
 import {
   CONTENT_LOADING_LAYER,
   ContentLoadingContext,
-  ContentLoadingStage,
   PAGE_PENDING_MIN_MS,
   PAGE_PENDING_MS,
   PagePending,
-  useDelayedFlag,
 } from "./page-pending.tsx"
 import { ProductBadge } from "./product-badge.tsx"
 import { ProductRail } from "./product-rail.tsx"
@@ -273,6 +273,51 @@ function SidebarHead({ product }: { product: FamilyProduct }): React.JSX.Element
  * Le kit ne connaît ni le routeur ni l'authentification : le produit passe ses éléments
  * (`OrgSwitcher`, `SidebarNav`, `AccountMenu`) et ses liens.
  */
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect
+
+/** Faux au rendu serveur et à l'hydratation, vrai avant la première image qui suit. */
+function useHydrated(): boolean {
+  const [hydrated, setHydrated] = useState(false)
+  useIsomorphicLayoutEffect(() => setHydrated(true), [])
+  return hydrated
+}
+
+/**
+ * Le chargement de la zone de contenu : `navigating` après 50 ms, `pending` aussitôt, puis au
+ * moins 300 ms. Effets de mise en page : une page qui passe en attente est couverte avant d'être
+ * peinte, jamais une image vide entre les deux.
+ */
+function useContentLoading({ navigating, pending }: { navigating: boolean; pending: boolean }): boolean {
+  const [navigatingLong, setNavigatingLong] = useState(false)
+  useEffect(() => {
+    if (!navigating) return undefined
+    const timer = window.setTimeout(() => setNavigatingLong(true), PAGE_PENDING_MS)
+    return () => {
+      window.clearTimeout(timer)
+      setNavigatingLong(false)
+    }
+  }, [navigating])
+  const active = pending || (navigating && navigatingLong)
+  const [visible, setVisible] = useState(false)
+  const shownAt = useRef(0)
+  useIsomorphicLayoutEffect(() => {
+    if (active && !visible) {
+      shownAt.current = performance.now()
+      setVisible(true)
+      return undefined
+    }
+    if (!active && visible) {
+      const timer = window.setTimeout(
+        () => setVisible(false),
+        Math.max(0, shownAt.current + PAGE_PENDING_MIN_MS - performance.now()),
+      )
+      return () => window.clearTimeout(timer)
+    }
+    return undefined
+  }, [active, visible])
+  return visible
+}
+
 export function AppShell({
   product,
   organization,
@@ -341,9 +386,10 @@ export function AppShell({
   const [railPeek, setRailPeek] = useState(false)
   useToggleShortcut()
 
-  // Chargement de la zone de contenu : navigation en cours (après 50 ms, au moins 300 ms), ou départ
-  // vers un autre produit (aussitôt). Une page qui affiche déjà `PagePending` montre le même H au
-  // même endroit : le calque de la coque s'efface alors derrière lui.
+  // Chargement de la zone de contenu (ADR 0015) : une navigation en cours (après 50 ms), une page
+  // qui attend (`PagePending`, aussitôt : le routeur a déjà attendu), ou le départ vers un autre
+  // produit (aussitôt). Une fois montré, au moins 300 ms. Le H est celui du document, en position
+  // fixe : il ne bouge pas d'un état à l'autre et n'est jamais démonté.
   const [leaving, setLeaving] = useState(false)
   const [pagePending, setPagePending] = useState(0)
   const registerPagePending = useCallback(() => {
@@ -359,11 +405,11 @@ export function AppShell({
     window.addEventListener("pageshow", onPageShow)
     return () => window.removeEventListener("pageshow", onPageShow)
   }, [])
-  // Le calque attend 50 ms et reste au moins 300 ms ; quand la page prend le relais avec
-  // `PagePending` (même H, même place, même phase), il s'efface derrière elle sans que rien ne bouge,
-  // et ne revient pas quand la page arrive.
-  const navigatingShown = useDelayedFlag(navigating && pagePending === 0, PAGE_PENDING_MS, PAGE_PENDING_MIN_MS)
-  const loading = navigatingShown || leaving
+  const loading = useContentLoading({ navigating, pending: pagePending > 0 || leaving })
+  // Avant l'hydratation, le CSS montre le calque et le H dès qu'une page attend (`:has`) ; ensuite
+  // `data-loading` prend le relais dans la même image.
+  const hydrated = useHydrated()
+  const hasRoot = useContext(FamilyLoaderRootContext)
   const contentRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     // Sur ordinateur, la zone de contenu défile seule : le calque couvre sa partie visible, en haut.
@@ -377,6 +423,9 @@ export function AppShell({
           <div
             data-slot="app-shell"
             data-rail-peek={railPeek ? "" : undefined}
+            data-product-rail={productRail ? "" : undefined}
+            data-loading={loading ? "" : undefined}
+            data-hydrated={hydrated ? "" : undefined}
             className={cn(
               "min-h-dvh lg:grid lg:h-dvh lg:bg-shell",
               productRail ? "lg:grid-cols-[auto_auto_minmax(0,1fr)]" : "lg:grid-cols-[auto_minmax(0,1fr)]",
@@ -409,7 +458,7 @@ export function AppShell({
             <div className="flex min-h-dvh flex-col lg:min-h-0 lg:p-2 lg:pl-0">
               <div
                 ref={contentRef}
-                className="relative flex flex-1 flex-col lg:min-h-0 lg:overflow-y-auto lg:rounded-xl lg:bg-background"
+                className="relative flex flex-1 flex-col lg:min-h-0 lg:overflow-y-auto lg:rounded-xl lg:bg-background lg:[scrollbar-gutter:stable]"
               >
                 <header className="sticky top-[env(safe-area-inset-top,0px)] z-30 flex h-14 shrink-0 items-center gap-1 border-b border-foreground/5 bg-background px-2 sm:px-4 lg:top-0">
                   <button
@@ -435,18 +484,17 @@ export function AppShell({
                     />
                   ) : null}
                 </header>
-                <div
-                  data-slot="app-shell-loading"
-                  data-visible={loading ? "" : undefined}
-                  aria-hidden={!loading}
-                  className={CONTENT_LOADING_LAYER}
-                >
-                  <ContentLoadingStage label="Chargement…" />
+                <div data-slot="app-shell-loading" aria-hidden={!loading} className={CONTENT_LOADING_LAYER}>
+                  {loading ? (
+                    <span role="status" className="sr-only">
+                      Chargement…
+                    </span>
+                  ) : null}
                 </div>
                 <main
                   id="contenu"
                   tabIndex={-1}
-                  aria-busy={loading || pagePending > 0 ? true : undefined}
+                  aria-busy={loading ? true : undefined}
                   inert={loading || undefined}
                   className={cn(
                     "mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-16 outline-none sm:px-6 lg:px-10 lg:pt-8",
@@ -465,6 +513,8 @@ export function AppShell({
                 </main>
               </div>
             </div>
+
+            {hasRoot ? null : <FamilyLoaderHost />}
 
             <Drawer side="bottom" open={menuOpen} onOpenChange={setMenuOpen}>
               <DrawerContent className="lg:hidden">

@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState, type ReactNode } from "react"
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 
 import { ProductBadge } from "./product-badge.tsx"
 import { productRailEntries, type HgdcCatalogProduct, type ProductRailEntry } from "./products.ts"
 import { ShellPlacementContext, useLeaveOnClick } from "./shell-placement.ts"
 import { cn } from "./cn.ts"
+
+const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect
 
 /** Délai d'intention avant d'élargir la barre au survol : un passage de souris ne l'ouvre pas. */
 export const PRODUCT_RAIL_OPEN_DELAY = 150
@@ -67,7 +69,9 @@ export function ProductRail({
   const [focused, setFocused] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const expanded = hovered || focused || menuOpen
-  useEffect(() => {
+  // Avant la peinture : la barre latérale se plie dans la même image que la barre s'élargit, les
+  // deux transitions partent ensemble et la page ne bouge pas.
+  useIsomorphicLayoutEffect(() => {
     onExpandedChange?.(expanded)
   }, [expanded, onExpandedChange])
   const ref = useRef<HTMLElement>(null)

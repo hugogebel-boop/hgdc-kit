@@ -7,6 +7,7 @@ import { AccountMenu } from "./account-menu.tsx"
 import { AppShell, SidebarNav, SidebarNavItem, toggleSidebar } from "./app-shell.tsx"
 import { CommandMenu, matchCommand } from "./command-menu.tsx"
 import { OrgSwitcher } from "./org-switcher.tsx"
+import { FamilyLoaderRoot } from "./family-loader.tsx"
 import { PagePending, routerPendingDefaults, shellNavigation } from "./page-pending.tsx"
 import { PRODUCT_RAIL_OPEN_DELAY } from "./product-rail.tsx"
 import { PRODUCT_ENTRY_PATH } from "./products.ts"
@@ -367,7 +368,9 @@ describe("AccountMenu", () => {
 })
 
 describe("Chargement d'une page", () => {
-  const overlay = () => document.querySelector<HTMLElement>("[data-slot=app-shell-loading]")
+  // Le calque et le H suivent `data-loading` sur la coque (styles.css).
+  const loading = () => document.querySelector<HTMLElement>("[data-slot=app-shell]")?.dataset.loading
+  const hosts = () => document.querySelectorAll("[data-slot=family-loader-root]").length
 
   it("routerPendingDefaults : préchargement au survol, chargement après 50 ms, au moins 300 ms", () => {
     expect(routerPendingDefaults).toEqual({
@@ -386,11 +389,11 @@ describe("Chargement d'une page", () => {
         <p>Ancienne page</p>
       </AppShell>,
     )
-    expect(overlay()?.dataset.visible).toBeUndefined()
+    expect(loading()).toBeUndefined()
     act(() => {
       vi.advanceTimersByTime(50)
     })
-    expect(overlay()?.dataset.visible).toBe("")
+    expect(loading()).toBe("")
     expect(screen.getByRole("main").inert).toBe(true)
     // La coque est toujours là.
     expect(screen.getAllByText("Barre").length).toBeGreaterThan(0)
@@ -402,11 +405,11 @@ describe("Chargement d'une page", () => {
     act(() => {
       vi.advanceTimersByTime(200)
     })
-    expect(overlay()?.dataset.visible).toBe("")
+    expect(loading()).toBe("")
     act(() => {
       vi.advanceTimersByTime(100)
     })
-    expect(overlay()?.dataset.visible).toBeUndefined()
+    expect(loading()).toBeUndefined()
     vi.useRealTimers()
   })
 
@@ -428,29 +431,84 @@ describe("Chargement d'une page", () => {
     act(() => {
       vi.advanceTimersByTime(500)
     })
-    expect(overlay()?.dataset.visible).toBeUndefined()
+    expect(loading()).toBeUndefined()
     vi.useRealTimers()
   })
 
-  it("PagePending dans la coque : même calque, la coque n'en superpose pas un second", () => {
-    vi.useFakeTimers()
+  it("PagePending dans la coque : la coque se couvre aussitôt, un seul H dans le document", () => {
     render(
-      <AppShell product="host" nav={null} navigating>
+      <AppShell product="host" nav={null}>
         <PagePending label="Chargement du projet" />
       </AppShell>,
     )
-    act(() => {
-      vi.advanceTimersByTime(100)
-    })
-    expect(overlay()?.dataset.visible).toBeUndefined()
+    expect(loading()).toBe("")
+    expect(hosts()).toBe(1)
     const main = screen.getByRole("main")
     expect(within(main).getByRole("status", { name: "Chargement du projet" })).toBeDefined()
+    // La page ne dessine pas de H : seule sa place est marquée.
+    expect(main.querySelector("[data-slot=family-loader]")).toBeNull()
+  })
+
+  it("une page qui attend reste couverte au moins 300 ms, puis la coque se découvre", () => {
+    vi.useFakeTimers()
+    const { rerender } = render(
+      <AppShell product="host" nav={null}>
+        <PagePending />
+      </AppShell>,
+    )
+    expect(loading()).toBe("")
+    rerender(
+      <AppShell product="host" nav={null}>
+        <p>Page</p>
+      </AppShell>,
+    )
+    act(() => {
+      vi.advanceTimersByTime(250)
+    })
+    expect(loading()).toBe("")
+    act(() => {
+      vi.advanceTimersByTime(60)
+    })
+    expect(loading()).toBeUndefined()
     vi.useRealTimers()
   })
 
-  it("PagePending hors de la coque : le H centré dans l'écran", () => {
-    const { container } = render(<PagePending />)
-    expect(container.querySelector("[data-slot=family-loader-page]")).not.toBeNull()
+  it("hydratée : `data-hydrated` (avant, le CSS seul montre le H d'une page qui attend)", () => {
+    render(
+      <AppShell product="host" nav={null}>
+        Page
+      </AppShell>,
+    )
+    expect(document.querySelector<HTMLElement>("[data-slot=app-shell]")?.dataset.hydrated).toBe("")
+    expect(document.querySelector<HTMLElement>("[data-slot=app-shell]")?.dataset.productRail).toBe("")
+  })
+
+  it("sous FamilyLoaderRoot : ni la coque ni la page ne montent leur propre H", () => {
+    render(
+      <FamilyLoaderRoot>
+        <AppShell product="host" nav={null}>
+          <PagePending />
+        </AppShell>
+      </FamilyLoaderRoot>,
+    )
+    expect(hosts()).toBe(1)
+    expect(document.querySelector("[data-slot=app-shell] [data-slot=family-loader-root]")).toBeNull()
+  })
+
+  it("PagePending hors de la coque : la place de la page, et le H du document", () => {
+    const { container } = render(<PagePending label="Ouverture" />)
+    const place = container.querySelector<HTMLElement>("[data-slot=page-pending]")
+    expect(place?.getAttribute("role")).toBe("status")
+    expect(place?.getAttribute("aria-label")).toBe("Ouverture")
+    expect(hosts()).toBe(1)
+    cleanup()
+    render(
+      <FamilyLoaderRoot>
+        <PagePending />
+        <PagePending />
+      </FamilyLoaderRoot>,
+    )
+    expect(hosts()).toBe(1)
   })
 
   it("contentKey : la page qui charge ses données montre le H à la place de l'ancienne", async () => {
@@ -493,13 +551,13 @@ describe("Chargement d'une page", () => {
     const mail = within(rail).getByRole("link", { name: /Mail/ })
     // Clic avec Ctrl (nouvel onglet) : la page reste.
     fireEvent.click(mail, { ctrlKey: true })
-    expect(overlay()?.dataset.visible).toBeUndefined()
+    expect(loading()).toBeUndefined()
     // Le navigateur de test ne quitte pas la page : on l'en empêche après la coque.
     const stay = (event: MouseEvent) => event.preventDefault()
     window.addEventListener("click", stay)
     fireEvent.click(mail)
     window.removeEventListener("click", stay)
-    expect(overlay()?.dataset.visible).toBe("")
+    expect(loading()).toBe("")
   })
 })
 

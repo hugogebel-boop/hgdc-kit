@@ -477,13 +477,12 @@
     opacity: 0.35;
   }
 }
-
-/* `FamilyLoader` : le H tricolore se construit (jambage gauche, barre, jambage droit), tient,
-   s'efface, recommence. Les pièces sont coupées par `clip-path` (la forme ne change pas), un
-   léger chevauchement lie les trois gestes. Visible après 200 ms seulement : pas de flash. */
-/* Chargeur de la famille (`FamilyLoader`) : silhouette grise du H, pièces remplies de leurs
-   dégradés. Géométrie du H sur 256 (FAMILY_MARK_SVG). Seul `transform` s'anime : compositeur,
-   fluide pendant qu'une page charge. */
+/* Chargeur de la famille (`FamilyLoader`, ADR 0015) : silhouette grise du H, pièces remplies de
+   leurs dégradés. Géométrie du H sur 256 (FAMILY_MARK_SVG). Une seule boucle de 2 s pour tout le H,
+   calée sur l'horloge (`syncFamilyLoader`) : le jambage gauche monte, la barre le prolonge vers la
+   droite, le jambage droit s'ouvre depuis la barre vers le haut et le bas ; le H complet tient, se
+   vide d'un fondu, la silhouette reste un instant, et ça recommence. Seuls `transform` et `opacity`
+   s'animent, sur des couches internes : compositeur, fluide pendant qu'une page charge. */
 .family-loader {
   --fl: var(--family-loader-size, 40px);
   --fl-ghost: color-mix(in oklab, var(--foreground) var(--fl-ghost-mix, 11%), var(--background));
@@ -527,73 +526,216 @@
 .family-loader [data-fill] {
   position: absolute;
   inset: 0;
-  will-change: transform;
+  will-change: transform, opacity;
+  /* Une seule durée, aucun délai : les trois pièces sont trois pistes de la même boucle. */
+  animation-duration: 2s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-fill-mode: both;
 }
 .family-loader [data-piece="left"] [data-fill] {
   background: linear-gradient(to bottom, #2c78fd, #7343fe);
-  animation: family-loader-rise 1.6s var(--ease-in-out) infinite both;
-}
-.family-loader [data-piece="right"] [data-fill] {
-  background: linear-gradient(to bottom, #fe5292, #ff9a46);
-  animation: family-loader-rise 1.6s var(--ease-in-out) 0.4s infinite both;
+  animation-name: family-loader-left;
 }
 .family-loader [data-piece="bar"] [data-fill] {
   background: linear-gradient(to right, #8145ff, #fe5292);
-  animation: family-loader-sweep 1.6s var(--ease-in-out) 0.2s infinite both;
+  animation-name: family-loader-bar;
 }
-/* Les jambes se remplissent par le bas, tiennent, puis la couleur continue de monter et laisse
-   la silhouette : le cycle suivant repart sans temps mort. */
-@keyframes family-loader-rise {
+.family-loader [data-piece="right"] [data-fill] {
+  background: linear-gradient(to bottom, #fe5292, #ff9a46);
+  /* Le jambage droit s'ouvre depuis la barre (son milieu : 128,5 sur 256, soit 50,24 % du jambage). */
+  transform-origin: 50% 50.24%;
+  animation-name: family-loader-right;
+}
+/* La boucle, sur 2 s : gauche 0-500 ms, barre 300-800, droite 600-1100, H complet 1100-1500,
+   fondu 1500-1750, silhouette seule 1750-2000. Chaque remplissage reprend sa place de départ
+   pendant qu'il est invisible (opacité nulle), d'un seul pas. */
+@keyframes family-loader-left {
   0% {
-    transform: translateY(101%);
+    transform: translateY(100%);
+    opacity: 1;
+    animation-timing-function: var(--ease-in-out);
   }
-  38%,
-  62% {
+  25%,
+  75% {
     transform: translateY(0);
+    opacity: 1;
+    animation-timing-function: var(--ease-out);
+  }
+  87.5% {
+    transform: translateY(0);
+    opacity: 0;
+    animation-timing-function: steps(1, end);
   }
   100% {
-    transform: translateY(-101%);
+    transform: translateY(100%);
+    opacity: 1;
   }
 }
-/* La barre, de gauche à droite. */
-@keyframes family-loader-sweep {
-  0% {
-    transform: translateX(-101%);
+@keyframes family-loader-bar {
+  0%,
+  15% {
+    transform: translateX(-100%);
+    opacity: 1;
+    animation-timing-function: var(--ease-in-out);
   }
-  38%,
-  62% {
+  40%,
+  75% {
     transform: translateX(0);
+    opacity: 1;
+    animation-timing-function: var(--ease-out);
+  }
+  87.5% {
+    transform: translateX(0);
+    opacity: 0;
+    animation-timing-function: steps(1, end);
   }
   100% {
-    transform: translateX(101%);
+    transform: translateX(-100%);
+    opacity: 1;
   }
 }
-@keyframes family-loader-glow {
+@keyframes family-loader-right {
+  0%,
+  30% {
+    transform: scaleY(0);
+    opacity: 1;
+    animation-timing-function: var(--ease-in-out);
+  }
+  55%,
+  75% {
+    transform: scaleY(1);
+    opacity: 1;
+    animation-timing-function: var(--ease-out);
+  }
+  87.5% {
+    transform: scaleY(1);
+    opacity: 0;
+    animation-timing-function: steps(1, end);
+  }
+  100% {
+    transform: scaleY(0);
+    opacity: 1;
+  }
+}
+/* Mouvement réduit : le H est plein et respire doucement, sur la même boucle. */
+@keyframes family-loader-breathe {
   0%,
   100% {
-    opacity: 0.25;
+    opacity: 0.4;
   }
   50% {
     opacity: 1;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  /* La silhouette reste, le remplissage pulse en place, sans mouvement. */
   .family-loader [data-piece] [data-fill] {
     transform: none;
-    animation: family-loader-glow 1.6s ease-in-out infinite both;
+    animation-name: family-loader-breathe;
+    animation-timing-function: ease-in-out;
   }
 }
-/* Calque de chargement de la zone de contenu (`AppShell`) : opaque, au-dessus de l'ancienne page,
-   le H à une position fixe. Apparition courte, disparition plus courte encore. */
+
+/* Scène du chargement (ADR 0015) : la zone de contenu de la coque, calculée depuis l'écran, pour
+   que le H soit au même pixel dans la coque, avant elle (rendu serveur, page d'entrée) et d'un
+   produit à l'autre. Téléphone : sous l'en-tête de 56 px. Ordinateur : barre des produits (56 px),
+   barre latérale (256 px, 64 en rail), marge de 8 px, en-tête de 56 px. */
+:root {
+  --hgdc-rail-w: 0px;
+  --hgdc-content-left: 0px;
+  --hgdc-stage-top: calc(env(safe-area-inset-top, 0px) + 3.5rem);
+  --hgdc-stage-right: 0px;
+  --hgdc-stage-bottom: 0px;
+  --hgdc-stage-left: 0px;
+}
+@media (width >= 64rem) {
+  :root {
+    --hgdc-rail-w: 3.5rem;
+    --hgdc-sidebar-w: 16rem;
+    --hgdc-content-left: calc(var(--hgdc-rail-w) + var(--hgdc-sidebar-w));
+    --hgdc-stage-top: 4rem;
+    --hgdc-stage-right: 0.5rem;
+    --hgdc-stage-bottom: 0.5rem;
+    --hgdc-stage-left: var(--hgdc-content-left);
+  }
+  :root[data-sidebar="rail"] {
+    --hgdc-sidebar-w: 4rem;
+  }
+  :root:has([data-slot="app-shell"]:not([data-product-rail])) {
+    --hgdc-rail-w: 0px;
+  }
+}
+
+/* Le chargeur du document (`FamilyLoaderRoot`) : un seul H par page, en position fixe sur la scène.
+   Visible quand une page attend (`PagePending`) hors de la coque, quand la coque charge
+   (`data-loading`), ou dès le rendu serveur quand une page attend dans une coque pas encore
+   hydratée. Masqué avec 80 ms de retenue : un `PagePending` qui laisse la place à un autre ne fait
+   pas clignoter le H. */
+[data-slot="family-loader-root"] {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 120ms var(--ease-out) 80ms,
+    visibility 0s linear 200ms;
+}
+:root:has([data-slot="page-pending"]):not(:has([data-slot="app-shell"])) [data-slot="family-loader-root"],
+:root:has([data-slot="app-shell"][data-loading]) [data-slot="family-loader-root"],
+:root:has([data-slot="app-shell"]:not([data-hydrated]) [data-slot="page-pending"]) [data-slot="family-loader-root"] {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 150ms var(--ease-out),
+    visibility 0s;
+}
+[data-slot="family-loader-root"] > [data-stage] {
+  position: fixed;
+  top: var(--hgdc-stage-top);
+  right: var(--hgdc-stage-right);
+  bottom: var(--hgdc-stage-bottom);
+  left: var(--hgdc-stage-left);
+  display: grid;
+  place-items: center;
+}
+/* Hors de la coque, le cadre de la coque : la page qui arrive a déjà sa forme, le H sa place. */
+[data-slot="family-loader-root"] > [data-frame] {
+  position: fixed;
+  inset: 0;
+  display: none;
+  background: var(--background);
+}
+:root:not(:has([data-slot="app-shell"])) [data-slot="family-loader-root"] > [data-frame] {
+  display: block;
+}
+@media (width >= 64rem) {
+  [data-slot="family-loader-root"] > [data-frame] {
+    background:
+      linear-gradient(var(--shell-rail), var(--shell-rail)) left / var(--hgdc-rail-w) 100% no-repeat,
+      var(--shell);
+  }
+  [data-slot="family-loader-root"] > [data-frame]::after {
+    content: "";
+    position: absolute;
+    inset: 0.5rem 0.5rem 0.5rem var(--hgdc-content-left);
+    border-radius: var(--radius-xl);
+    background: var(--background);
+  }
+}
+
+/* Calque de la zone de contenu (`AppShell`) : opaque, au-dessus de l'ancienne page, sous le H du
+   document. Mêmes conditions et même rythme que le H : ils apparaissent et s'effacent ensemble. */
 [data-slot="app-shell-loading"] {
   opacity: 0;
   visibility: hidden;
   transition:
-    opacity 100ms var(--ease-out),
-    visibility 0s linear 100ms;
+    opacity 120ms var(--ease-out) 80ms,
+    visibility 0s linear 200ms;
 }
-[data-slot="app-shell-loading"][data-visible] {
+[data-slot="app-shell"][data-loading] [data-slot="app-shell-loading"],
+[data-slot="app-shell"]:not([data-hydrated]):has([data-slot="page-pending"]) [data-slot="app-shell-loading"] {
   opacity: 1;
   visibility: visible;
   transition:
