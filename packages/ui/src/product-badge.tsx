@@ -13,13 +13,13 @@ import {
  * et que les SVG de `family/`.
  */
 export const PRODUCT_GRADIENT: Readonly<Record<FamilyProduct, { from: string; to: string }>> = {
-  account: { from: "#ff6a3d", to: "#c42a1a" },
-  host: { from: "#3b7bff", to: "#1636c9" },
-  mail: { from: "#f0445f", to: "#a8123d" },
-  portal: { from: "#8b5cff", to: "#4a22c9" },
-  status: { from: "#1bc488", to: "#057a55" },
-  analytics: { from: "#ffb020", to: "#d96a00" },
-  docs: { from: "#19b9d1", to: "#0a6f8f" },
+  account: { from: "#ff6a3d", to: "#fc582e" },
+  host: { from: "#3b7bff", to: "#2b63f2" },
+  mail: { from: "#fa3a58", to: "#ec3052" },
+  portal: { from: "#8b5cff", to: "#7b4bf7" },
+  status: { from: "#11ce8b", to: "#09b077" },
+  analytics: { from: "#ffb020", to: "#e58309" },
+  docs: { from: "#0ec1dc", to: "#0aa3c1" },
 }
 
 // En image plutôt qu'en SVG en ligne : chaque icône garde ses identifiants de dégradé pour elle,

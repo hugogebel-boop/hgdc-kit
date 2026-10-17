@@ -234,19 +234,19 @@
    blanc `in oklab`, jamais `in oklch` (la teinte du blanc s'y mêle, tout vire au rose). */
 :root {
   --product-account-from: #ff6a3d;
-  --product-account-to: #c42a1a;
+  --product-account-to: #fc582e;
   --product-host-from: #3b7bff;
-  --product-host-to: #1636c9;
-  --product-mail-from: #f0445f;
-  --product-mail-to: #a8123d;
+  --product-host-to: #2b63f2;
+  --product-mail-from: #fa3a58;
+  --product-mail-to: #ec3052;
   --product-portal-from: #8b5cff;
-  --product-portal-to: #4a22c9;
-  --product-status-from: #1bc488;
-  --product-status-to: #057a55;
+  --product-portal-to: #7b4bf7;
+  --product-status-from: #11ce8b;
+  --product-status-to: #09b077;
   --product-analytics-from: #ffb020;
-  --product-analytics-to: #d96a00;
-  --product-docs-from: #19b9d1;
-  --product-docs-to: #0a6f8f;
+  --product-analytics-to: #e58309;
+  --product-docs-from: #0ec1dc;
+  --product-docs-to: #0aa3c1;
   --glow-blue: #2c78fd;
   --glow-violet: #7343fe;
   --glow-pink: #fe5292;
