@@ -274,6 +274,18 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* Barres de défilement fines, visibles quand la souris ou le focus clavier est dans le bloc
+     qui défile (barre latérale, liste, panneau, code). La page elle-même les garde : la souris
+     y est toujours. `::-webkit-scrollbar` pour les Safari sans `scrollbar-color`. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  html,
+  *:hover,
+  *:focus-within {
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -282,8 +294,13 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb);
+    background: transparent;
     border-radius: 9999px;
+  }
+  html::-webkit-scrollbar-thumb,
+  *:hover::-webkit-scrollbar-thumb,
+  *:focus-within::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
   }
   html {
     @apply font-sans;
