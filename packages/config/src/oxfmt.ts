@@ -1,7 +1,7 @@
 import { defineConfig, type OxfmtConfig } from "oxfmt"
 
 /**
- * Format commun de la H family, aligné sur le code existant de host et mail
+ * Format commun de la H Collection, aligné sur le code existant de host et mail
  * (sans point-virgule, guillemets doubles). Le produit étend ce preset et ajoute,
  * s'il utilise Tailwind, `sortTailwindcss.stylesheet` vers sa feuille principale.
  */

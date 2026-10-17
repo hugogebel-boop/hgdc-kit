@@ -1,4 +1,4 @@
-# CI commune de la H family : installe depuis le lockfile, puis `bun run check`.
+# CI commune de la H Collection : installe depuis le lockfile, puis `bun run check`.
 # Depuis un produit (Renovate tient le SHA à jour) :
 #
 #   jobs:

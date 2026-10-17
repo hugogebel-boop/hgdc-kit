@@ -1,4 +1,4 @@
-// Identité H family : écrit packages/ui/src/family-svg.ts (SVG des pastilles et du H, en chaînes) et les
+// Identité H Collection : écrit packages/ui/src/family-svg.ts (SVG des pastilles et du H, en chaînes) et les
 // PNG des e-mails (packages/ui/email-icons/<mot>.png, 96 × 96 : Gmail et Outlook n'affichent pas le
 // SVG) depuis packages/ui/family/, copie des originaux du site hgdc.ch. Ne jamais redessiner une
 // pastille ici : changer l'original, le recopier dans family/, puis :
@@ -24,7 +24,7 @@ for (const product of PRODUCTS) {
 
 const source = `// Généré par \`bun scripts/family.ts\` depuis \`packages/ui/family/\`. Ne pas modifier à la main.
 
-/** Les produits de la H family qui ont une pastille, par leur mot en minuscules. */
+/** Les produits de la H Collection qui ont une pastille, par leur mot en minuscules. */
 export const FAMILY_PRODUCTS = ${JSON.stringify(PRODUCTS)} as const
 
 export type FamilyProduct = (typeof FAMILY_PRODUCTS)[number]

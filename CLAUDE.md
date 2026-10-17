@@ -1,6 +1,6 @@
 # hgdc-kit
 
-Code commun de la H family, publié sur npm (`@hgdc/*`). Vue d'ensemble : `README.md`, décisions : `docs/adr/`.
+Code commun de la H Collection, publié sur npm (`@hgdc/*`). Vue d'ensemble : `README.md`, décisions : `docs/adr/`.
 
 - **Dépôt public** : rien de privé ici, ni secret, ni nom d'hôte interne, ni vision produit (elle vit dans le dépôt privé `hgdc`, `site/docs/vision.md`).
 - `packages/config/stack.json` fait foi pour les versions de la stack. Les `devDependencies` du kit s'y conforment (`bun run stack`). Un paquet ajouté à la stack l'est aussi dans `renovate/default.json` (le test `renovate.test.ts` le vérifie).

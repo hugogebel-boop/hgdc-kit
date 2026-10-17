@@ -1,6 +1,6 @@
 # @hgdc/config
 
-Configuration partagée des produits de la H family : presets TypeScript, oxlint et oxfmt, preset Renovate, versions exactes de la stack.
+Configuration partagée des produits de la H Collection : presets TypeScript, oxlint et oxfmt, preset Renovate, versions exactes de la stack.
 
 ```sh
 bun add --dev --exact @hgdc/config

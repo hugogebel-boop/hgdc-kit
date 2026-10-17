@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Preset Renovate des produits de la H family.",
+  "description": "Preset Renovate des produits de la H Collection.",
   "extends": ["config:recommended", ":semanticCommitTypeAll(chore)", "helpers:pinGitHubActionDigests"],
   "timezone": "Europe/Zurich",
   "schedule": ["before 6am on monday"],
