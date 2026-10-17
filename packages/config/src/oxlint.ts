@@ -1,7 +1,7 @@
 import { defineConfig, type OxlintConfig } from "oxlint"
 
 /**
- * Règles communes de la H family : la catégorie `correctness` d'oxlint (son défaut recommandé)
+ * Règles communes de la H Collection : la catégorie `correctness` d'oxlint (son défaut recommandé)
  * plus une courte liste de règles à forte valeur, toutes bloquantes. Pas d'avertissement :
  * une règle qui ne bloque pas finit ignorée.
  *

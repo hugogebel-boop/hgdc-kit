@@ -5,7 +5,7 @@ last_reviewed: 2026-10-15
 
 # hgdc-kit
 
-Le code commun de la H family (HGDC Host, Mail, Account…), publié sur npm sous le scope `@hgdc`.
+Le code commun de la H Collection (HGDC Host, Mail, Account…), publié sur npm sous le scope `@hgdc`.
 
 | Paquet                              | Contenu                                                                                                                     |
 | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |

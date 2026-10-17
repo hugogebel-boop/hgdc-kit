@@ -21,7 +21,7 @@ const file = (name: string) =>
     .trim()
 const css = readFileSync(join(root, "styles.css"), "utf8")
 
-describe("identité H family", () => {
+describe("identité H Collection", () => {
   it("embarque les pastilles telles que les fichiers de family/ (régénérer : bun scripts/family.ts)", () => {
     for (const product of FAMILY_PRODUCTS) expect(PRODUCT_BADGE_SVG[product]).toBe(file(product))
     expect(FAMILY_MARK_SVG).toBe(file("hfamily-icon"))
@@ -46,14 +46,14 @@ describe("identité H family", () => {
     const { container } = render(
       <>
         <ProductBadge product="host" />
-        <FamilyMark label="H family" />
+        <FamilyMark label="H Collection" />
       </>,
     )
     const [badge, mark] = [...container.querySelectorAll("img")]
     expect(badge?.getAttribute("src")).toMatch(/^data:image\/svg\+xml,/)
     expect(badge?.getAttribute("alt")).toBe("")
     expect(badge?.getAttribute("aria-hidden")).toBe("true")
-    expect(mark?.getAttribute("alt")).toBe("H family")
+    expect(mark?.getAttribute("alt")).toBe("H Collection")
     expect(mark?.hasAttribute("aria-hidden")).toBe(false)
   })
 

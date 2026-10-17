@@ -1,6 +1,6 @@
 # @hgdc/ui
 
-Interface de la H family : jetons de la DA, thèmes clair et sombre, polices, composants de base et coque des consoles, pour une application React 19 + Tailwind v4.
+Interface de la H Collection : jetons de la DA, thèmes clair et sombre, polices, composants de base et coque des consoles, pour une application React 19 + Tailwind v4.
 
 ```sh
 bun add @hgdc/ui
@@ -65,7 +65,7 @@ Une seule règle dans les sept produits, posée par la coque :
 - **États vides** : `<Empty variant="card">` pour une page vide, icône monochrome (`EmptyMedia variant="icon"`), sans teinte de couleur.
 - **Rôles et initiales** : `RoleBadge` (neutre), `MemberItem`, `initials`. Jamais une fonction d'initiales ou un badge de rôle dans un produit.
 
-## Identité H family
+## Identité H Collection
 
 | Import                         | Rôle                                                                                                                                       |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -158,18 +158,18 @@ const { html, text } = await renderEmail(
 )
 ```
 
-| Bloc           | Rôle                                                                                                                                                 |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `EmailLayout`  | Icône et nom du produit, carte, pied « Envoyé avec Mail de la H family » et mentions légales ; `footer` (désabonnement), `name`, `iconSrc`, `accent` |
-| `EmailHeading` | Titre                                                                                                                                                |
-| `EmailText`    | Paragraphe ; `small` pour une note secondaire                                                                                                        |
-| `EmailButton`  | Lien direct, jamais réécrit ; absolu (`https:`, `mailto:`) ou erreur                                                                                 |
-| `EmailLink`    | Lien dans le texte                                                                                                                                   |
-| `EmailCode`    | Code à usage unique, en deux groupes à l'œil, d'un bloc au copier                                                                                    |
-| `EmailCallout` | Encadré `neutral`, `info`, `success`, `warning`, `danger`, avec titre                                                                                |
-| `EmailDivider` | Séparateur                                                                                                                                           |
-| `EmailDetails` | Liste clé / valeur                                                                                                                                   |
-| `renderEmail`  | `{ html, text }` : HTML pour clients mail, texte tiré du même rendu                                                                                  |
+| Bloc           | Rôle                                                                                                                                                     |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EmailLayout`  | Icône et nom du produit, carte, pied « Envoyé avec Mail de la H Collection » et mentions légales ; `footer` (désabonnement), `name`, `iconSrc`, `accent` |
+| `EmailHeading` | Titre                                                                                                                                                    |
+| `EmailText`    | Paragraphe ; `small` pour une note secondaire                                                                                                            |
+| `EmailButton`  | Lien direct, jamais réécrit ; absolu (`https:`, `mailto:`) ou erreur                                                                                     |
+| `EmailLink`    | Lien dans le texte                                                                                                                                       |
+| `EmailCode`    | Code à usage unique, en deux groupes à l'œil, d'un bloc au copier                                                                                        |
+| `EmailCallout` | Encadré `neutral`, `info`, `success`, `warning`, `danger`, avec titre                                                                                    |
+| `EmailDivider` | Séparateur                                                                                                                                               |
+| `EmailDetails` | Liste clé / valeur                                                                                                                                       |
+| `renderEmail`  | `{ html, text }` : HTML pour clients mail, texte tiré du même rendu                                                                                      |
 
 L'accent vient du catalogue (`accent` de `@hgdc/ui/products`), les icônes de `https://hgdc.ch/email/<mot>.png` (fichiers dans `@hgdc/ui/email-icons/`, tirés des pastilles par `bun scripts/family.ts`). Un exemple par type : `scripts/email-showcase.tsx`.
 

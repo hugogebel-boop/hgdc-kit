@@ -36,7 +36,7 @@ describe("EmailLayout", () => {
     expect(html).toContain(">Status<")
     expect(attributes(html, "src")).toEqual(["https://hgdc.ch/email/status.png", "https://hgdc.ch/email/mail.png"])
     expect(html).toContain("Envoyé avec")
-    expect(html).toContain(">Mail de la H family</a>")
+    expect(html).toContain(">Mail de la H Collection</a>")
     expect(attributes(html, "href")).toContain("https://mail.hgdc.ch")
     expect(html).toContain("Hugo Gebel Développement Conseil, Lausanne")
     expect(html).toMatch(/<html[^>]*lang="fr"/)

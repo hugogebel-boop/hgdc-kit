@@ -1,6 +1,6 @@
 // Généré par `bun scripts/family.ts` depuis `packages/ui/family/`. Ne pas modifier à la main.
 
-/** Les produits de la H family qui ont une pastille, par leur mot en minuscules. */
+/** Les produits de la H Collection qui ont une pastille, par leur mot en minuscules. */
 export const FAMILY_PRODUCTS = ["account", "host", "mail", "portal", "status", "analytics", "docs"] as const
 
 export type FamilyProduct = (typeof FAMILY_PRODUCTS)[number]
