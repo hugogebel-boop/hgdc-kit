@@ -40,16 +40,29 @@ describe("FamilyLoader", () => {
     expect(status.dataset.slot).toBe("family-loader")
   })
 
-  it("dessine les trois pièces du H dans l'ordre de la boucle, chacune avec sa couche de remplissage", () => {
+  it("dessine les trois pièces du H plein dans l'ordre de la boucle, chacune avec sa couche de remplissage", () => {
     const { container } = render(<FamilyLoader />)
-    const pieces = [...container.querySelectorAll("[data-piece]")]
+    const pieces = [...container.querySelectorAll('[data-slot="family-loader"] > [data-piece]')]
     expect(pieces.map((piece) => piece.getAttribute("data-piece"))).toEqual(["left", "bar", "right"])
     for (const piece of pieces) expect(piece.querySelector("[data-fill]")).not.toBeNull()
   })
 
-  it("garde la géométrie du H de la famille (sur 256)", () => {
-    for (const value of ["* 43 / 256", "* 156 / 256", "* 57 / 256", "* 208 / 256", "* 67 / 256", "* 107 / 256"])
-      expect(css).toContain(value)
+  it("pose derrière le H plein son reflet, les mêmes pièces sans remplissage animé", () => {
+    const { container } = render(<FamilyLoader />)
+    const reflet = container.querySelector('[data-slot="family-loader"] > [data-reflet]')
+    const pieces = [...(reflet?.querySelectorAll("[data-piece]") ?? [])]
+    expect(pieces.map((piece) => piece.getAttribute("data-piece"))).toEqual(["left", "bar", "right"])
+    expect(reflet?.querySelector("[data-fill]")).toBeNull()
+    expect(normal).toMatch(/\.family-loader>\[data-reflet\]\{[^}]*opacity:var\(--fl-reflet\)/)
+    expect(minified).toMatch(/\.family-loader\{[^}]*--fl-reflet:\.35/)
+    expect(minified).toMatch(/\.dark \.family-loader\{[^}]*--fl-reflet:\.5/)
+    expect(minified).not.toMatch(/\[data-reflet\][^{]*\{[^}]*animation/)
+  })
+
+  it("garde la géométrie du H « Double » (cadre de 46 unités, reflet décalé de 6)", () => {
+    expect(css).toContain("--fl-u: calc(var(--fl) / 46);")
+    for (const value of ["* 2.5)", "* 10)", "* 36)", "* 5.5)", "* 25.5)", "* 15)", "* 16)", "* 11)", "* 9)", "* 6)"])
+      expect(css).toContain(`calc(var(--fl-u) ${value}`)
   })
 
   it("40 px par défaut, 24 px en petit, 64 px en grand", () => {
@@ -65,7 +78,7 @@ describe("FamilyLoader", () => {
   })
 
   it("silhouette toujours visible : la pièce elle-même est grise, seul le remplissage bouge", () => {
-    expect(normal).toMatch(/\.family-loader \[data-piece\]\{[^}]*background:var\(--fl-ghost\)/)
+    expect(normal).toMatch(/\.family-loader>\[data-piece\]\{[^}]*background:var\(--fl-ghost\)/)
     expect(normal).not.toMatch(/\.family-loader \[data-piece\]\{[^}]*animation/)
   })
 

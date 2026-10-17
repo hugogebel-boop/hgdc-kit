@@ -1,22 +1,23 @@
 import { cn } from "./cn.ts"
-import { FAMILY_MARK_SVG, PRODUCT_BADGE_SVG, type FamilyProduct } from "./family-svg.ts"
+import { FAMILY_MARK_SVG, PRODUCT_BADGE_SVG, type FamilyProduct, type ThemedSvg } from "./family-svg.ts"
 
 /**
- * Dégradé de chaque pastille, du coin haut gauche au coin bas droit. Mêmes valeurs que les jetons
- * `--product-<mot>-from` / `--product-<mot>-to` de `styles.css` et que les SVG de `family/`.
+ * Dégradé de chaque icône sur fond clair, de la teinte vive (haut gauche) à la teinte profonde (bas
+ * droit). Mêmes valeurs que les jetons `--product-<mot>-from` / `--product-<mot>-to` de `styles.css`
+ * et que les SVG de `family/`.
  */
 export const PRODUCT_GRADIENT: Readonly<Record<FamilyProduct, { from: string; to: string }>> = {
-  account: { from: "#ff3b47", to: "#ff6352" },
-  host: { from: "#194ff7", to: "#02b4ff" },
-  mail: { from: "#f61f8e", to: "#ff5cb8" },
-  portal: { from: "#4732ed", to: "#b03cff" },
-  status: { from: "#199f62", to: "#56db29" },
-  analytics: { from: "#fe5623", to: "#ffb003" },
-  docs: { from: "#1bb9cf", to: "#13e4c8" },
+  account: { from: "#ff6a3d", to: "#c42a1a" },
+  host: { from: "#3b7bff", to: "#1636c9" },
+  mail: { from: "#f0445f", to: "#a8123d" },
+  portal: { from: "#8b5cff", to: "#4a22c9" },
+  status: { from: "#1bc488", to: "#057a55" },
+  analytics: { from: "#ffb020", to: "#d96a00" },
+  docs: { from: "#19b9d1", to: "#0a6f8f" },
 }
 
-// En image plutôt qu'en SVG en ligne : chaque pastille garde ses identifiants de dégradé pour elle,
-// plusieurs pastilles dans une même page ne se marchent pas dessus.
+// En image plutôt qu'en SVG en ligne : chaque icône garde ses identifiants de dégradé pour elle,
+// plusieurs icônes dans une même page ne se marchent pas dessus.
 function dataUri(svg: string): string {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`
 }
@@ -28,34 +29,47 @@ type MarkProps = {
 }
 
 /**
- * Pastille d'un produit (dégradé plein, pictogramme blanc), toujours seule : jamais dans une tuile
- * de couleur. `size-4` par défaut, à agrandir par `className`.
+ * Les deux variantes du dessin, l'une sur fond clair, l'autre sur fond sombre (`.dark`) : le thème
+ * choisit par CSS, sans JavaScript, dès le rendu serveur.
  */
-export function ProductBadge({ product, className, label }: MarkProps & { product: FamilyProduct }): React.JSX.Element {
+function ThemedMark({ svg, slot, className, label }: MarkProps & { svg: ThemedSvg; slot: string }): React.JSX.Element {
   return (
-    <img
-      src={dataUri(PRODUCT_BADGE_SVG[product])}
-      alt={label ?? ""}
-      aria-hidden={label ? undefined : true}
-      width={16}
-      height={16}
-      draggable={false}
-      className={cn("size-4 shrink-0 select-none", className)}
-    />
+    <span
+      data-slot={slot}
+      {...(label ? { role: "img", "aria-label": label } : { "aria-hidden": true })}
+      className={cn("inline-block size-4 shrink-0 select-none", className)}
+    >
+      <img
+        src={dataUri(svg.light)}
+        alt=""
+        width={16}
+        height={16}
+        draggable={false}
+        data-mark-theme="light"
+        className="block size-full"
+      />
+      <img
+        src={dataUri(svg.dark)}
+        alt=""
+        width={16}
+        height={16}
+        draggable={false}
+        data-mark-theme="dark"
+        className="block size-full"
+      />
+    </span>
   )
 }
 
-/** Le H tricolore de la famille (« Propulsé par », hub). `size-4` par défaut. */
+/**
+ * Icône d'un produit : le pictogramme seul, dans le dégradé du produit, sans tuile ni bordure. Le
+ * dessin s'éclaircit sur fond sombre. `size-4` par défaut, à agrandir par `className`.
+ */
+export function ProductBadge({ product, className, label }: MarkProps & { product: FamilyProduct }): React.JSX.Element {
+  return <ThemedMark svg={PRODUCT_BADGE_SVG[product]} slot="product-badge" className={className} label={label} />
+}
+
+/** Le H « Double », marque de la H Collection (« Propulsé par », hub). `size-4` par défaut. */
 export function FamilyMark({ className, label }: MarkProps): React.JSX.Element {
-  return (
-    <img
-      src={dataUri(FAMILY_MARK_SVG)}
-      alt={label ?? ""}
-      aria-hidden={label ? undefined : true}
-      width={16}
-      height={16}
-      draggable={false}
-      className={cn("size-4 shrink-0 select-none", className)}
-    />
-  )
+  return <ThemedMark svg={FAMILY_MARK_SVG} slot="family-mark" className={className} label={label} />
 }
