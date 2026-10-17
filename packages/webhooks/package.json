@@ -1,0 +1,31 @@
+{
+  "name": "@hgdc/webhooks",
+  "version": "0.0.0",
+  "description": "Webhooks signés au format Standard Webhooks pour les produits HGDC : signature et vérification, secret whsec_, garde SSRF des adresses, calendrier de reprises. Fonctions pures.",
+  "license": "UNLICENSED",
+  "homepage": "https://github.com/hugogebel-boop/hgdc-kit/tree/main/packages/webhooks#readme",
+  "bugs": "https://github.com/hugogebel-boop/hgdc-kit/security/advisories/new",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hugogebel-boop/hgdc-kit.git",
+    "directory": "packages/webhooks"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  }
+}

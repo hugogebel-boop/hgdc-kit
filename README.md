@@ -7,13 +7,14 @@ last_reviewed: 2026-10-15
 
 Le code commun de la H Collection (HGDC Host, Mail, Account…), publié sur npm sous le scope `@hgdc`.
 
-| Paquet                              | Contenu                                                                                                                     |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| [`@hgdc/config`](packages/config)   | Presets tsconfig, oxlint et oxfmt, preset Renovate, versions exactes de la stack et la commande `hgdc-stack` qui les impose |
-| [`@hgdc/ui`](packages/ui)           | Jetons de la DA, thèmes, composants, coque des consoles et modèle des e-mails transactionnels (`@hgdc/ui/email`)            |
-| [`@hgdc/auth`](packages/auth)       | Bouton « Se connecter avec HGDC », client OIDC better-auth, proxy `/api/auth`, gardes Convex `requireOrgMember`             |
-| [`@hgdc/errors`](packages/errors)   | Remontée d'erreurs vers GlitchTip, nettoyée et non bloquante : Convex, navigateur, serveur Bun ou Node                      |
-| [`@hgdc/domains`](packages/domains) | Domaines personnalisés : nom saisi, racine ou sous-domaine, preuve TXT, réponses DNS, enregistrements à afficher            |
+| Paquet                                | Contenu                                                                                                                           |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| [`@hgdc/config`](packages/config)     | Presets tsconfig, oxlint et oxfmt, preset Renovate, versions exactes de la stack et la commande `hgdc-stack` qui les impose       |
+| [`@hgdc/ui`](packages/ui)             | Jetons de la DA, thèmes, composants, coque des consoles et modèle des e-mails transactionnels (`@hgdc/ui/email`)                  |
+| [`@hgdc/auth`](packages/auth)         | Bouton « Se connecter avec HGDC », client OIDC better-auth, proxy `/api/auth`, gardes Convex `requireOrgMember`                   |
+| [`@hgdc/errors`](packages/errors)     | Remontée d'erreurs vers GlitchTip, nettoyée et non bloquante : Convex, navigateur, serveur Bun ou Node                            |
+| [`@hgdc/domains`](packages/domains)   | Domaines personnalisés : nom saisi, racine ou sous-domaine, preuve TXT, réponses DNS, enregistrements à afficher                  |
+| [`@hgdc/webhooks`](packages/webhooks) | Webhooks signés (Standard Webhooks) : signature et vérification, secret `whsec_`, garde SSRF des adresses, calendrier de reprises |
 
 Le dépôt est public pour que chaque produit installe le kit sans jeton. Ce n'est pas du logiciel libre : tous droits réservés ([LICENSE](LICENSE)).
 
