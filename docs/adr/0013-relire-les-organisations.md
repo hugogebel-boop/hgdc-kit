@@ -14,7 +14,7 @@ Un produit recopie les organisations de la personne depuis le claim `organizatio
 
 - L'entrée commune `/auth/hgdc` (ADR 0010) accepte `refresh=1` : elle relance la connexion HGDC même si la session du produit est ouverte. Account répond sans formulaire (session d'Account ouverte, client de confiance) ; la nouvelle session relit le claim par le même crochet. Aucun second chemin de confiance : pas d'appel à `userinfo` avec un jeton stocké.
 - Retour vers `next?synced=1`. Une page qui voit ce marqueur ne relance pas l'entrée, et l'entrée ignore `refresh=1` quand `next` le porte déjà : une seule resynchronisation par navigation.
-- Déclencheurs : les liens de la barre et du menu des produits (`?refresh=1&next=/`) ; dans chaque produit, une page d'organisation inconnue ou sans appartenance locale, avant « introuvable » (`hgdcRefreshPath`) ; dans Account, après l'acceptation d'une invitation, les liens « Ouvrir dans … ».
+- Déclencheurs : les liens de la barre et du menu des produits (`?refresh=1&next=/`, relecture en arrière-plan depuis l'ADR 0016) ; dans chaque produit, une page d'organisation inconnue ou sans appartenance locale, avant « introuvable » (`hgdcRefreshPath`) ; dans Account, après l'acceptation d'une invitation, les liens « Ouvrir dans … ».
 - L'ancienne session n'est pas révoquée : si Account est injoignable pendant un changement de produit, la personne garde son accès. Elle expire seule après 7 jours.
 
 ## Conséquences

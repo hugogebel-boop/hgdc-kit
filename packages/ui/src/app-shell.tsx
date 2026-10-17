@@ -30,6 +30,7 @@ import {
 } from "./page-pending.tsx"
 import { ProductBadge } from "./product-badge.tsx"
 import { ProductRail } from "./product-rail.tsx"
+import { useProductSwitch } from "./product-switch.ts"
 import { HGDC_ACCOUNT, HGDC_PRODUCTS } from "./products.ts"
 import { ProductRailShownContext, ShellLeaveContext } from "./shell-placement.ts"
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip.tsx"
@@ -385,6 +386,8 @@ export function AppShell({
   // Barre des produits élargie : la barre latérale se plie le temps du survol (ADR 0011).
   const [railPeek, setRailPeek] = useState(false)
   useToggleShortcut()
+  // Relecture des organisations après un passage depuis la barre, préchargement des autres produits (ADR 0016).
+  useProductSwitch(productRail)
 
   // Chargement de la zone de contenu (ADR 0015) : une navigation en cours (après 50 ms), une page
   // qui attend (`PagePending`, aussitôt : le routeur a déjà attendu), ou le départ vers un autre
