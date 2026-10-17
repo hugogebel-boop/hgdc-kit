@@ -109,7 +109,8 @@ export const Route = createFileRoute("/auth/hgdc")({
 
 Le claim `organizations` n'est lu qu'à la création d'une session (étape 1 ci-dessous). Une organisation rejointe dans Account reste donc invisible dans un produit dont la session est ouverte, jusqu'à 7 jours. `refresh=1` repasse par Account même avec une session ouverte : la nouvelle session relit le claim, sans formulaire quand la session d'Account existe.
 
-- Barre et menu des produits (`@hgdc/ui/products`) : `https://<mot>.hgdc.ch/auth/hgdc?refresh=1&next=/`. Chaque passage d'un produit à l'autre resynchronise.
+- Barre et menu des produits (`@hgdc/ui/products`) : `https://<mot>.hgdc.ch/auth/hgdc?refresh=background&next=/` (ADR 0016). Session du produit ouverte : redirection immédiate vers `next` et cookie `HGDC_ORG_SYNC_COOKIE` ; la coque (`AppShell`) le consomme et relit les organisations dans un cadre caché sans script (`HGDC_BACKGROUND_REFRESH_PATH`, `frame=1`), qui revient sur une réponse vide (`HGDC_FRAME_DONE_PATH`). La nouvelle session recopie les organisations, les requêtes abonnées se mettent à jour. Sans session : connexion habituelle.
+- Préchargement au survol (Speculation Rules, `prefetch` seulement) : l'entrée ne rend que la redirection d'une session ouverte ; tout ce qui démarrerait une connexion (`refresh=1`, `frame=1`, pas de session) répond 503 à une requête `Sec-Purpose: prefetch`.
 - Page d'une organisation inconnue du produit (ou dont la personne n'est pas membre localement) : une seule redirection vers `hgdcRefreshPath("/o/acme")` avant d'afficher « introuvable ». Au retour, `next` porte `?synced=1` : `hasSyncedMarker(location.search)` vrai, la page affiche « introuvable » au lieu de relancer. L'entrée elle-même ne relance jamais un `next` déjà marqué : pas de boucle.
 
 ```tsx
@@ -129,7 +130,7 @@ if (!organization && !hasSyncedMarker(location.searchStr))
 - L'ancienne session n'est pas révoquée : si Account ne répond pas, la personne garde son accès, et la session expire seule (`SESSION_TTL_SECONDS`).
 - Lien vers un produit avec relecture : `hgdcEntryUrl(origin, "/o/acme", { refresh: true })`.
 
-Décisions : ADR 0010, ADR 0013.
+Décisions : ADR 0010, ADR 0013, ADR 0016.
 
 ## Session dans le `beforeLoad` de la racine
 

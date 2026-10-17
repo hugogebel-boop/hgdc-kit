@@ -1,10 +1,15 @@
 import type { GenericOAuthConfig } from "better-auth/plugins/generic-oauth"
 
 import {
+  HGDC_ENTRY_FRAME_PARAM,
   HGDC_ENTRY_NEXT_PARAM,
+  HGDC_ENTRY_REFRESH_BACKGROUND,
   HGDC_ENTRY_REFRESH_PARAM,
+  HGDC_FRAME_DONE_PATH,
   HGDC_ISSUER,
   HGDC_PROVIDER_ID,
+  HGDC_ORG_SYNC_COOKIE,
+  HGDC_ORG_SYNC_COOKIE_MAX_AGE,
   HGDC_SCOPES,
   hasSyncedMarker,
   parseHgdcProfile,
@@ -151,6 +156,12 @@ function authorizationUrl(body: unknown): string | null {
  *   page ne relance pas l'entrée. Un `next` qui porte déjà `synced=1` ne relance rien : pas de
  *   boucle. L'ancienne session n'est pas révoquée : si Account ne répond pas, la personne garde
  *   son accès, et la session expire seule (`SESSION_TTL_SECONDS`).
+ * - `refresh=background` (barre des produits, ADR 0016) : session du produit ouverte, droit à
+ *   `next` avec le cookie `HGDC_ORG_SYNC_COOKIE` ; la page d'arrivée relit les organisations dans
+ *   un cadre caché (`frame=1`, retour sur `HGDC_FRAME_DONE_PATH`). Sans session, comme sans
+ *   paramètre.
+ * - Préchargement (`Sec-Purpose: prefetch`) : seule la redirection d'une session ouverte est
+ *   rendue ; tout ce qui démarrerait une connexion répond 503, que le navigateur jette.
  *
  * `next` est filtré par `safeNextPath` (chemin du produit seulement, pas de redirection ouverte),
  * puis better-auth le revérifie contre ses `trustedOrigins`.
@@ -170,19 +181,34 @@ export function createHgdcEntry(options: HgdcEntryOptions): (request: Request) =
 
   return async (request) => {
     const url = new URL(request.url)
+    const frame = url.searchParams.get(HGDC_ENTRY_FRAME_PARAM)
+    // Fin d'une relecture dans le cadre caché : rien à lire, rien à appeler.
+    if (frame === "done") return frameDone()
+    const inFrame = frame === "1"
+    const speculative = isSpeculative(request)
     const next = safeNextPath(url.searchParams.get(HGDC_ENTRY_NEXT_PARAM))
+    const refreshParam = url.searchParams.get(HGDC_ENTRY_REFRESH_PARAM)
     // Un `next` déjà marqué revient d'une resynchronisation : on n'en relance pas une autre.
-    const refresh = url.searchParams.get(HGDC_ENTRY_REFRESH_PARAM) === "1" && !hasSyncedMarker(next)
-    const callbackURL = refresh ? withSyncedMarker(next) : next
+    const refresh = inFrame || (refreshParam === "1" && !hasSyncedMarker(next))
+    const background = !refresh && refreshParam === HGDC_ENTRY_REFRESH_BACKGROUND
+    // Le cadre revient toujours sur la réponse vide, jamais sur une page reçue en paramètre.
+    const callbackURL = inFrame ? HGDC_FRAME_DONE_PATH : refresh ? withSyncedMarker(next) : next
+    const errorURL = inFrame ? HGDC_FRAME_DONE_PATH : errorCallbackURL
+    // Un préchargement ne démarre jamais de connexion : état OAuth, code d'Account et session
+    // créés pour un survol sans clic. Il ne sert que si la session du produit est déjà ouverte.
+    if (refresh && speculative) return notForSpeculation()
     const cookies: string[] = []
     try {
       if (!refresh && request.headers.has("cookie")) {
+        // Session vérifiée par better-auth (base du produit), pas seulement la présence du cookie.
         const session = await options.proxy(
           new Request(`${url.origin}${basePath}/get-session`, { headers: internalHeaders(request, url.origin) }),
         )
         cookies.push(...setCookies(session))
-        if (session.ok && hasSessionBody(await readJson(session))) return redirectTo(next, cookies)
+        if (session.ok && hasSessionBody(await readJson(session)))
+          return redirectTo(next, background ? [...cookies, orgSyncCookie(url)] : cookies)
       }
+      if (speculative) return notForSpeculation()
 
       const headers = internalHeaders(request, url.origin)
       headers.set("content-type", "application/json")
@@ -190,16 +216,43 @@ export function createHgdcEntry(options: HgdcEntryOptions): (request: Request) =
         new Request(`${url.origin}${basePath}/sign-in/oauth2`, {
           method: "POST",
           headers,
-          body: JSON.stringify({ providerId: HGDC_PROVIDER_ID, callbackURL, errorCallbackURL }),
+          body: JSON.stringify({ providerId: HGDC_PROVIDER_ID, callbackURL, errorCallbackURL: errorURL }),
         }),
       )
       const target = signIn.ok ? authorizationUrl(await readJson(signIn)) : null
-      if (!target) return redirectTo(errorCallbackURL, cookies)
+      if (!target) return redirectTo(errorURL, cookies)
       return redirectTo(target, [...cookies, ...setCookies(signIn)])
     } catch {
-      return redirectTo(errorCallbackURL, cookies)
+      return speculative ? notForSpeculation() : redirectTo(errorURL, cookies)
     }
   }
+}
+
+/** Préchargement ou prérendu (Speculation Rules) : `Sec-Purpose: prefetch`, `prefetch;prerender`. */
+function isSpeculative(request: Request): boolean {
+  const purpose = request.headers.get("sec-purpose") ?? request.headers.get("purpose") ?? ""
+  return /\b(prefetch|prerender)\b/i.test(purpose)
+}
+
+/** Refus d'un préchargement : le navigateur jette une réponse qui n'est pas 2xx, le clic repart. */
+function notForSpeculation(): Response {
+  return new Response(null, { status: 503, headers: { "cache-control": "no-store", "retry-after": "0" } })
+}
+
+function frameDone(): Response {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      "cache-control": "no-store",
+      "referrer-policy": "no-referrer",
+    },
+  })
+}
+
+function orgSyncCookie(url: URL): string {
+  const secure = url.protocol === "https:" ? "; Secure" : ""
+  return `${HGDC_ORG_SYNC_COOKIE}=1; Path=/; Max-Age=${HGDC_ORG_SYNC_COOKIE_MAX_AGE}; SameSite=Lax${secure}`
 }
 
 export type HgdcProviderOptions = {

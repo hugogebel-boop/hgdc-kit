@@ -35,6 +35,37 @@ export const HGDC_ENTRY_REFRESH_PARAM = "refresh"
  */
 export const HGDC_SYNCED_PARAM = "synced"
 
+/**
+ * `refresh=background` sur l'entrée (barre des produits, ADR 0016) : avec une session du produit
+ * ouverte, l'entrée va droit à `next` et pose `HGDC_ORG_SYNC_COOKIE` ; la page d'arrivée relit les
+ * organisations en arrière-plan (`HGDC_BACKGROUND_REFRESH_PATH`). Sans session : connexion HGDC
+ * habituelle, qui lit déjà les organisations. Un produit plus ancien l'ignore (pas de relecture).
+ */
+export const HGDC_ENTRY_REFRESH_BACKGROUND = "background"
+
+/**
+ * Cookie du produit posé par l'entrée `refresh=background` : « relire les organisations ». Lu et
+ * effacé par la page d'arrivée (`@hgdc/ui/app-shell`). Lisible en JavaScript, il ne porte rien
+ * d'autre que `1` : le forger ne fait que lancer une relecture par Account.
+ */
+export const HGDC_ORG_SYNC_COOKIE = "hgdc-org-sync"
+
+/** Durée de vie du cookie `HGDC_ORG_SYNC_COOKIE`, en secondes. */
+export const HGDC_ORG_SYNC_COOKIE_MAX_AGE = 60
+
+/**
+ * `frame=1` : relecture des organisations dans un cadre caché de la page (même origine). L'entrée
+ * repasse par Account comme `refresh=1`, et le retour se fait sur `HGDC_FRAME_DONE_PATH`, une
+ * réponse vide : jamais sur une page du produit, jamais sur un `next` reçu.
+ */
+export const HGDC_ENTRY_FRAME_PARAM = "frame"
+
+/** Fin de la relecture en arrière-plan : réponse vide de l'entrée, sans appel à better-auth. */
+export const HGDC_FRAME_DONE_PATH: string = `${HGDC_ENTRY_PATH}?${HGDC_ENTRY_FRAME_PARAM}=done`
+
+/** Adresse du cadre caché qui relit les organisations (`frame=1`). */
+export const HGDC_BACKGROUND_REFRESH_PATH: string = `${HGDC_ENTRY_PATH}?${HGDC_ENTRY_REFRESH_PARAM}=1&${HGDC_ENTRY_FRAME_PARAM}=1`
+
 const NEXT_MAX_LENGTH = 2048
 const NEXT_BASE = "https://next.invalid"
 
@@ -63,12 +94,22 @@ export function safeNextPath(value: string | null | undefined, fallback = "/"): 
 
 /**
  * Adresse de l'entrée commune d'un produit : `hgdcEntryUrl("https://mail.hgdc.ch", "/o/acme")`.
- * Sans `next` (ou `next` refusé), le produit ouvre sa page d'accueil connectée.
+ * Sans `next` (ou `next` refusé), le produit ouvre sa page d'accueil connectée. `refresh: true`
+ * relit les organisations avant d'arriver (`refresh=1`) ; `refresh: "background"` arrive tout de
+ * suite si la session du produit est ouverte et relit en arrière-plan (ADR 0016).
  */
-export function hgdcEntryUrl(productOrigin: string, next?: string, options: { refresh?: boolean } = {}): string {
+export function hgdcEntryUrl(
+  productOrigin: string,
+  next?: string,
+  options: { refresh?: boolean | typeof HGDC_ENTRY_REFRESH_BACKGROUND } = {},
+): string {
   const url = new URL(HGDC_ENTRY_PATH, new URL(productOrigin).origin)
   const path = next === undefined ? "/" : safeNextPath(next)
-  if (options.refresh) url.searchParams.set(HGDC_ENTRY_REFRESH_PARAM, "1")
+  if (options.refresh)
+    url.searchParams.set(
+      HGDC_ENTRY_REFRESH_PARAM,
+      options.refresh === HGDC_ENTRY_REFRESH_BACKGROUND ? HGDC_ENTRY_REFRESH_BACKGROUND : "1",
+    )
   if (path !== "/" || options.refresh) url.searchParams.set(HGDC_ENTRY_NEXT_PARAM, path)
   return url.toString()
 }

@@ -45,12 +45,12 @@ describe("catalogue des produits", () => {
     const entries = productMenuEntries({ current: "Host" })
     expect(Object.fromEntries(entries.map((e) => [e.name, e.href]))).toEqual({
       Account: "https://account.hgdc.ch",
-      Host: "https://host.hgdc.ch/auth/hgdc?refresh=1&next=/",
-      Mail: "https://mail.hgdc.ch/auth/hgdc?refresh=1&next=/",
-      Portal: "https://portal.hgdc.ch/auth/hgdc?refresh=1&next=/",
-      Status: "https://status.hgdc.ch/auth/hgdc?refresh=1&next=/",
-      Analytics: "https://analytics.hgdc.ch/auth/hgdc?refresh=1&next=/",
-      Docs: "https://docs.hgdc.ch/auth/hgdc?refresh=1&next=/",
+      Host: "https://host.hgdc.ch/auth/hgdc?refresh=background&next=/",
+      Mail: "https://mail.hgdc.ch/auth/hgdc?refresh=background&next=/",
+      Portal: "https://portal.hgdc.ch/auth/hgdc?refresh=background&next=/",
+      Status: "https://status.hgdc.ch/auth/hgdc?refresh=background&next=/",
+      Analytics: "https://analytics.hgdc.ch/auth/hgdc?refresh=background&next=/",
+      Docs: "https://docs.hgdc.ch/auth/hgdc?refresh=background&next=/",
     })
     expect(HGDC_ACCOUNT.entryHref).toBe(HGDC_ACCOUNT.href)
     for (const product of HGDC_PRODUCTS) expect(product.href).toBe(`https://${product.subdomain}`)
@@ -68,11 +68,11 @@ describe("AccountMenu et le catalogue", () => {
     render(<AccountMenu user={user} onSignOut={() => {}} product="Host" />)
     fireEvent.click(screen.getByRole("button", { name: "Compte de Hugo Gebel" }))
     const mail = await screen.findByRole("menuitem", { name: "Mail" })
-    expect(mail.getAttribute("href")).toBe("https://mail.hgdc.ch/auth/hgdc?refresh=1&next=/")
+    expect(mail.getAttribute("href")).toBe("https://mail.hgdc.ch/auth/hgdc?refresh=background&next=/")
     expect(screen.getByRole("menuitem", { name: "Account" }).getAttribute("href")).toBe("https://account.hgdc.ch")
     expect(screen.getByLabelText("Produit ouvert")).toBeDefined()
     expect(screen.getByRole("menuitem", { name: "Portal" }).getAttribute("href")).toBe(
-      "https://portal.hgdc.ch/auth/hgdc?refresh=1&next=/",
+      "https://portal.hgdc.ch/auth/hgdc?refresh=background&next=/",
     )
   })
 

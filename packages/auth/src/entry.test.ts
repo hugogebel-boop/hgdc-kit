@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  HGDC_BACKGROUND_REFRESH_PATH,
   HGDC_ENTRY_PATH,
+  HGDC_FRAME_DONE_PATH,
   hasSyncedMarker,
   hgdcEntryUrl,
   hgdcRefreshPath,
@@ -72,6 +74,21 @@ describe("hgdcEntryUrl", () => {
     expect(hgdcEntryUrl("https://host.hgdc.ch", "/o/acme", { refresh: true })).toBe(
       "https://host.hgdc.ch/auth/hgdc?refresh=1&next=%2Fo%2Facme",
     )
+  })
+})
+
+describe("relecture en arrière-plan", () => {
+  it('hgdcEntryUrl avec `refresh: "background"`', () => {
+    expect(hgdcEntryUrl("https://mail.hgdc.ch", undefined, { refresh: "background" })).toBe(
+      "https://mail.hgdc.ch/auth/hgdc?refresh=background&next=%2F",
+    )
+  })
+
+  it("le cadre caché et sa fin sont des chemins de l'entrée", () => {
+    expect(HGDC_BACKGROUND_REFRESH_PATH).toBe("/auth/hgdc?refresh=1&frame=1")
+    expect(HGDC_FRAME_DONE_PATH).toBe("/auth/hgdc?frame=done")
+    // La fin n'est jamais acceptée comme `next` : on n'y arrive que par le cadre.
+    expect(safeNextPath(HGDC_FRAME_DONE_PATH)).toBe("/")
   })
 })
 
@@ -224,6 +241,126 @@ describe("createHgdcEntry", () => {
     const entry = createHgdcEntry({ proxy, errorCallbackURL: "/sign-in?error=1" })
     await entry(visit(`/auth/hgdc?refresh=1&next=${encodeURIComponent("//evil.ch")}`, { cookie: "s=1" }))
     expect(JSON.parse(calls[0]?.body ?? "").callbackURL).toBe("/?synced=1")
+  })
+
+  it("`refresh=background` avec une session ouverte : droit à `next`, cookie de relecture posé", async () => {
+    const { calls, proxy } = fakeAuth({ session: () => json({ session: { id: "s" }, user: { id: "u" } }) })
+    const entry = createHgdcEntry({ proxy, errorCallbackURL: "/sign-in?error=1" })
+    const response = await entry(visit("/auth/hgdc?refresh=background&next=%2F", { cookie: "s=1" }))
+    expect(response.status).toBe(302)
+    expect(response.headers.get("location")).toBe("/")
+    expect(response.headers.getSetCookie()).toEqual(["hgdc-org-sync=1; Path=/; Max-Age=60; SameSite=Lax; Secure"])
+    expect(calls.map((c) => new URL(c.url).pathname)).toEqual(["/api/auth/get-session"])
+  })
+
+  it("`refresh=background` sans session valide : connexion habituelle, sans cookie de relecture", async () => {
+    const { calls, proxy } = fakeAuth({ signIn: () => json({ url: AUTHORIZE }) })
+    const entry = createHgdcEntry({ proxy, errorCallbackURL: "/sign-in?error=1" })
+    const response = await entry(visit("/auth/hgdc?refresh=background&next=%2Fo%2Facme", { cookie: "forge=1" }))
+    expect(response.headers.get("location")).toBe(AUTHORIZE)
+    expect(response.headers.getSetCookie()).toEqual([])
+    expect(calls.map((c) => new URL(c.url).pathname)).toEqual(["/api/auth/get-session", "/api/auth/sign-in/oauth2"])
+    expect(JSON.parse(calls[1]?.body ?? "").callbackURL).toBe("/o/acme")
+  })
+
+  it("`refresh=background` : un `next` externe reste refusé", async () => {
+    const { proxy } = fakeAuth({ session: () => json({ session: { id: "s" } }) })
+    const entry = createHgdcEntry({ proxy, errorCallbackURL: "/sign-in?error=1" })
+    const response = await entry(
+      visit(`/auth/hgdc?refresh=background&next=${encodeURIComponent("//evil.ch")}`, { cookie: "s=1" }),
+    )
+    expect(response.headers.get("location")).toBe("/")
+  })
+
+  it("cadre caché (`frame=1`) : repasse par Account même avec une session, retour sur la réponse vide", async () => {
+    const { calls, proxy } = fakeAuth({
+      session: () => json({ session: { id: "s" } }),
+      signIn: () => json({ url: AUTHORIZE }, ["__Secure-better-auth.state=abc; Path=/; HttpOnly"]),
+    })
+    const entry = createHgdcEntry({ proxy, errorCallbackURL: "/sign-in?error=1" })
+    const response = await entry(
+      visit(`/auth/hgdc?refresh=1&frame=1&next=${encodeURIComponent("https://evil.ch")}`, {
+        cookie: "s=1",
+        "sec-fetch-dest": "iframe",
+      }),
+    )
+    expect(response.headers.get("location")).toBe(AUTHORIZE)
+    expect(response.headers.getSetCookie()).toEqual(["__Secure-better-auth.state=abc; Path=/; HttpOnly"])
+    expect(calls.map((c) => new URL(c.url).pathname)).toEqual(["/api/auth/sign-in/oauth2"])
+    expect(JSON.parse(calls[0]?.body ?? "")).toEqual({
+      providerId: "hgdc",
+      callbackURL: "/auth/hgdc?frame=done",
+      errorCallbackURL: "/auth/hgdc?frame=done",
+    })
+  })
+
+  it("cadre caché : better-auth refuse, retour sur la réponse vide et non sur la page d'erreur", async () => {
+    const { proxy } = fakeAuth({ signIn: () => new Response("{}", { status: 400 }) })
+    const response = await createHgdcEntry({ proxy, errorCallbackURL: "/sign-in?error=1" })(visit("/auth/hgdc?frame=1"))
+    expect(response.headers.get("location")).toBe("/auth/hgdc?frame=done")
+  })
+
+  it("`frame=done` : réponse vide, sans appel à better-auth", async () => {
+    const { calls, proxy } = fakeAuth({})
+    const response = await createHgdcEntry({ proxy, errorCallbackURL: "/sign-in?error=1" })(
+      visit("/auth/hgdc?frame=done&synced=1&error=access_denied", { cookie: "s=1" }),
+    )
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe("")
+    expect(response.headers.get("cache-control")).toBe("no-store")
+    expect(response.headers.get("location")).toBeNull()
+    expect(calls).toHaveLength(0)
+  })
+
+  describe("préchargement (Speculation Rules)", () => {
+    const prefetch = { "sec-purpose": "prefetch", cookie: "s=1" }
+
+    it("session ouverte : la redirection est rendue, cookie de relecture compris", async () => {
+      const { proxy } = fakeAuth({ session: () => json({ session: { id: "s" } }) })
+      const response = await createHgdcEntry({ proxy, errorCallbackURL: "/sign-in?error=1" })(
+        visit("/auth/hgdc?refresh=background&next=%2F", prefetch),
+      )
+      expect(response.status).toBe(302)
+      expect(response.headers.get("location")).toBe("/")
+      expect(response.headers.getSetCookie()).toHaveLength(1)
+    })
+
+    it("sans session : 503, aucune connexion démarrée", async () => {
+      const { calls, proxy } = fakeAuth({ signIn: () => json({ url: AUTHORIZE }) })
+      const response = await createHgdcEntry({ proxy, errorCallbackURL: "/sign-in?error=1" })(
+        visit("/auth/hgdc?refresh=background&next=%2F", prefetch),
+      )
+      expect(response.status).toBe(503)
+      expect(response.headers.get("cache-control")).toBe("no-store")
+      expect(calls.map((c) => new URL(c.url).pathname)).toEqual(["/api/auth/get-session"])
+    })
+
+    it("`refresh=1`, cadre ou prérendu : 503 sans aucun appel", async () => {
+      for (const [path, purpose] of [
+        ["/auth/hgdc?refresh=1&next=%2F", "prefetch"],
+        ["/auth/hgdc?refresh=1&frame=1", "prefetch"],
+        ["/auth/hgdc?next=%2F", "prefetch;prerender"],
+      ] as const) {
+        const { calls, proxy } = fakeAuth({ signIn: () => json({ url: AUTHORIZE }) })
+        const response = await createHgdcEntry({ proxy, errorCallbackURL: "/sign-in?error=1" })(
+          visit(path, { "sec-purpose": purpose }),
+        )
+        expect(response.status, path).toBe(503)
+        expect(
+          calls.filter((c) => c.url.endsWith("/sign-in/oauth2")),
+          path,
+        ).toHaveLength(0)
+      }
+    })
+
+    it("Convex injoignable pendant un préchargement : 503, jamais la page d'erreur", async () => {
+      const entry = createHgdcEntry({
+        proxy: () => Promise.reject(new Error("réseau")),
+        errorCallbackURL: "/sign-in?error=1",
+      })
+      const response = await entry(visit("/auth/hgdc?refresh=background", prefetch))
+      expect(response.status).toBe(503)
+    })
   })
 
   it("`next` externe : remplacé par l'accueil du produit, jamais suivi", async () => {

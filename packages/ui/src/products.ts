@@ -31,9 +31,10 @@ export type HgdcCatalogProduct = {
   href: string
   /**
    * Entrée dans l'app avec la session HGDC Account (`PRODUCT_ENTRY_PATH`), sans page d'accueil
-   * ni bouton de connexion : `https://<mot>.hgdc.ch/auth/hgdc?refresh=1&next=/`. `refresh=1`
-   * relit les organisations au passage (une organisation rejointe dans Account apparaît sans se
-   * reconnecter, ADR 0013). Pour Account, sa racine.
+   * ni bouton de connexion : `https://<mot>.hgdc.ch/auth/hgdc?refresh=background&next=/`. Avec une
+   * session du produit ouverte, on arrive tout de suite et les organisations se relisent en
+   * arrière-plan (une organisation rejointe dans Account apparaît sans se reconnecter, ADR 0013,
+   * 0016). Pour Account, sa racine.
    */
   entryHref: string
   /** Une phrase, au tutoiement. */
@@ -57,8 +58,11 @@ export type HgdcCatalogProduct = {
  */
 export const PRODUCT_ENTRY_PATH = "/auth/hgdc"
 
-/** Requête de l'entrée depuis un autre produit : relire les organisations, arriver sur l'accueil. */
-export const PRODUCT_ENTRY_REFRESH_QUERY = "refresh=1&next=/"
+/**
+ * Requête de l'entrée depuis un autre produit : arriver sur l'accueil, relire les organisations en
+ * arrière-plan (`refresh=background`, ADR 0016).
+ */
+export const PRODUCT_ENTRY_REFRESH_QUERY = "refresh=background&next=/"
 
 function product(word: string, pitch: string, icon: IconSvgElement, stage: ProductStage): HgdcCatalogProduct {
   const badge = word.toLowerCase()
@@ -156,7 +160,7 @@ export type ProductRailEntry = {
 /**
  * Les entrées de la barre des produits : les produits ouverts du catalogue et Account, affiché en
  * tête (le compte commun, pas un produit). Chaque produit pointe vers son entrée
- * `/auth/hgdc?refresh=1&next=/` (ADR 0010, 0013), Account vers sa racine (`accountHref` en
+ * `/auth/hgdc?refresh=background&next=/` (ADR 0010, 0013, 0016), Account vers sa racine (`accountHref` en
  * développement). Le produit courant pointe vers `/`, sans détour par l'entrée.
  */
 export function productRailEntries(
