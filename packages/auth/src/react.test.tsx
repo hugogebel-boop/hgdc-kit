@@ -43,7 +43,7 @@ describe("HgdcSignInButton", () => {
     const html = renderToStaticMarkup(<HgdcSignInButton authClient={client({}).authClient} className="btn" />)
     expect(html).toContain('type="button"')
     expect(html).toContain('class="btn"')
-    expect(html).toContain("Se connecter avec H family")
+    expect(html).toContain("Se connecter avec HGDC")
     expect(html).toContain('aria-busy="false"')
   })
 })

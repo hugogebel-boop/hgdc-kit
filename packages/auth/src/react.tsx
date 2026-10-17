@@ -72,7 +72,7 @@ export function HgdcMark({ className }: { className?: string }): ReactElement {
 }
 
 /**
- * Bouton « Se connecter avec H family ». Sans style propre : le produit le met en forme par
+ * Bouton « Se connecter avec HGDC ». Sans style propre : le produit le met en forme par
  * `className`, l'état d'attente est exposé par `aria-busy` et `data-pending`.
  */
 export function HgdcSignInButton({
@@ -80,7 +80,7 @@ export function HgdcSignInButton({
   callbackURL = "/",
   errorCallbackURL,
   onError,
-  label = "Se connecter avec H family",
+  label = "Se connecter avec HGDC",
   disabled,
   ...rest
 }: HgdcSignInButtonProps): ReactElement {
