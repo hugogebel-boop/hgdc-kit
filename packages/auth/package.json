@@ -1,6 +1,6 @@
 {
   "name": "@hgdc/auth",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "Connexion HGDC : bouton « Se connecter avec HGDC », config better-auth et gardes Convex.",
   "license": "UNLICENSED",
   "homepage": "https://github.com/hugogebel-boop/hgdc-kit/tree/main/packages/auth#readme",
