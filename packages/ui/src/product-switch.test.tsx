@@ -1,5 +1,8 @@
 // @vitest-environment happy-dom
+import { cleanup, render } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
+
+import { FamilyLoaderRoot } from "./family-loader.tsx"
 
 import {
   BACKGROUND_REFRESH_PATH,
@@ -11,6 +14,7 @@ import {
 } from "./product-switch.ts"
 
 afterEach(() => {
+  cleanup()
   document.cookie = `${ORG_SYNC_COOKIE}=; Path=/; Max-Age=0`
   for (const frame of document.querySelectorAll("iframe")) frame.remove()
   vi.useRealTimers()
@@ -51,6 +55,19 @@ describe("relecture des organisations en arrière-plan", () => {
     expect(stuck?.isConnected).toBe(true)
     vi.advanceTimersByTime(BACKGROUND_REFRESH_TIMEOUT_MS)
     expect(stuck?.isConnected).toBe(false)
+  })
+})
+
+describe("à la racine du document", () => {
+  it("FamilyLoaderRoot relit sur toutes les pages, même hors de la coque", () => {
+    document.cookie = `${ORG_SYNC_COOKIE}=1; Path=/`
+    render(
+      <FamilyLoaderRoot>
+        <p>Il te faut une organisation</p>
+      </FamilyLoaderRoot>,
+    )
+    expect(document.querySelectorAll(`iframe[src="${BACKGROUND_REFRESH_PATH}"]`)).toHaveLength(1)
+    expect(takeOrgSyncCookie()).toBe(false)
   })
 })
 
