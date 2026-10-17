@@ -70,4 +70,31 @@ describe("HgdcMark", () => {
     expect(html).toContain('aria-hidden="true"')
     expect(html).toContain('class="size-4"')
   })
+
+  it("sans className, garde 1.25em de côté au lieu de la taille du SVG", () => {
+    const html = renderToStaticMarkup(<HgdcMark />)
+    expect(html).toMatch(/<span data-slot="hgdc-mark"[^>]*style="[^"]*width:1\.25em;height:1\.25em/)
+    expect(html).not.toContain("class=")
+  })
+
+  it("avec className, la classe fixe seule la taille", () => {
+    const html = renderToStaticMarkup(<HgdcMark className="size-4" />)
+    const span = /<span data-slot="hgdc-mark"[^>]*>/.exec(html)?.[0] ?? ""
+    expect(span).toContain('class="size-4"')
+    expect(span).not.toMatch(/width|height/)
+    // Les images n'ont aucun style en ligne qui écraserait le masquage par thème.
+    expect(html).not.toMatch(/<img[^>]*style=/)
+  })
+
+  it("montre une seule variante, même sans les styles de @hgdc/ui", () => {
+    const html = renderToStaticMarkup(<HgdcMark />)
+    expect(html).toContain("<style>")
+    expect(html).toContain('[data-slot="hgdc-mark"]>img[data-mark-theme="dark"]')
+    expect(html.indexOf("<style>")).toBeLessThan(html.indexOf("<img"))
+  })
+
+  it("dans le bouton de connexion, la marque a sa taille par défaut", () => {
+    const html = renderToStaticMarkup(<HgdcSignInButton authClient={client({}).authClient} />)
+    expect(html).toMatch(/data-slot="hgdc-mark"[^>]*width:1\.25em/)
+  })
 })

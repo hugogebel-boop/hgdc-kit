@@ -61,9 +61,23 @@ export const HGDC_MARK_DARK_SVG: string =
 const markSrc = (svg: string) => `data:image/svg+xml,${encodeURIComponent(svg)}`
 
 /**
+ * Mise en page et choix de la variante, embarqués : la marque reste à sa taille et n'affiche qu'un
+ * dessin même sans les styles de `@hgdc/ui`. En feuille de style plutôt qu'en `style` sur l'image,
+ * qui écraserait le `display: none` du thème. Spécificité au-dessus des règles de `@hgdc/ui`.
+ */
+export const HGDC_MARK_CSS: string =
+  '[data-slot="hgdc-mark"]>img{display:block;width:100%;height:100%}' +
+  '[data-slot="hgdc-mark"]>img[data-mark-theme="dark"],.dark [data-slot="hgdc-mark"]>img[data-mark-theme="light"]{display:none}' +
+  '.dark [data-slot="hgdc-mark"]>img[data-mark-theme="dark"]{display:block}'
+
+/** Taille sans `className` : celle du texte qui l'accompagne, un peu plus grande. */
+const DEFAULT_MARK_SIZE = "1.25em"
+
+/**
  * Le H de la H Collection, en image : ses dégradés gardent leurs identifiants pour eux, deux marques
- * dans une page ne se marchent pas dessus. Les deux variantes sont rendues ; les styles de
- * `@hgdc/ui` (`data-mark-theme`) montrent celle du thème. Couleurs pleines, jamais recolorées.
+ * dans une page ne se marchent pas dessus. Les deux variantes sont rendues, le thème (`.dark`) montre
+ * la sienne. Sans `className`, 1.25em de côté ; avec, la classe fixe la taille (`size-4`).
+ * Couleurs pleines, jamais recolorées.
  */
 export function HgdcMark({ className }: { className?: string }): ReactElement {
   return (
@@ -71,8 +85,13 @@ export function HgdcMark({ className }: { className?: string }): ReactElement {
       data-slot="hgdc-mark"
       aria-hidden="true"
       className={className}
-      style={{ display: "inline-block", flexShrink: 0 }}
+      style={{
+        display: "inline-block",
+        flexShrink: 0,
+        ...(className ? {} : { width: DEFAULT_MARK_SIZE, height: DEFAULT_MARK_SIZE }),
+      }}
     >
+      <style>{HGDC_MARK_CSS}</style>
       {(["light", "dark"] as const).map((theme) => (
         <img
           key={theme}
@@ -82,7 +101,6 @@ export function HgdcMark({ className }: { className?: string }): ReactElement {
           height={16}
           draggable={false}
           data-mark-theme={theme}
-          style={{ width: "100%", height: "100%" }}
         />
       ))}
     </span>
