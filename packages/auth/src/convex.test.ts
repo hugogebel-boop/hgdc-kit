@@ -5,6 +5,9 @@ import { describe, expect, it } from "vitest"
 import {
   AUTH_ERROR_MESSAGES,
   authErrorReason,
+  convexAuthProviders,
+  convexIssuers,
+  currentAuthConfig,
   isAuthError,
   requireIdentity,
   requireOrgMember,
@@ -44,9 +47,81 @@ async function codeOf(promise: Promise<unknown>) {
   }
 }
 
+const PREVIOUS = "https://ancien.convex.site"
+
 describe("requireIdentity", () => {
   it("refuse une requête sans session", async () => {
     expect(await codeOf(requireIdentity(ctxFor(null, []), { issuer: ISSUER }))).toBe("UNAUTHENTICATED")
+  })
+
+  it("accepte chacun des émetteurs d'une liste", async () => {
+    const issuer = [ISSUER, `${PREVIOUS}/`]
+    expect((await requireIdentity(ctxFor("ada", [], ISSUER), { issuer })).subject).toBe("ada")
+    expect((await requireIdentity(ctxFor("ada", [], PREVIOUS), { issuer })).subject).toBe("ada")
+  })
+
+  it("refuse un émetteur hors de la liste", async () => {
+    const forged = ctxFor("ada", [], "https://autre-fournisseur.example")
+    await expect(requireIdentity(forged, { issuer: [ISSUER, PREVIOUS] })).rejects.toMatchObject({
+      data: { reason: "wrong_issuer" },
+    })
+  })
+
+  it("refuse de tourner avec une liste vide ou faite de chaînes vides", async () => {
+    await expect(requireIdentity(ctxFor("ada", []), { issuer: [] })).rejects.toThrow(/émetteur/)
+    await expect(requireIdentity(ctxFor("ada", []), { issuer: ["", "/"] })).rejects.toThrow(/émetteur/)
+  })
+})
+
+describe("convexIssuers", () => {
+  it("rend CONVEX_SITE_URL seule hors bascule", () => {
+    expect(convexIssuers({ CONVEX_SITE_URL: `${ISSUER}/` })).toEqual([ISSUER])
+  })
+
+  it("ajoute CONVEX_PREVIOUS_SITE_URL pendant une bascule, sans doublon", () => {
+    expect(convexIssuers({ CONVEX_SITE_URL: ISSUER, CONVEX_PREVIOUS_SITE_URL: ` ${PREVIOUS} ` })).toEqual([
+      ISSUER,
+      PREVIOUS,
+    ])
+    expect(convexIssuers({ CONVEX_SITE_URL: ISSUER, CONVEX_PREVIOUS_SITE_URL: `${ISSUER}/` })).toEqual([ISSUER])
+  })
+
+  it("rend une liste vide sans variable, que requireIdentity refuse", async () => {
+    expect(convexIssuers({})).toEqual([])
+    await expect(requireIdentity(ctxFor("ada", []), { issuer: convexIssuers({}) })).rejects.toThrow(/émetteur/)
+  })
+})
+
+describe("convexAuthProviders", () => {
+  const provider = { type: "customJwt", issuer: ISSUER, applicationID: "convex", jwks: "data:x" } as const
+
+  it("rend le fournisseur seul hors bascule", () => {
+    expect(convexAuthProviders(provider, {})).toEqual([provider])
+  })
+
+  it("ajoute une copie pour l'ancienne adresse, en second, même égale à la courante", () => {
+    expect(convexAuthProviders(provider, { CONVEX_PREVIOUS_SITE_URL: `${PREVIOUS}/` })).toEqual([
+      provider,
+      { ...provider, issuer: PREVIOUS },
+    ])
+    expect(convexAuthProviders(provider, { CONVEX_PREVIOUS_SITE_URL: ISSUER })).toHaveLength(2)
+  })
+
+  it("ignore une variable dont la lecture lève, comme dans auth.config.ts de Convex", () => {
+    const env = new Proxy<Record<string, string | undefined>>(
+      {},
+      {
+        get() {
+          throw new Error("variable absente")
+        },
+      },
+    )
+    expect(convexAuthProviders(provider, env)).toEqual([provider])
+  })
+
+  it("ne donne au plugin better-auth que le fournisseur courant", () => {
+    const providers = convexAuthProviders(provider, { CONVEX_PREVIOUS_SITE_URL: PREVIOUS })
+    expect(currentAuthConfig({ providers })).toEqual({ providers: [provider] })
   })
 })
 
