@@ -1,11 +1,5 @@
 import { cn } from "./cn.ts"
-import {
-  FAMILY_MARK_SVG,
-  PRODUCT_BADGE_SVG,
-  type BadgeShape,
-  type FamilyProduct,
-  type ThemedSvg,
-} from "./family-svg.ts"
+import { FAMILY_MARK_SVG, PRODUCT_BADGE_SVG, type FamilyProduct, type ThemedSvg } from "./family-svg.ts"
 
 /**
  * Dégradé de chaque icône sur fond clair, de la teinte vive (haut gauche) à la teinte profonde (bas
@@ -68,26 +62,20 @@ function ThemedMark({ svg, slot, className, label }: MarkProps & { svg: ThemedSv
 }
 
 /**
- * Icône d'un produit : le pictogramme dans le dégradé du produit, sur son fond blanc, le même en
- * clair et en sombre, sans bordure ni ombre. Squircle par défaut (barre des produits, menu, cartes) ;
- * `shape="round"` pour « Propulsé par ». `size-4` par défaut, à agrandir par `className`.
+ * Icône d'un produit : le pictogramme dans le dégradé du produit, sur son carré blanc arrondi, le
+ * même en clair et en sombre et dans tous les contextes, sans bordure ni ombre. `size-4` par
+ * défaut, à agrandir par `className`.
  */
-export function ProductBadge({
-  product,
-  shape = "squircle",
-  className,
-  label,
-}: MarkProps & { product: FamilyProduct; shape?: BadgeShape }): React.JSX.Element {
+export function ProductBadge({ product, className, label }: MarkProps & { product: FamilyProduct }): React.JSX.Element {
   return (
     <img
-      src={dataUri(PRODUCT_BADGE_SVG[product][shape])}
+      src={dataUri(PRODUCT_BADGE_SVG[product])}
       alt={label ?? ""}
       aria-hidden={label ? undefined : true}
       width={16}
       height={16}
       draggable={false}
       data-slot="product-badge"
-      data-shape={shape}
       className={cn("size-4 shrink-0 select-none", className)}
     />
   )
