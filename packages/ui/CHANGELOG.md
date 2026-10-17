@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.21.0
+
+### Minor Changes
+
+- f3170c3: `assistant-chat` : conversation avec un assistant (bulles, réponse rendue par le produit, pastilles des outils, cartes d'action à confirmer, exemples, saisie Entrée/Maj+Entrée), commune à Portal, Mail et Docs.
+
 ## 0.20.0
 
 ### Minor Changes
