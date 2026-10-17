@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.16.1
+
+### Patch Changes
+
+- 83c3980: Chargeur H : le calage sur l'horloge ne touche que les animations du H, jamais le fondu d'apparition ou de disparition du chargeur.
+
 ## 0.16.0
 
 ### Minor Changes
