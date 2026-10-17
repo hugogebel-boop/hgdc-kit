@@ -228,29 +228,39 @@
   --inverse: oklch(0.1 0 0);
 }
 
-/* Identité H Collection, la même en clair et en sombre. Dégradé de chaque pastille produit
-   (`ProductBadge`, `family/<mot>.svg`) et palette du H tricolore. Réservés aux visuels de marque
-   (pastille, carte de produit), jamais au chrome. Couleurs pleines ; pour éclaircir, mélanger au
+/* Identité H Collection. Dégradé de chaque icône produit sur fond clair, de la teinte vive à la
+   teinte profonde (`ProductBadge`, `family/<mot>.svg`), et palette du H « Double » sur fond clair.
+   Réservés aux visuels de marque (icône, carte de produit), jamais au chrome. Couleurs pleines ; pour éclaircir, mélanger au
    blanc `in oklab`, jamais `in oklch` (la teinte du blanc s'y mêle, tout vire au rose). */
 :root {
-  --product-account-from: #ff3b47;
-  --product-account-to: #ff6352;
-  --product-host-from: #194ff7;
-  --product-host-to: #02b4ff;
-  --product-mail-from: #f61f8e;
-  --product-mail-to: #ff5cb8;
-  --product-portal-from: #4732ed;
-  --product-portal-to: #b03cff;
-  --product-status-from: #199f62;
-  --product-status-to: #56db29;
-  --product-analytics-from: #fe5623;
-  --product-analytics-to: #ffb003;
-  --product-docs-from: #1bb9cf;
-  --product-docs-to: #13e4c8;
+  --product-account-from: #ff6a3d;
+  --product-account-to: #c42a1a;
+  --product-host-from: #3b7bff;
+  --product-host-to: #1636c9;
+  --product-mail-from: #f0445f;
+  --product-mail-to: #a8123d;
+  --product-portal-from: #8b5cff;
+  --product-portal-to: #4a22c9;
+  --product-status-from: #1bc488;
+  --product-status-to: #057a55;
+  --product-analytics-from: #ffb020;
+  --product-analytics-to: #d96a00;
+  --product-docs-from: #19b9d1;
+  --product-docs-to: #0a6f8f;
   --glow-blue: #2c78fd;
   --glow-violet: #7343fe;
   --glow-pink: #fe5292;
   --glow-orange: #ff9a46;
+}
+
+/* Une icône de marque (`ProductBadge`, `FamilyMark`, `HgdcMark` de @hgdc/auth) porte ses deux
+   dessins, l'un pour le fond clair, l'autre pour le fond sombre : le thème choisit, sans script. */
+[data-mark-theme="dark"],
+.dark [data-mark-theme="light"] {
+  display: none;
+}
+.dark [data-mark-theme="dark"] {
+  display: block;
 }
 
 @layer base {
@@ -496,32 +506,85 @@
 .dark .family-loader {
   --fl-ghost-mix: 19%;
 }
+/* Le H « Double » (`family/hcollection-icon.svg`, cadre de 46 unités) : le H plein, trois pièces,
+   devant son reflet décalé de 6 unités. Seul le H plein se remplit ; le reflet reste à 35 % (50 %
+   en sombre), immobile. */
+.family-loader {
+  --fl-u: calc(var(--fl) / 46);
+  --fl-l0: #2c78fd;
+  --fl-l1: #7343fe;
+  --fl-r0: #fe5292;
+  --fl-r1: #ff9a46;
+  --fl-reflet: 0.35;
+}
+.dark .family-loader {
+  --fl-l0: #6aa0ff;
+  --fl-l1: #9a7bff;
+  --fl-r0: #ff7aa8;
+  --fl-r1: #ffb070;
+  --fl-reflet: 0.5;
+}
 .family-loader [data-piece] {
   position: absolute;
   overflow: hidden;
-  background: var(--fl-ghost);
   /* Le coin arrondi découpe aussi le remplissage, sur sa propre couche. */
   isolation: isolate;
 }
+.family-loader > [data-piece] {
+  background: var(--fl-ghost);
+}
 .family-loader [data-piece="left"],
 .family-loader [data-piece="right"] {
-  top: calc(var(--fl) * 24 / 256);
-  width: calc(var(--fl) * 57 / 256);
-  height: calc(var(--fl) * 208 / 256);
-  border-radius: calc(var(--fl) * 18 / 256);
+  z-index: 1;
+  top: calc(var(--fl-u) * 2.5);
+  width: calc(var(--fl-u) * 10);
+  height: calc(var(--fl-u) * 36);
+  border-radius: calc(var(--fl-u) * 3);
 }
 .family-loader [data-piece="left"] {
-  left: calc(var(--fl) * 43 / 256);
+  left: calc(var(--fl-u) * 5.5);
 }
 .family-loader [data-piece="right"] {
-  left: calc(var(--fl) * 156 / 256);
+  left: calc(var(--fl-u) * 25.5);
 }
+/* Le pont déborde d'une demi-unité sous chaque montant, comme dans le dessin. */
 .family-loader [data-piece="bar"] {
-  left: calc(var(--fl) * 67 / 256);
-  top: calc(var(--fl) * 107 / 256);
-  width: calc(var(--fl) * 122 / 256);
-  height: calc(var(--fl) * 43 / 256);
-  border-radius: calc(var(--fl) * 14 / 256);
+  left: calc(var(--fl-u) * 15);
+  top: calc(var(--fl-u) * 16);
+  width: calc(var(--fl-u) * 11);
+  height: calc(var(--fl-u) * 9);
+}
+/* Le reflet : le même H, plein, décalé de (6, 6), en un seul calque translucide. */
+.family-loader > [data-reflet] {
+  position: absolute;
+  inset: 0;
+  opacity: var(--fl-reflet);
+  transform: translate(calc(var(--fl-u) * 6), calc(var(--fl-u) * 6));
+}
+/* Couleurs du H : chaque montant son dégradé vertical ; le pont prend celui du montant droit,
+   recouvert de celui du gauche qui s'efface de gauche à droite (le masque du dessin). Le pont
+   occupe les unités 25 à 34 des 11,5 à 47,5 des montants : dégradé quatre fois plus haut, centré. */
+.family-loader [data-piece="left"] > *,
+.family-loader [data-piece="bar"] > ::before {
+  background: linear-gradient(to bottom, var(--fl-l0), var(--fl-l1));
+}
+.family-loader [data-piece="right"] > * {
+  background: linear-gradient(to bottom, var(--fl-r0), var(--fl-r1));
+}
+.family-loader [data-piece="bar"] > * {
+  background: linear-gradient(to bottom, var(--fl-r0), var(--fl-r1)) 0 50% / 100% 400%;
+}
+.family-loader [data-piece="bar"] > ::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-size: 100% 400%;
+  background-position: 0 50%;
+  mask-image: linear-gradient(to right, #000 4.545%, transparent 95.455%);
+}
+.family-loader [data-reflet] [data-piece] > * {
+  position: absolute;
+  inset: 0;
 }
 .family-loader [data-fill] {
   position: absolute;
@@ -534,17 +597,14 @@
   animation-fill-mode: both;
 }
 .family-loader [data-piece="left"] [data-fill] {
-  background: linear-gradient(to bottom, #2c78fd, #7343fe);
   animation-name: family-loader-left;
 }
 .family-loader [data-piece="bar"] [data-fill] {
-  background: linear-gradient(to right, #8145ff, #fe5292);
   animation-name: family-loader-bar;
 }
 .family-loader [data-piece="right"] [data-fill] {
-  background: linear-gradient(to bottom, #fe5292, #ff9a46);
-  /* Le jambage droit s'ouvre depuis la barre (son milieu : 128,5 sur 256, soit 50,24 % du jambage). */
-  transform-origin: 50% 50.24%;
+  /* Le jambage droit s'ouvre depuis le pont (son milieu, à 29,5 sur 11,5–47,5 : la moitié du jambage). */
+  transform-origin: 50% 50%;
   animation-name: family-loader-right;
 }
 /* La boucle, sur 2 s : gauche 0-500 ms, barre 300-800, droite 600-1100, H complet 1100-1500,

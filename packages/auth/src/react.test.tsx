@@ -3,7 +3,14 @@ import { readFileSync } from "node:fs"
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
-import { HGDC_MARK_SVG, HgdcMark, HgdcSignInButton, startHgdcSignIn, type HgdcAuthClient } from "./react.tsx"
+import {
+  HGDC_MARK_DARK_SVG,
+  HGDC_MARK_SVG,
+  HgdcMark,
+  HgdcSignInButton,
+  startHgdcSignIn,
+  type HgdcAuthClient,
+} from "./react.tsx"
 
 function client(result: { error?: unknown } | Error) {
   const calls: unknown[] = []
@@ -49,11 +56,17 @@ describe("HgdcSignInButton", () => {
 })
 
 describe("HgdcMark", () => {
-  it("est le H tricolore de la famille, copie exacte du fichier de @hgdc/ui", () => {
-    const file = readFileSync(new URL("../../ui/family/hfamily-icon.svg", import.meta.url), "utf8").trim()
-    expect(HGDC_MARK_SVG).toBe(file)
+  it("est le H « Double » de la H Collection, copie exacte des fichiers de @hgdc/ui", () => {
+    const file = (name: string) =>
+      readFileSync(new URL(`../../ui/family/${name}.svg`, import.meta.url), "utf8")
+        .replace(/\r\n/g, "\n")
+        .trim()
+    expect(HGDC_MARK_SVG).toBe(file("hcollection-icon"))
+    expect(HGDC_MARK_DARK_SVG).toBe(file("hcollection-icon-dark"))
     const html = renderToStaticMarkup(<HgdcMark className="size-4" />)
     expect(html).toContain('src="data:image/svg+xml,')
+    expect(html).toContain('data-mark-theme="light"')
+    expect(html).toContain('data-mark-theme="dark"')
     expect(html).toContain('aria-hidden="true"')
     expect(html).toContain('class="size-4"')
   })

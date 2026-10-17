@@ -23,15 +23,21 @@ const css = readFileSync(join(root, "styles.css"), "utf8")
 
 describe("identité H Collection", () => {
   it("embarque les pastilles telles que les fichiers de family/ (régénérer : bun scripts/family.ts)", () => {
-    for (const product of FAMILY_PRODUCTS) expect(PRODUCT_BADGE_SVG[product]).toBe(file(product))
-    expect(FAMILY_MARK_SVG).toBe(file("hfamily-icon"))
+    for (const product of FAMILY_PRODUCTS) {
+      expect(PRODUCT_BADGE_SVG[product].light).toBe(file(product))
+      expect(PRODUCT_BADGE_SVG[product].dark).toBe(file(`${product}-dark`))
+    }
+    expect(FAMILY_MARK_SVG.light).toBe(file("hcollection-icon"))
+    expect(FAMILY_MARK_SVG.dark).toBe(file("hcollection-icon-dark"))
   })
 
   it("garde le même dégradé dans la pastille, PRODUCT_GRADIENT et les jetons", () => {
     for (const product of FAMILY_PRODUCTS) {
       const { from, to } = PRODUCT_GRADIENT[product]
-      expect(PRODUCT_BADGE_SVG[product]).toContain(`stop-color="${from}"`)
-      expect(PRODUCT_BADGE_SVG[product]).toContain(`stop-color="${to}"`)
+      expect(PRODUCT_BADGE_SVG[product].light).toContain(`stop-color="${from}"`)
+      expect(PRODUCT_BADGE_SVG[product].light).toContain(`stop-color="${to}"`)
+      // Sur sombre, le dégradé finit sur la teinte vive.
+      expect(PRODUCT_BADGE_SVG[product].dark).toContain(`stop-color="${from}"`)
       expect(css).toContain(`--product-${product}-from: ${from};`)
       expect(css).toContain(`--product-${product}-to: ${to};`)
     }
@@ -49,11 +55,17 @@ describe("identité H Collection", () => {
         <FamilyMark label="H Collection" />
       </>,
     )
-    const [badge, mark] = [...container.querySelectorAll("img")]
-    expect(badge?.getAttribute("src")).toMatch(/^data:image\/svg\+xml,/)
-    expect(badge?.getAttribute("alt")).toBe("")
+    const badge = container.querySelector('[data-slot="product-badge"]')
+    const mark = container.querySelector('[data-slot="family-mark"]')
+    const sources = [...(badge?.querySelectorAll("img") ?? [])].map((img) => img.getAttribute("src"))
+    expect(sources).toEqual([
+      `data:image/svg+xml,${encodeURIComponent(PRODUCT_BADGE_SVG.host.light)}`,
+      `data:image/svg+xml,${encodeURIComponent(PRODUCT_BADGE_SVG.host.dark)}`,
+    ])
     expect(badge?.getAttribute("aria-hidden")).toBe("true")
-    expect(mark?.getAttribute("alt")).toBe("H Collection")
+    for (const img of container.querySelectorAll("img")) expect(img.getAttribute("alt")).toBe("")
+    expect(mark?.getAttribute("role")).toBe("img")
+    expect(mark?.getAttribute("aria-label")).toBe("H Collection")
     expect(mark?.hasAttribute("aria-hidden")).toBe(false)
   })
 
@@ -68,7 +80,7 @@ describe("identité H Collection", () => {
     fireEvent.click(screen.getByRole("button", { name: "Compte de Hugo Gebel" }))
     const status = await screen.findByRole("menuitem", { name: "Status" })
     expect(status.querySelector("img")?.getAttribute("src")).toBe(
-      `data:image/svg+xml,${encodeURIComponent(PRODUCT_BADGE_SVG.status)}`,
+      `data:image/svg+xml,${encodeURIComponent(PRODUCT_BADGE_SVG.status.light)}`,
     )
   })
 })

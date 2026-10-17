@@ -67,14 +67,14 @@ Une seule règle dans les sept produits, posée par la coque :
 
 ## Identité H Collection
 
-| Import                         | Rôle                                                                                                                                       |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `product-badge`                | `<ProductBadge product="host" className="size-8" />`, `<FamilyMark />` (le H tricolore), `PRODUCT_GRADIENT`                                |
-| `@hgdc/ui/family/<mot>.svg`    | Fichiers des pastilles (`account`, `host`, `mail`, `portal`, `status`, `analytics`, `docs`), à copier en `favicon.svg`                     |
-| `@hgdc/ui/family/hfamily*.svg` | `hfamily-icon.svg` (le H seul), `hfamily.svg` et `hfamily-dark.svg` (logo sur fond clair ou sombre, jamais recoloré)                       |
-| `styles.css`                   | `--product-<mot>-from` / `--product-<mot>-to` (dégradé de chaque pastille), `--glow-blue`, `--glow-violet`, `--glow-pink`, `--glow-orange` |
+| Import                                  | Rôle                                                                                                                                                                       |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `product-badge`                         | `<ProductBadge product="host" className="size-8" />`, `<FamilyMark />` (le H « Double »), `PRODUCT_GRADIENT` ; les deux variantes, claire et sombre, choisies par le thème |
+| `@hgdc/ui/family/<mot>.svg`             | Icônes des produits (`account`, `host`, `mail`, `portal`, `status`, `analytics`, `docs`) sur fond clair, `<mot>-dark.svg` sur fond sombre                                  |
+| `@hgdc/ui/family/hcollection-icon*.svg` | Le H « Double », marque de la H Collection, sur fond clair (`hcollection-icon.svg`) ou sombre (`-dark`), jamais recoloré                                                   |
+| `styles.css`                            | `--product-<mot>-from` / `--product-<mot>-to` (dégradé de chaque icône sur fond clair), `--glow-blue`, `--glow-violet`, `--glow-pink`, `--glow-orange`                     |
 
-Couleurs pleines ; pour éclaircir, mélanger au blanc `color-mix(in oklab, …)`, jamais `in oklch`. Une pastille reste seule, jamais dans une tuile de couleur. Les originaux vivent dans le dépôt du site hgdc.ch : les recopier dans `packages/ui/family/`, puis `bun scripts/family.ts && bun run format` (SVG embarqués et PNG des e-mails).
+Couleurs pleines ; pour éclaircir, mélanger au blanc `color-mix(in oklab, …)`, jamais `in oklch`. Une icône reste seule, sans tuile ni bordure. Les originaux vivent dans le dépôt du site hgdc.ch : les recopier dans `packages/ui/family/`, puis `bun scripts/family.ts && bun run format` (SVG embarqués et PNG des e-mails).
 
 Sur ordinateur, la coque ouvre sur la barre des produits (ADR 0011) : organisation en haut, pastilles des produits ouverts, Account en bas, chacun par son entrée `/auth/hgdc?next=/`, le produit courant en teinte. Au survol (150 ms d'intention) ou au focus clavier, elle s'élargit par-dessus la page et écrit les noms. `productRail={false}` la coupe ; `accountHref` pointe vers un Account local. La barre latérale porte la marque du produit et se réduit en rail (`Ctrl+B`, mémorisé) : poser `sidebarInitScript` dans le `<head>`. En rail, la pastille du produit devient le bouton « Déplier » au survol. Le kit ne connaît ni routeur ni authentification : liens par `render={<Link />}`, actions par callbacks. Rôles d'organisation : `owner`, `admin`, `member` (Propriétaire, Admin, Membre).
 

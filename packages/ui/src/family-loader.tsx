@@ -59,12 +59,26 @@ function useClockSync(ref: React.RefObject<Element | null>): void {
   }, [ref])
 }
 
-function Mark(): React.JSX.Element[] {
-  return (["left", "bar", "right"] as const).map((piece) => (
-    <span key={piece} data-piece={piece} aria-hidden>
-      <span data-fill />
-    </span>
-  ))
+const PIECES = ["left", "bar", "right"] as const
+
+/** Le H « Double » : le reflet immobile, puis les trois pièces du H plein qui se remplissent. */
+function Mark(): React.JSX.Element {
+  return (
+    <>
+      <span data-reflet aria-hidden>
+        {PIECES.map((piece) => (
+          <span key={piece} data-piece={piece}>
+            <span />
+          </span>
+        ))}
+      </span>
+      {PIECES.map((piece) => (
+        <span key={piece} data-piece={piece} aria-hidden>
+          <span data-fill />
+        </span>
+      ))}
+    </>
+  )
 }
 
 /**
@@ -74,9 +88,10 @@ function Mark(): React.JSX.Element[] {
 export const FamilyLoaderRootContext: React.Context<boolean> = createContext<boolean>(false)
 
 /**
- * Le H du chargement : la silhouette grise du H de la famille, toujours visible, dont les trois
- * pièces se remplissent de leurs dégradés en une seule boucle de 2 s (gauche, barre, droite, H
- * complet, fondu), calée sur l'horloge. CSS seul (`styles.css`), `transform` et `opacity`
+ * Le H du chargement, le H « Double » de la H Collection : la silhouette grise du H plein, devant
+ * son reflet immobile (35 %, 50 % en sombre), toujours visibles. Les trois pièces du H plein se
+ * remplissent de leurs dégradés en une seule boucle de 2 s (gauche, pont, droite, H complet,
+ * fondu), calée sur l'horloge. CSS seul (`styles.css`), `transform` et `opacity`
  * seulement. Mouvement réduit : le H plein respire doucement.
  *
  * Un chargement de page ne dessine pas ce H lui-même : c'est `PagePending`, qui passe par le H du
