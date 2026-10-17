@@ -57,7 +57,7 @@ export type Organization = {
 
 /** Un lien dans un menu, à l'allure d'un `DropdownMenuItem`. */
 export const MENU_LINK_ITEM: string =
-  "relative flex cursor-default items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium outline-hidden select-none focus:bg-muted focus:text-foreground data-highlighted:bg-muted max-lg:min-h-11 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+  "relative flex cursor-default items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium outline-hidden select-none focus:bg-muted focus:text-foreground data-highlighted:bg-muted max-lg:min-h-11 coarse:min-h-11 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
 
 /** Marque d'une organisation : son logo, ou ses initiales (`initials`) sur un carré arrondi. */
 export function OrgMark({
@@ -119,7 +119,7 @@ export function OrgSwitcher({
             type="button"
             aria-label={`Organisation ${active.name}, changer d'organisation`}
             className={cn(
-              "flex h-10 w-full min-w-0 items-center gap-2.5 rounded-xl px-1.5 text-left outline-none transition-colors duration-(--duration-fast) ease-out hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-muted",
+              "flex h-10 w-full min-w-0 items-center gap-2.5 rounded-xl px-1.5 text-left coarse:h-11 outline-none transition-colors duration-(--duration-fast) ease-out hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-muted",
               inRail
                 ? "shrink-0 gap-3 px-1 hover:bg-shell-hover aria-expanded:bg-shell-hover"
                 : "lg:hover:bg-shell-hover lg:aria-expanded:bg-shell-hover lg:rail:w-auto lg:rail:justify-center lg:rail:px-1",

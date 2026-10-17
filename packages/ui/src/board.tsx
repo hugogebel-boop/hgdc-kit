@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react"
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react"
 
 import { cn } from "./cn.ts"
 
@@ -19,6 +19,50 @@ type Grab = { cardId: string; from: Position; to: Position; via: "keyboard" | "p
 
 /** Distance avant qu'un appui devienne un glisser : un clic reste un clic. */
 const DRAG_THRESHOLD = 6
+
+/** Bande, près du bord visible du tableau, où une carte tenue fait défiler les colonnes. */
+const EDGE_ZONE = 56
+/** Vitesse au ras du bord, en pixels par image ; elle croît à mesure que le doigt s'en approche. */
+const EDGE_MAX_SPEED = 14
+
+/**
+ * Défilement d'une image quand le pointeur tient une carte en `x` : négatif vers la gauche, positif
+ * vers la droite, nul hors des bandes de bord. Le bord est celui de la partie visible du tableau
+ * (`rect` rogné à l'écran) : sur téléphone, le tableau déborde de la page.
+ */
+export function edgeScrollSpeed(x: number, rect: { left: number; right: number }, viewportWidth: number): number {
+  const left = Math.max(rect.left, 0)
+  const right = Math.min(rect.right, viewportWidth)
+  const width = right - left
+  if (width <= 0) return 0
+  const zone = Math.min(EDGE_ZONE, width / 4)
+  if (x < left + zone) return -Math.ceil(EDGE_MAX_SPEED * Math.min(1, (left + zone - x) / zone))
+  if (x > right - zone) return Math.ceil(EDGE_MAX_SPEED * Math.min(1, (x - (right - zone)) / zone))
+  return 0
+}
+
+/** Centre horizontal de la carte fantôme, gardée dans l'écran avec une marge de 8 px. */
+function clampGhostX(x: number, width: number): number {
+  const half = width / 2 + 8
+  const max = window.innerWidth - half
+  return max < half ? window.innerWidth / 2 : Math.min(Math.max(x, half), max)
+}
+
+/** Colonne et place sous le pointeur, d'après le milieu des cartes. */
+function positionAt(x: number, y: number, cardId: string): Position | null {
+  const element = document.elementFromPoint(x, y)
+  const column = element?.closest<HTMLElement>("[data-board-column]")
+  const columnId = column?.dataset.boardColumn
+  if (!column || !columnId) return null
+  const cards = [...column.querySelectorAll<HTMLElement>("[data-board-card]")].filter(
+    (node) => node.dataset.boardCard !== cardId,
+  )
+  const index = cards.findIndex((node) => {
+    const rect = node.getBoundingClientRect()
+    return y < rect.top + rect.height / 2
+  })
+  return { columnId, index: index === -1 ? cards.length : index }
+}
 
 function moveInColumns<Card>(
   columns: ReadonlyArray<BoardColumn<Card>>,
@@ -83,6 +127,10 @@ export function Board<Card>({
     width: number
     pointerId: number
   } | null>(null)
+  const scrollerRef = useRef<HTMLDivElement>(null)
+  const lastPoint = useRef<{ x: number; y: number } | null>(null)
+  const scrollFrame = useRef(0)
+  useEffect(() => () => cancelAnimationFrame(scrollFrame.current), [])
   const instructionsId = useId()
   const view = moveInColumns(columns, cardKey, grab)
   const byId = new Map(columns.flatMap((column) => column.cards.map((card) => [cardKey(card), card] as const)))
@@ -120,6 +168,7 @@ export function Board<Card>({
         : "",
     )
     const id = grab.cardId
+    stopAutoScroll()
     setGrab(null)
     setGhost(null)
     if (grab.via === "keyboard") focusCard(id)
@@ -166,20 +215,36 @@ export function Board<Card>({
     focusCard(id)
   }
 
-  /** Colonne et place sous le pointeur, d'après le milieu des cartes. */
-  function positionAt(x: number, y: number, cardId: string): Position | null {
-    const element = document.elementFromPoint(x, y)
-    const column = element?.closest<HTMLElement>("[data-board-column]")
-    const columnId = column?.dataset.boardColumn
-    if (!column || !columnId) return null
-    const cards = [...column.querySelectorAll<HTMLElement>("[data-board-card]")].filter(
-      (node) => node.dataset.boardCard !== cardId,
-    )
-    const index = cards.findIndex((node) => {
-      const rect = node.getBoundingClientRect()
-      return y < rect.top + rect.height / 2
-    })
-    return { columnId, index: index === -1 ? cards.length : index }
+  /**
+   * Défilement automatique : une carte tenue près du bord visible fait défiler le tableau, image
+   * par image, tant que le doigt y reste. Sans lui, sur téléphone, seule la colonne voisine était
+   * atteignable (2026-10-18). La boucle s'arrête d'elle-même hors des bords ou en bout de course.
+   */
+  function autoScroll() {
+    if (scrollFrame.current !== 0) return
+    const step = () => {
+      scrollFrame.current = 0
+      const scroller = scrollerRef.current
+      const press = pressed.current
+      const point = lastPoint.current
+      if (!scroller || !press || !point) return
+      const speed = edgeScrollSpeed(point.x, scroller.getBoundingClientRect(), window.innerWidth)
+      if (speed === 0) return
+      const before = scroller.scrollLeft
+      scroller.scrollLeft = before + speed
+      if (scroller.scrollLeft === before) return
+      // Les colonnes ont glissé sous le doigt immobile : la place visée a changé.
+      const next = positionAt(point.x, point.y, press.cardId)
+      if (next) setGrab((current) => (current ? { ...current, to: next } : current))
+      scrollFrame.current = requestAnimationFrame(step)
+    }
+    scrollFrame.current = requestAnimationFrame(step)
+  }
+
+  function stopAutoScroll() {
+    if (scrollFrame.current !== 0) cancelAnimationFrame(scrollFrame.current)
+    scrollFrame.current = 0
+    lastPoint.current = null
   }
 
   function onPointerDown(event: PointerEvent<HTMLElement>, card: Card, position: Position) {
@@ -208,6 +273,8 @@ export function Board<Card>({
     setGhost({ x: event.clientX, y: event.clientY, width: press.width })
     const next = positionAt(event.clientX, event.clientY, press.cardId)
     if (next) setGrab((current) => (current ? { ...current, to: next } : current))
+    lastPoint.current = { x: event.clientX, y: event.clientY }
+    autoScroll()
   }
 
   function onPointerUp(event: PointerEvent<HTMLElement>) {
@@ -225,9 +292,14 @@ export function Board<Card>({
         Espace ou Entrée pour saisir une carte, flèches pour la déplacer, Espace pour la poser, Échap pour annuler.
       </p>
       <div
+        ref={scrollerRef}
         role="region"
         aria-label={label}
-        className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2 sm:snap-none"
+        className={cn(
+          "-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2 sm:snap-none",
+          // L'aimantation ramènerait le tableau à la colonne de départ après chaque pas du défilement automatique.
+          ghostCard !== undefined && "snap-none",
+        )}
       >
         {view.map(({ column, cards }) => (
           <section
@@ -270,7 +342,7 @@ export function Board<Card>({
                             pressed.current = null
                             if (grab) finish(false)
                           }}
-                          className="inline-flex size-7 shrink-0 cursor-grab touch-none items-center justify-center rounded-lg text-muted-foreground outline-none hover:bg-foreground/[0.06] focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
+                          className="touch-target inline-flex size-7 shrink-0 cursor-grab touch-none items-center justify-center rounded-lg text-muted-foreground outline-none hover:bg-foreground/[0.06] focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
                         >
                           <svg viewBox="0 0 16 16" aria-hidden className="size-4 fill-current">
                             <circle cx="5.5" cy="3.5" r="1.25" />
@@ -295,7 +367,8 @@ export function Board<Card>({
         <div
           aria-hidden
           className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-1/2 rotate-1 opacity-90"
-          style={{ left: ghost.x, top: ghost.y, width: ghost.width }}
+          // Tenue dans l'écran : une carte de 85 vw centrée sur un doigt au bord débordait de moitié.
+          style={{ left: clampGhostX(ghost.x, ghost.width), top: ghost.y, width: ghost.width }}
         >
           {renderCard(ghostCard, { dragging: true, handle: null })}
         </div>

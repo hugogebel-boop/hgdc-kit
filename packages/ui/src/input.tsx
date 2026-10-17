@@ -23,9 +23,12 @@ const PICKER_ICONS: Partial<Record<string, IconSvgElement>> = {
 }
 
 const INPUT_CLASS =
-  // Le champ du site : fond de page, un filet à 70 % au repos, et l'anneau
-  // vert plein au focus — le seul endroit où l'accent dit « c'est ici ».
-  "h-11 lg:h-10 touch-field w-full min-w-0 rounded-2xl bg-background px-3.5 py-1 text-base ring-1 ring-border/70 transition-[color,box-shadow,background-color] duration-(--duration-fast) outline-none ring-inset file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:ring-2 aria-invalid:ring-destructive/60 md:text-sm"
+  // Le champ du site : fond de page, un filet `control-off` au repos (3:1 du
+  // fond, WCAG 1.4.11 : à 70 % de `border`, un champ vide disparaissait sur une
+  // page blanche), et l'anneau plein au focus, le seul endroit où l'accent dit
+  // « c'est ici ». Texte à 16 px à toutes les largeurs : sous 16 px, Safari
+  // zoome au focus, et un iPad (768, 1024) en recevait 14.
+  "h-11 lg:h-10 touch-field w-full min-w-0 rounded-2xl bg-background px-3.5 py-1 text-base ring-1 ring-control-off transition-[color,box-shadow,background-color] duration-(--duration-fast) outline-none ring-inset file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:ring-2 aria-invalid:ring-destructive/60"
 
 function Input({ className, type, ...props }: React.ComponentProps<"input">): React.JSX.Element {
   const fieldId = useFieldId()

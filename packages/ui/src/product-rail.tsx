@@ -20,7 +20,7 @@ function ProductLink({ entry }: { entry: ProductRailEntry }): React.JSX.Element 
         onClick={leaveOnClick}
         aria-current={entry.current ? "page" : undefined}
         className={cn(
-          "flex h-10 items-center gap-3 rounded-xl px-2 text-shell-muted outline-none transition-colors duration-(--duration-fast) ease-out",
+          "flex h-10 items-center gap-3 rounded-xl px-2 text-shell-muted coarse:h-11 outline-none transition-colors duration-(--duration-fast) ease-out",
           "hover:bg-shell-hover hover:text-shell-foreground focus-visible:ring-2 focus-visible:ring-ring/50",
           "aria-[current=page]:bg-shell-active aria-[current=page]:text-shell-foreground",
         )}

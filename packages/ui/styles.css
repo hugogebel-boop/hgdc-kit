@@ -24,6 +24,9 @@
 @custom-variant rail (&:where([data-sidebar="rail"] *, [data-rail-peek] *));
 /* Pliée par la personne seulement (pas le temps du survol de la barre des produits). */
 @custom-variant folded (&:where([data-sidebar="rail"] *));
+/* Écran tactile, quelle que soit la largeur : `coarse:min-h-11` rend ses 44 px à une entrée que
+   `lg:` avait resserrée pour la souris. Déclarée après les points de rupture, elle les emporte. */
+@custom-variant coarse (@media (pointer: coarse));
 
 /* Courbes et durées. Pas d'ease-in : il démarre lentement à l'instant où l'œil regarde. */
 @theme {
@@ -133,7 +136,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  /* Contrôle éteint (piste d'interrupteur, bord de case et de bouton radio) : 3:1 au moins contre
+  /* Contrôle éteint (piste d'interrupteur, bord de case, de bouton radio et de champ) : 3:1 au moins contre
      le fond, une carte et `--muted` (WCAG 1.4.11, vérifié par contrast.test.ts). */
   --control-off: oklch(0.62 0 0);
   --ring: var(--accent);
@@ -375,9 +378,12 @@
   }
 }
 
-/* Zone tactile de 44 px sur écran tactile, sans changer la taille visible. */
+/* Zone tactile de 44 px sur écran tactile, sans changer la taille visible. Le pointeur seul
+   décide, jamais la largeur : un iPad en paysage (1024 px) a la coque d'ordinateur et le doigt
+   d'un téléphone. Sans `hover: none` non plus : un écran tactile qui annonce aussi un survol
+   (iPad avec clavier, portable tactile) gardait des cibles de 36 px. */
 @utility touch-target {
-  @media (hover: none) and (pointer: coarse) {
+  @media (pointer: coarse) {
     position: relative;
     &::after {
       content: "";
@@ -394,8 +400,29 @@
 }
 
 @utility touch-field {
-  @media (hover: none) and (pointer: coarse) {
+  @media (pointer: coarse) {
     min-height: 2.75rem;
+  }
+}
+
+/* Rangée qui défile à l'horizontale (onglets) : le bord s'efface en dégradé du côté où il reste du
+   contenu caché, `data-overflow-start` / `data-overflow-end` posés par le composant. Un masque, pas
+   une couleur : rien ne s'ajoute à la DA, et le fond de la page reste celui qu'on voit. */
+@utility scroll-fade-x {
+  --fade-start: 0px;
+  --fade-end: 0px;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--fade-start),
+    #000 calc(100% - var(--fade-end)),
+    transparent
+  );
+  &[data-overflow-start] {
+    --fade-start: 2.5rem;
+  }
+  &[data-overflow-end] {
+    --fade-end: 2.5rem;
   }
 }
 

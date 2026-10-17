@@ -149,7 +149,7 @@ export function SidebarNavItem({
         "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium whitespace-nowrap text-muted-foreground outline-none transition-colors duration-(--duration-fast) ease-out",
         "hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50",
         "aria-[current=page]:bg-muted aria-[current=page]:text-foreground data-[status=active]:bg-muted data-[status=active]:text-foreground",
-        "lg:min-h-9 lg:gap-2.5 lg:py-2 lg:text-shell-muted lg:hover:bg-shell-hover lg:hover:text-shell-foreground",
+        "min-h-11 lg:min-h-9 coarse:min-h-11 lg:gap-2.5 lg:py-2 lg:text-shell-muted lg:hover:bg-shell-hover lg:hover:text-shell-foreground",
         "lg:aria-[current=page]:bg-shell-active lg:aria-[current=page]:text-shell-foreground lg:data-[status=active]:bg-shell-active lg:data-[status=active]:text-shell-foreground",
         "lg:rail:justify-center lg:rail:px-0",
       ),
@@ -180,7 +180,7 @@ const EXPAND_ICON = PanelLeftCloseIcon
 
 /** Même boîte qu'une entrée de la barre en rail : 40 × 36 px, icône de 18 px centrée. */
 const TOGGLE =
-  "relative grid h-9 w-10 shrink-0 place-items-center rounded-xl text-shell-muted outline-none transition-colors duration-(--duration-fast) ease-out hover:bg-shell-hover hover:text-shell-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+  "touch-target relative grid h-9 w-10 shrink-0 place-items-center rounded-xl text-shell-muted outline-none transition-colors duration-(--duration-fast) ease-out hover:bg-shell-hover hover:text-shell-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
 
 function ShortcutHint({ label }: { label: string }): React.JSX.Element {
   return (
@@ -463,7 +463,11 @@ export function AppShell({
                 ref={contentRef}
                 className="relative flex flex-1 flex-col lg:min-h-0 lg:overflow-y-auto lg:rounded-xl lg:bg-background lg:[scrollbar-gutter:stable]"
               >
-                <header className="sticky top-[env(safe-area-inset-top,0px)] z-30 flex h-14 shrink-0 items-center gap-1 border-b border-foreground/5 bg-background px-2 sm:px-4 lg:top-0">
+                {/* Texte agrandi (200 %) : la barre ne garde pas 56 px coûte que coûte, elle passe
+                    à la ligne. Le contexte de la page (`header`) réclame 7 rem ; s'il ne les a pas à
+                    côté de la marque, il descend sur une deuxième ligne avec la recherche, au lieu
+                    d'être écrasé sous la loupe. À taille normale, tout tient sur une ligne. */}
+                <header className="sticky top-[env(safe-area-inset-top,0px)] z-30 flex min-h-14 shrink-0 flex-wrap items-center gap-x-1 gap-y-1 border-b border-foreground/5 bg-background px-2 py-1.5 sm:px-4 lg:top-0">
                   <button
                     type="button"
                     onClick={() => setMenuOpen(true)}
@@ -477,7 +481,9 @@ export function AppShell({
                     <ProductBadge product={product} className="size-6" />
                     <span className="font-heading text-[0.9375rem] font-semibold">{productName(product)}</span>
                   </div>
-                  <div className="flex min-w-0 flex-1 items-center gap-2">{header}</div>
+                  <div className={cn("flex min-w-0 items-center gap-2", header ? "flex-[1_1_7rem]" : "flex-1")}>
+                    {header}
+                  </div>
                   {onSearch ? (
                     <CommandMenuButton
                       onClick={onSearch}

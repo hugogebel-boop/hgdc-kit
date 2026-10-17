@@ -177,7 +177,7 @@ export function DateRangePicker({
                       setOpen(false)
                     }}
                     className={cn(
-                      "flex min-h-10 w-full items-center rounded-xl px-3 text-left text-sm outline-none transition-colors duration-(--duration-fast) ease-out hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 lg:min-h-9",
+                      "flex min-h-11 w-full items-center rounded-xl px-3 text-left text-sm outline-none transition-colors duration-(--duration-fast) ease-out hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 lg:min-h-9 coarse:min-h-11",
                       pressed && "bg-muted font-medium",
                     )}
                   >
