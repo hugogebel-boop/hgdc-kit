@@ -41,7 +41,7 @@ export function ResourceItem({
   /** Icône, favicon ou marque, dans une tuile de 40 px. */
   icon?: ReactNode
   title: ReactNode
-  /** Une ligne de contexte : adresse, date, auteur. Tronquée si trop longue. */
+  /** Une ligne de contexte : adresse, date, auteur. Deux lignes au plus sur un écran étroit, puis tronquée. */
   meta?: ReactNode
   badge?: ReactNode
   /** Boutons-icônes ou menu « … ». */
@@ -69,21 +69,33 @@ export function ResourceItem({
           {icon}
         </span>
       ) : null}
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">
-          {linked ? (
-            <ResourceLink href={href} render={render}>
-              {title}
-            </ResourceLink>
-          ) : (
-            title
-          )}
-        </p>
-        {meta ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{meta}</p> : null}
+      {/* Le texte réclame 12 rem. S'il ne les a pas à côté du badge et des actions (téléphone,
+          texte agrandi), ceux-ci passent sous le titre au lieu de le réduire à trois lettres
+          (« Avenant… » à 360 px, 2026-10-18). Visibles partout : un rôle ou un état ne disparaît
+          pas faute de place. */}
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2 sm:gap-x-4">
+        <div className="min-w-0 flex-[1_1_12rem]">
+          <p className="truncate text-sm font-medium">
+            {linked ? (
+              <ResourceLink href={href} render={render}>
+                {title}
+              </ResourceLink>
+            ) : (
+              title
+            )}
+          </p>
+          {meta ? <p className="mt-0.5 line-clamp-2 text-xs break-words text-muted-foreground">{meta}</p> : null}
+        </div>
+        {badge || actions ? (
+          <div
+            data-slot="resource-item-trailing"
+            className="flex max-w-full shrink-0 flex-wrap items-center gap-x-3 gap-y-2 sm:gap-x-4"
+          >
+            {badge ? <div className="shrink-0">{badge}</div> : null}
+            {actions ? <div className="relative z-1 flex shrink-0 items-center gap-1">{actions}</div> : null}
+          </div>
+        ) : null}
       </div>
-      {/* Visible aussi sur téléphone : un rôle ou un état ne disparaît pas faute de place, le titre se tronque. */}
-      {badge ? <div className="shrink-0">{badge}</div> : null}
-      {actions ? <div className="relative z-1 flex shrink-0 items-center gap-1">{actions}</div> : null}
     </li>
   )
 }

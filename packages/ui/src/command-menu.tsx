@@ -158,7 +158,7 @@ export function CommandMenu({
                               setOpen(false)
                               command.onSelect()
                             }}
-                            className="flex min-h-11 cursor-default items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium outline-none select-none data-highlighted:bg-muted lg:min-h-10"
+                            className="flex min-h-11 cursor-default items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium outline-none select-none data-highlighted:bg-muted lg:min-h-10 coarse:min-h-11"
                           >
                             {command.badge ? (
                               <ProductBadge product={command.badge} className="size-4.5" />

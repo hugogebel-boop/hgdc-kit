@@ -13,7 +13,7 @@ export type Crumb = {
 }
 
 const crumbLink =
-  "rounded-md text-muted-foreground transition-colors duration-(--duration-fast) ease-out outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+  "touch-target rounded-md text-muted-foreground transition-colors duration-(--duration-fast) ease-out outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
 
 function CrumbLink({ crumb }: { crumb: Crumb }): React.JSX.Element {
   return useRender({

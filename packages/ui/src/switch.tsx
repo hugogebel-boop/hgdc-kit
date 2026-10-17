@@ -30,7 +30,7 @@ export function Switch({
       onCheckedChange={onCheckedChange}
       disabled={disabled}
       className={cn(
-        "relative inline-flex h-8 w-[3.25rem] shrink-0 items-center rounded-full p-0.5",
+        "touch-target relative inline-flex h-8 w-[3.25rem] shrink-0 items-center rounded-full p-0.5",
         "transition-colors duration-200 ease-ios",
         "outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2",
         "focus-visible:ring-offset-background",

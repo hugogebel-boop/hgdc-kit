@@ -34,10 +34,10 @@ import { cn } from "./cn.ts"
  *   </Select>
  */
 
-// Même recette que `Input` : filet à 70 % au repos, anneau vert au focus et
-// quand le menu est ouvert.
+// Même recette que `Input` : filet `control-off` au repos, 16 px, anneau plein
+// au focus et quand le menu est ouvert.
 const triggerClasses =
-  "flex h-11 lg:h-10 touch-field w-full min-w-0 items-center justify-between gap-2 rounded-2xl bg-background px-3.5 text-base ring-1 ring-border/70 transition-[color,box-shadow,background-color] duration-(--duration-fast) outline-none ring-inset placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:ring-2 aria-invalid:ring-destructive/60 data-popup-open:ring-2 data-popup-open:ring-ring md:text-sm"
+  "flex h-11 lg:h-10 touch-field w-full min-w-0 items-center justify-between gap-2 rounded-2xl bg-background px-3.5 text-base ring-1 ring-control-off transition-[color,box-shadow,background-color] duration-(--duration-fast) outline-none ring-inset placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:ring-2 aria-invalid:ring-destructive/60 data-popup-open:ring-2 data-popup-open:ring-ring"
 
 function Select<Value>(props: SelectPrimitive.Root.Props<Value>): React.JSX.Element {
   return <SelectPrimitive.Root {...props} />
@@ -137,7 +137,7 @@ function SelectItem({ className, children, ...props }: SelectPrimitive.Item.Prop
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        "relative flex cursor-default items-center gap-2.5 rounded-xl py-2 pr-8 pl-3 text-sm font-medium outline-hidden select-none focus:bg-muted data-highlighted:bg-muted data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative flex cursor-default items-center gap-2.5 rounded-xl py-2 pr-8 pl-3 text-sm font-medium outline-hidden select-none focus:bg-muted data-highlighted:bg-muted max-lg:min-h-11 coarse:min-h-11 data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...props}

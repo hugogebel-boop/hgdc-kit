@@ -1,4 +1,5 @@
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs"
+import { useEffect, useImperativeHandle, useRef } from "react"
 
 import { cn } from "./cn.ts"
 
@@ -13,15 +14,50 @@ function Tabs({ className, ...props }: TabsPrimitive.Root.Props): React.JSX.Elem
 }
 
 /**
+ * Pose `data-overflow-start` et `data-overflow-end` sur une rangée qui défile horizontalement,
+ * selon qu'il reste du contenu caché à gauche ou à droite. Recalculé au défilement et quand la
+ * rangée ou ses onglets changent de taille.
+ */
+function useOverflowEdges(forwarded: React.Ref<HTMLDivElement> | undefined): React.RefObject<HTMLDivElement | null> {
+  const local = useRef<HTMLDivElement>(null)
+  useImperativeHandle(forwarded, () => local.current as HTMLDivElement, [])
+  useEffect(() => {
+    const node = local.current
+    if (!node) return undefined
+    const update = () => {
+      const max = node.scrollWidth - node.clientWidth
+      node.toggleAttribute("data-overflow-start", max > 1 && node.scrollLeft > 1)
+      node.toggleAttribute("data-overflow-end", max > 1 && node.scrollLeft < max - 1)
+    }
+    update()
+    node.addEventListener("scroll", update, { passive: true })
+    const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(update)
+    observer?.observe(node)
+    for (const child of node.children) observer?.observe(child)
+    return () => {
+      node.removeEventListener("scroll", update)
+      observer?.disconnect()
+    }
+  }, [])
+  return local
+}
+
+/**
  * La rangée d'onglets. L'onglet ouvert est marqué d'une pastille teintée qui glisse de l'un à
  * l'autre, monochrome comme la barre latérale : l'accent reste au focus.
+ *
+ * Trop d'onglets pour la largeur : la rangée défile, et son bord s'efface en dégradé du côté où il
+ * en reste (masque, pas de couleur ajoutée). Sans cet indice, l'onglet coupé au bord passait pour
+ * le dernier (dix onglets d'un projet de Portal sur téléphone, 2026-10-18).
  */
-function TabsList({ className, children, ...props }: TabsPrimitive.List.Props): React.JSX.Element {
+function TabsList({ className, children, ref, ...props }: TabsPrimitive.List.Props): React.JSX.Element {
+  const edgesRef = useOverflowEdges(ref)
   return (
     <TabsPrimitive.List
+      ref={edgesRef}
       data-slot="tabs-list"
       className={cn(
-        "relative z-0 flex w-fit max-w-full items-center gap-1 overflow-x-auto [scrollbar-width:none]",
+        "relative z-0 flex w-fit max-w-full scroll-fade-x items-center gap-1 overflow-x-auto [scrollbar-width:none]",
         className,
       )}
       {...props}
