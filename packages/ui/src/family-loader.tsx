@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef } from "react"
 
 import { cn } from "./cn.ts"
+import { useBackgroundOrganizationRefresh } from "./product-switch.ts"
 
 const SIZES = { sm: 24, md: 40, lg: 64 } as const
 
@@ -165,6 +166,8 @@ export function FamilyLoaderHost(): React.JSX.Element {
  * que dans la coque et que dans le produit qu'on vient de quitter (ADR 0015).
  */
 export function FamilyLoaderRoot({ children }: { children: React.ReactNode }): React.JSX.Element {
+  // Une fois par document : relecture des organisations après un passage depuis la barre (ADR 0016).
+  useBackgroundOrganizationRefresh()
   return (
     <FamilyLoaderRootContext value={true}>
       {children}

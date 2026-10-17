@@ -75,9 +75,20 @@ export function startBackgroundRefresh(doc: Document = document): HTMLIFrameElem
 }
 
 /**
- * À monter une fois par document dans la coque (`AppShell` le fait) : relecture en arrière-plan
- * après un passage depuis la barre, et préchargement au survol des autres produits. Le cadre vit
- * hors de l'arbre React : un démontage ne l'interrompt pas, il se retire seul.
+ * Relecture en arrière-plan si l'entrée l'a demandé. Montée à la racine du document
+ * (`FamilyLoaderRoot`), pour toutes les pages, y compris celles hors de la coque : la page « il te
+ * faut une organisation » d'une personne qui vient d'accepter une invitation en a le plus besoin.
+ * Le cadre vit hors de l'arbre React : un démontage ne l'interrompt pas, il se retire seul.
+ */
+export function useBackgroundOrganizationRefresh(): void {
+  useEffect(() => {
+    startBackgroundRefresh()
+  }, [])
+}
+
+/**
+ * Dans la coque (`AppShell` le fait) : la relecture ci-dessus si la racine ne l'a pas déjà faite
+ * (le cookie ne sert qu'une fois), et le préchargement au survol des autres produits.
  */
 export function useProductSwitch(enabled = true): void {
   useEffect(() => {
