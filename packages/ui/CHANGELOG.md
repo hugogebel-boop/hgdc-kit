@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.17.1
+
+### Patch Changes
+
+- 75640de: La relecture des organisations après un passage depuis la barre part de `FamilyLoaderRoot`, donc de toutes les pages, y compris « il te faut une organisation » hors de la coque : une organisation rejointe dans Account y apparaît sans action.
+
 ## 0.17.0
 
 ### Minor Changes
