@@ -1,5 +1,11 @@
 # @hgdc/auth
 
+## 0.14.1
+
+### Patch Changes
+
+- 808260e: `HgdcMark` garde sa taille sans `className` (1.25em, celle du texte du bouton de connexion) au lieu de s'étirer à la taille du SVG, et n'affiche qu'une variante même sans les styles de `@hgdc/ui`.
+
 ## 0.14.0
 
 ### Minor Changes
