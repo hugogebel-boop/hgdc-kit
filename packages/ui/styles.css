@@ -253,8 +253,9 @@
   --glow-orange: #ff9a46;
 }
 
-/* Une icône de marque (`ProductBadge`, `FamilyMark`, `HgdcMark` de @hgdc/auth) porte ses deux
-   dessins, l'un pour le fond clair, l'autre pour le fond sombre : le thème choisit, sans script. */
+/* Le H de la marque (`FamilyMark`, `HgdcMark` de @hgdc/auth) porte ses deux dessins, l'un pour
+   le fond clair, l'autre pour le fond sombre : le thème choisit, sans script. Les icônes des
+   produits, elles, ont un fond blanc et ne changent pas de dessin. */
 [data-mark-theme="dark"],
 .dark [data-mark-theme="light"] {
   display: none;

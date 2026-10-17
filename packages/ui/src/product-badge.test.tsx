@@ -22,10 +22,17 @@ const file = (name: string) =>
 const css = readFileSync(join(root, "styles.css"), "utf8")
 
 describe("identité H Collection", () => {
-  it("embarque les pastilles telles que les fichiers de family/ (régénérer : bun scripts/family.ts)", () => {
+  it("embarque les icônes telles que les fichiers de family/tile/ (régénérer : bun scripts/family.ts)", () => {
     for (const product of FAMILY_PRODUCTS) {
-      expect(PRODUCT_BADGE_SVG[product].light).toBe(file(product))
-      expect(PRODUCT_BADGE_SVG[product].dark).toBe(file(`${product}-dark`))
+      expect(PRODUCT_BADGE_SVG[product].squircle).toBe(file(`tile/${product}`))
+      expect(PRODUCT_BADGE_SVG[product].round).toBe(file(`tile/${product}-round`))
+      // Le dessin clair, tel quel, sur un fond blanc.
+      const picto = file(product)
+        .replace(/^<svg[^>]*>/, "")
+        .replace(/<\/svg>$/, "")
+      expect(PRODUCT_BADGE_SVG[product].squircle).toContain(picto)
+      expect(PRODUCT_BADGE_SVG[product].squircle).toContain('fill="#fff"')
+      expect(PRODUCT_BADGE_SVG[product].round).toContain('<circle cx="32" cy="32" r="32" fill="#fff"/>')
     }
     expect(FAMILY_MARK_SVG.light).toBe(file("hcollection-icon"))
     expect(FAMILY_MARK_SVG.dark).toBe(file("hcollection-icon-dark"))
@@ -34,10 +41,8 @@ describe("identité H Collection", () => {
   it("garde le même dégradé dans la pastille, PRODUCT_GRADIENT et les jetons", () => {
     for (const product of FAMILY_PRODUCTS) {
       const { from, to } = PRODUCT_GRADIENT[product]
-      expect(PRODUCT_BADGE_SVG[product].light).toContain(`stop-color="${from}"`)
-      expect(PRODUCT_BADGE_SVG[product].light).toContain(`stop-color="${to}"`)
-      // Sur sombre, le dégradé finit sur la teinte vive.
-      expect(PRODUCT_BADGE_SVG[product].dark).toContain(`stop-color="${from}"`)
+      expect(PRODUCT_BADGE_SVG[product].squircle).toContain(`stop-color="${from}"`)
+      expect(PRODUCT_BADGE_SVG[product].squircle).toContain(`stop-color="${to}"`)
       expect(css).toContain(`--product-${product}-from: ${from};`)
       expect(css).toContain(`--product-${product}-to: ${to};`)
     }
@@ -52,18 +57,22 @@ describe("identité H Collection", () => {
     const { container } = render(
       <>
         <ProductBadge product="host" />
+        <ProductBadge product="mail" shape="round" label="Mail" />
         <FamilyMark label="H Collection" />
       </>,
     )
-    const badge = container.querySelector('[data-slot="product-badge"]')
+    const [badge, round] = [...container.querySelectorAll('[data-slot="product-badge"]')]
     const mark = container.querySelector('[data-slot="family-mark"]')
-    const sources = [...(badge?.querySelectorAll("img") ?? [])].map((img) => img.getAttribute("src"))
-    expect(sources).toEqual([
-      `data:image/svg+xml,${encodeURIComponent(PRODUCT_BADGE_SVG.host.light)}`,
-      `data:image/svg+xml,${encodeURIComponent(PRODUCT_BADGE_SVG.host.dark)}`,
-    ])
+    expect(badge?.getAttribute("src")).toBe(`data:image/svg+xml,${encodeURIComponent(PRODUCT_BADGE_SVG.host.squircle)}`)
+    expect(badge?.getAttribute("alt")).toBe("")
     expect(badge?.getAttribute("aria-hidden")).toBe("true")
-    for (const img of container.querySelectorAll("img")) expect(img.getAttribute("alt")).toBe("")
+    expect(round?.getAttribute("src")).toBe(`data:image/svg+xml,${encodeURIComponent(PRODUCT_BADGE_SVG.mail.round)}`)
+    expect(round?.getAttribute("alt")).toBe("Mail")
+    // Le H garde ses deux variantes, sans fond.
+    expect([...(mark?.querySelectorAll("img") ?? [])].map((img) => img.getAttribute("data-mark-theme"))).toEqual([
+      "light",
+      "dark",
+    ])
     expect(mark?.getAttribute("role")).toBe("img")
     expect(mark?.getAttribute("aria-label")).toBe("H Collection")
     expect(mark?.hasAttribute("aria-hidden")).toBe(false)
@@ -80,7 +89,7 @@ describe("identité H Collection", () => {
     fireEvent.click(screen.getByRole("button", { name: "Compte de Hugo Gebel" }))
     const status = await screen.findByRole("menuitem", { name: "Status" })
     expect(status.querySelector("img")?.getAttribute("src")).toBe(
-      `data:image/svg+xml,${encodeURIComponent(PRODUCT_BADGE_SVG.status.light)}`,
+      `data:image/svg+xml,${encodeURIComponent(PRODUCT_BADGE_SVG.status.squircle)}`,
     )
   })
 })
