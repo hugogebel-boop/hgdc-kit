@@ -1,6 +1,6 @@
 # @hgdc/auth
 
-Connexion d'un produit de la famille à Account (OIDC) : bouton « Se connecter avec H family », configuration du client better-auth, proxy `/api/auth` pour TanStack Start et gardes Convex.
+Connexion d'un produit de la famille à Account (OIDC) : bouton « Se connecter avec HGDC », configuration du client better-auth, proxy `/api/auth` pour TanStack Start et gardes Convex.
 
 | Import              | Contenu                                                                                                                                                                                                                                                                                                                                                                                      |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
