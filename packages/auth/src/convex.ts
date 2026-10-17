@@ -91,23 +91,101 @@ export function authErrorReason(error: unknown): AuthErrorReason | null {
 
 /**
  * Émetteur des jetons dont le `subject` désigne un utilisateur du produit. Avec le plugin
- * `convex` de better-auth : `process.env.CONVEX_SITE_URL`. Un `subject` n'est unique que chez
- * son émetteur : sans ce contrôle, un autre fournisseur accepté par Convex pourrait présenter
- * le `subject` d'un membre et prendre ses droits. Un seul émetteur : l'appartenance est
- * cherchée par `subject`, qui ne distingue pas deux fournisseurs.
+ * `convex` de better-auth : `process.env.CONVEX_SITE_URL`, ou `convexIssuers(process.env)`.
+ * Un `subject` n'est unique que chez son émetteur : sans ce contrôle, un autre fournisseur
+ * accepté par Convex pourrait présenter le `subject` d'un membre et prendre ses droits.
+ *
+ * Une liste ne sert qu'à donner plusieurs adresses au même émetteur, le temps d'un changement
+ * de domaine du déploiement : l'appartenance est cherchée par `subject`, qui ne distingue pas
+ * deux fournisseurs. Jamais deux bases d'utilisateurs différentes.
  */
-export type IssuerOption = { issuer: string }
+export type IssuerOption = { issuer: string | readonly string[] }
+
+/** Variables d'environnement lues par `convexIssuers` et `convexAuthProviders`. */
+export type ConvexIssuerEnv = Readonly<Record<string, string | undefined>>
 
 function normalizeIssuer(value: string) {
   return value.replace(/\/+$/, "")
 }
 
-/** Identité de la personne connectée, émise par `issuer`, ou erreur `UNAUTHENTICATED`. */
+/**
+ * Émetteurs des jetons du plugin `convex` de better-auth sur ce déploiement, à passer tels quels
+ * à `requireIdentity` et `requireOrgMember` : `CONVEX_SITE_URL`, plus `CONVEX_PREVIOUS_SITE_URL`
+ * quand elle est posée.
+ *
+ * `CONVEX_PREVIOUS_SITE_URL` ne vit que pendant la bascule d'un domaine : l'ancienne adresse
+ * `actions` du déploiement, pour que les jetons émis avant la bascule restent valables jusqu'à
+ * leur expiration (15 minutes). Elle se retire ensuite.
+ *
+ * ```ts
+ * await requireIdentity(ctx, { issuer: convexIssuers(process.env) })
+ * ```
+ */
+export function convexIssuers(env: ConvexIssuerEnv): string[] {
+  const issuers: string[] = []
+  for (const value of [env.CONVEX_SITE_URL, env.CONVEX_PREVIOUS_SITE_URL]) {
+    const issuer = value ? normalizeIssuer(value.trim()) : ""
+    if (issuer && !issuers.includes(issuer)) issuers.push(issuer)
+  }
+  return issuers
+}
+
+/** Lit une variable facultative dans `auth.config.ts`, où Convex lève sur une variable absente. */
+function optionalEnv(env: ConvexIssuerEnv, name: string): string | undefined {
+  try {
+    return env[name]?.trim() || undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Fournisseurs de `convex/auth.config.ts` : `provider` (celui de `getAuthConfigProvider`), plus
+ * sa copie pour `CONVEX_PREVIOUS_SITE_URL` quand elle est posée, avec la même clé. Sans elle,
+ * Convex refuse dès la bascule (`NoAuthProvider`) un jeton émis avant, sur une connexion neuve.
+ *
+ * La copie est gardée même si les deux adresses sont égales : elles le sont entre la pose de la
+ * variable et le changement de domaine, et seule `CONVEX_SITE_URL` suit alors le domaine.
+ * Le plugin `convex` de better-auth refuse deux fournisseurs `applicationID: "convex"` : il
+ * reçoit `currentAuthConfig(authConfig)`.
+ *
+ * ```ts
+ * export default {
+ *   providers: convexAuthProviders(getAuthConfigProvider({ jwks: process.env.JWKS }), process.env),
+ * } satisfies AuthConfig
+ * ```
+ */
+export function convexAuthProviders<P extends { issuer: string }>(provider: P, env: ConvexIssuerEnv): P[] {
+  // Convex refuse un push dont auth.config.ts lit une variable absente, et n'y énumère pas
+  // `process.env` (`in`, `Object.keys` ne voient rien) : seule une lecture directe, rattrapée, convient.
+  const previous = optionalEnv(env, "CONVEX_PREVIOUS_SITE_URL")
+  return previous ? [provider, { ...provider, issuer: normalizeIssuer(previous) }] : [provider]
+}
+
+/**
+ * Configuration à donner au plugin `convex` de better-auth : le seul fournisseur courant, le
+ * premier de `convexAuthProviders`.
+ *
+ * ```ts
+ * convex({ authConfig: currentAuthConfig(authConfig), jwks: process.env.JWKS })
+ * ```
+ */
+export function currentAuthConfig<P>(config: { providers: readonly P[] }): { providers: P[] } {
+  return { providers: config.providers.slice(0, 1) }
+}
+
+/**
+ * Identité de la personne connectée, émise par `issuer` (ou l'un d'eux), ou erreur
+ * `UNAUTHENTICATED`.
+ */
 export async function requireIdentity(ctx: { auth: Auth }, options: IssuerOption): Promise<UserIdentity> {
   const identity = await ctx.auth.getUserIdentity()
   if (!identity) throw authError("no_session")
-  if (!options.issuer) throw new Error("requireIdentity : émetteur attendu manquant (CONVEX_SITE_URL ?).")
-  if (normalizeIssuer(identity.issuer) !== normalizeIssuer(options.issuer)) throw authError("wrong_issuer")
+  const expected = (typeof options.issuer === "string" ? [options.issuer] : options.issuer)
+    .map(normalizeIssuer)
+    .filter((issuer) => issuer !== "")
+  if (expected.length === 0) throw new Error("requireIdentity : émetteur attendu manquant (CONVEX_SITE_URL ?).")
+  if (!expected.includes(normalizeIssuer(identity.issuer))) throw authError("wrong_issuer")
   return identity
 }
 

@@ -157,10 +157,10 @@ Une absence de session n'est jamais gardée. Déconnexion : recharger la page, o
 ## Garder une fonction Convex
 
 ```ts
-import { requireOrgMember } from "@hgdc/auth/convex"
+import { convexIssuers, requireOrgMember } from "@hgdc/auth/convex"
 
 const { userId, role } = await requireOrgMember(ctx, organizationId, {
-  issuer: process.env.CONVEX_SITE_URL!, // émetteur des JWT du plugin convex
+  issuer: convexIssuers(process.env), // émetteurs des JWT du plugin convex
   minRole: "admin",
   load: async (ctx, { organizationId, userId }) => /* appartenance lue dans la base du produit */ null,
 })
@@ -186,6 +186,31 @@ if (authErrorReason(error) === "insufficient_role") showUpgradeHint()
 `authErrorReason` marche des deux côtés (la `ConvexError` reconstruite par le client garde ses données) et déduit la raison d'une erreur d'avant 0.4 par son code.
 
 Les organisations arrivent par la portée `organizations` : claim `organizations: [{ id, slug, name, role }]` de l'id_token et de userinfo.
+
+### Changer le domaine du déploiement Convex
+
+Les jetons du plugin `convex` portent l'émetteur `CONVEX_SITE_URL`. Quand l'adresse du déploiement change (domaine personnalisé posé par `update_canonical_url`, migration vers un Convex auto-hébergé), les jetons déjà émis gardent l'ancienne pendant leur durée de vie (15 minutes) : Convex les refuse sur une connexion neuve (`NoAuthProvider`) et la garde répond `wrong_issuer` sur un WebSocket ouvert. La variable `CONVEX_PREVIOUS_SITE_URL` ouvre une fenêtre où les deux émetteurs sont acceptés :
+
+```ts
+// convex/auth.config.ts
+import { convexAuthProviders } from "@hgdc/auth/convex"
+
+export default {
+  providers: convexAuthProviders(getAuthConfigProvider({ jwks: process.env.JWKS }), process.env),
+} satisfies AuthConfig
+
+// convex/auth.ts, dans les plugins : le plugin refuse deux fournisseurs « convex »
+convex({ authConfig: currentAuthConfig(authConfig), jwks: process.env.JWKS })
+
+// gardes
+await requireIdentity(ctx, { issuer: convexIssuers(process.env) })
+```
+
+1. Poser `CONVEX_PREVIOUS_SITE_URL` à l'adresse actuelle (`npx convex env set`), puis `convex deploy`.
+2. Changer l'adresse. Les nouveaux jetons portent le nouvel émetteur, les anciens restent acceptés.
+3. Attendre 30 minutes (deux fois la durée d'un jeton), retirer la variable, redéployer.
+
+Hors bascule, la variable est absente et rien ne change : `convexAuthProviders` rend le seul fournisseur, `convexIssuers` la seule `CONVEX_SITE_URL`. La liste ne sert qu'à donner deux adresses au même émetteur (même clé, mêmes utilisateurs), jamais à accepter un autre fournisseur.
 
 ## Synchroniser les organisations
 
