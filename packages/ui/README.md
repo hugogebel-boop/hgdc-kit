@@ -102,17 +102,18 @@ Sur ordinateur, la coque ouvre sur la barre des produits (ADR 0011) : organisati
 
 ## Listes, journaux et retours
 
-| Import               | Exemple                                                                                                                                                    |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `filter-bar`         | `<FilterBar search={{ value: q, onChange }} filters={[{ key: "status", label: "Statut", options }]} values={{ status }} onFilterChange={…} onReset={…} />` |
-| `data-table`         | `<DataTable label="Déploiements" rows={rows} columns={columns} rowKey={(d) => d.id} sort={sort} onSortChange={…} filters={<FilterBar …/>} loadMore={…} />` |
-| `dns-record-table`   | `<DnsRecordTable records={[{ type: "MX", name: "send", value, priority: 10, status: "pending" }]} />` (Vérifié, En attente, Échec, À ajouter)              |
-| `log-viewer`         | `<LogViewer lines={[{ id, time, level: "error", message }]} live />` : niveaux, recherche, « Suivre », copie ; seules les lignes visibles sont rendues     |
-| `sparkline`          | `<Sparkline label="Envois sur 7 jours" values={[3, 8, 5]} color={2} />`                                                                                    |
-| `middle-truncate`    | `<MiddleTruncate text={deployment.url} />` : « …/routes/index.tsx », texte entier dans la page                                                             |
-| `error-card`         | `<ErrorCard title="Impossible de charger les journaux" detail={message} reference={requestId} onRetry={refetch} />`                                        |
-| `destructive-dialog` | `<DestructiveDialog open={open} onOpenChange={setOpen} title="Supprimer le domaine" question="…" name="acme.ch" onConfirm={remove} />`                     |
-| `sonner`             | `<Toaster />` une fois, puis `toastUndo("Domaine retiré", { onUndo: restore })` ; `errorMessage(error)` pour un toast d'erreur                             |
+| Import               | Exemple                                                                                                                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `filter-bar`         | `<FilterBar search={{ value: q, onChange }} filters={[{ key: "status", label: "Statut", options }]} values={{ status }} onFilterChange={…} onReset={…} />`                                                   |
+| `data-table`         | `<DataTable label="Déploiements" rows={rows} columns={columns} rowKey={(d) => d.id} sort={sort} onSortChange={…} filters={<FilterBar …/>} loadMore={…} />`                                                   |
+| `board`              | `<Board label="Tableau du projet" columns={[{ id, label, title, cards }]} cardKey={(c) => c.id} cardLabel={(c) => c.title} renderCard={(c, { handle }) => …} onMove={…} />` : poignée souris, doigt, clavier |
+| `dns-record-table`   | `<DnsRecordTable records={[{ type: "MX", name: "send", value, priority: 10, status: "pending" }]} />` (Vérifié, En attente, Échec, À ajouter)                                                                |
+| `log-viewer`         | `<LogViewer lines={[{ id, time, level: "error", message }]} live />` : niveaux, recherche, « Suivre », copie ; seules les lignes visibles sont rendues                                                       |
+| `sparkline`          | `<Sparkline label="Envois sur 7 jours" values={[3, 8, 5]} color={2} />`                                                                                                                                      |
+| `middle-truncate`    | `<MiddleTruncate text={deployment.url} />` : « …/routes/index.tsx », texte entier dans la page                                                                                                               |
+| `error-card`         | `<ErrorCard title="Impossible de charger les journaux" detail={message} reference={requestId} onRetry={refetch} />`                                                                                          |
+| `destructive-dialog` | `<DestructiveDialog open={open} onOpenChange={setOpen} title="Supprimer le domaine" question="…" name="acme.ch" onConfirm={remove} />`                                                                       |
+| `sonner`             | `<Toaster />` une fois, puis `toastUndo("Domaine retiré", { onUndo: restore })` ; `errorMessage(error)` pour un toast d'erreur                                                                               |
 
 Filtres, tri et page vivent dans l'URL du produit : les composants sont contrôlés et ne connaissent pas le routeur.
 
