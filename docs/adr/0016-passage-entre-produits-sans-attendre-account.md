@@ -34,6 +34,18 @@ La chaîne `refresh=1` : entrée (connexion OAuth préparée par le serveur, 0,5
 - **Relire par le serveur avec le jeton de rafraîchissement** (`offline_access`). Pas de cadre, mais un second chemin de confiance que l'ADR 0013 a écarté, et du code Convex dans chaque produit.
 - **Ne relire que si Account signale un changement** (cookie sur `.hgdc.ch`). Rapide et simple, mais une invitation acceptée sur un autre appareil ne serait plus vue depuis la barre.
 
+## Mesures après déploiement (17.10, production)
+
+| Passage         | Sans préchargement : document | Après un survol (préchargé) : document | Page affichée |
+| --------------- | ----------------------------- | -------------------------------------- | ------------- |
+| Host → Mail     | 0,53 à 0,54 s                 | 0,07 s                                 | 0,62 à 0,68 s |
+| Mail → Status   | 0,38 à 0,52 s                 | 0,07 à 0,08 s                          | 0,75 à 0,80 s |
+| Status → Portal | 0,53 à 0,58 s                 | 0,08 s                                 | 0,63 à 0,66 s |
+
+« Page affichée » est le temps jusqu'au contenu de la page, données du produit comprises ; la chaîne d'authentification n'en prend plus que la redirection de l'entrée. Invitation acceptée dans Account par un compte sans organisation dans le produit, puis passage par la barre : arrivée en 0,5 à 0,8 s, l'organisation s'ouvre seule 3,4 s (Mail) à 3,8 s (Host) après le clic. Retrait par un admin : la page de l'organisation se ferme aussitôt (ADR 0014).
+
+Les pages « aucune organisation » des produits doivent suivre leur requête abonnée (Mail, Status, Docs le faisaient ; Host et Analytics corrigés) : sans cela, l'organisation relue n'apparaît qu'au rechargement.
+
 ## Conséquences
 
 - Passage avec une session ouverte : une redirection de l'entrée et la page, sans Account ; préchargé au survol, la chaîne est déjà faite au clic.
