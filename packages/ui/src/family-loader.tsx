@@ -21,11 +21,18 @@ export function familyLoaderPhase(epochMs: number, period: number = FAMILY_LOADE
   return ((epochMs % period) + period) % period
 }
 
+function isLoaderAnimation(animation: Animation): boolean {
+  const name = (animation as Animation & { animationName?: string }).animationName
+  return typeof name === "string" && name.startsWith("family-loader")
+}
+
 /** Cale toutes les animations du H sous `root` sur l'horloge (voir `familyLoaderStartTime`). */
 export function syncFamilyLoader(root: Element | null): void {
   if (!root || typeof root.getAnimations !== "function") return
   const start = familyLoaderStartTime(performance.timeOrigin)
   for (const animation of root.getAnimations({ subtree: true })) {
+    // Les animations du H seulement : une transition (fondu du chargeur) garde son propre départ.
+    if (!isLoaderAnimation(animation)) continue
     if (animation.startTime !== start) animation.startTime = start
   }
 }
@@ -35,7 +42,7 @@ export function syncFamilyLoader(root: Element | null): void {
  * avant l'hydratation, une fois la feuille de style chargée (un script attend les feuilles de
  * style qui le précèdent). Une animation recréée (mouvement réduit basculé) se recale aussi.
  */
-const SYNC_SCRIPT = `(function(e){if(!e||!e.getAnimations)return;var p=${FAMILY_LOADER_PERIOD_MS};function s(){var t=-(((performance.timeOrigin%p)+p)%p);e.getAnimations({subtree:true}).forEach(function(a){if(a.startTime!==t)a.startTime=t})}s();e.addEventListener("animationstart",s)})(document.currentScript&&document.currentScript.previousElementSibling)`
+const SYNC_SCRIPT = `(function(e){if(!e||!e.getAnimations)return;var p=${FAMILY_LOADER_PERIOD_MS};function s(){var t=-(((performance.timeOrigin%p)+p)%p);e.getAnimations({subtree:true}).forEach(function(a){if(String(a.animationName).indexOf("family-loader")===0&&a.startTime!==t)a.startTime=t})}s();e.addEventListener("animationstart",s)})(document.currentScript&&document.currentScript.previousElementSibling)`
 
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect
 

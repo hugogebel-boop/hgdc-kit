@@ -104,6 +104,19 @@ Ce que ça coûterait :
 
 Recommandation : garder un domaine par produit. La continuité visuelle mesurée (même H, même pixel, même phase) couvre l'essentiel ; le gain qui reste est le temps de la chaîne d'authentification, qui se règle dans `@hgdc/auth` (pistes 1 et 2) sans toucher au domaine.
 
+## Mesures après (0.15.0 en production, 17.10)
+
+Mêmes conditions (Chrome, latence ajoutée de 400 ms ou réseau normal), centre du H relevé à chaque image :
+
+| Cas                                                              | Centre du H                                                                                                           | Élément                                                                                                   |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Navigation dans la coque (Host, Account, Analytics)              | 872, 478 du début à la fin                                                                                            | un seul, jamais démonté                                                                                   |
+| Host → Mail, Mail → Status, Status → Portal (barre des produits) | 872, 478 sur la page de départ, puis 872, 478 dès la première image de la page d'arrivée, à travers `/o` → `/o/<org>` | un par document, même phase (écart mesuré à l'horloge : 13 à 16 ms dans chaque document, le même partout) |
+| Téléphone 390 × 844 (Host, Portal)                               | 195, 450                                                                                                              | un seul                                                                                                   |
+| En-tête de la coque                                              | 1114 px de large dans tous les états                                                                                  |                                                                                                           |
+
+Le H apparaît 90 à 120 ms après le clic sur un autre produit (fondu de 150 ms) et reste affiché jusqu'à la page d'arrivée, 2,5 à 3,8 s plus tard selon le réseau, toute la chaîne d'authentification comprise.
+
 ## Conséquences
 
 - Chaque produit pose `FamilyLoaderRoot` dans le `body` de sa route racine. Sans lui, la coque et `PagePending` montent chacun leur propre H (même scène, même phase) : rien ne casse, mais deux H peuvent se croiser.

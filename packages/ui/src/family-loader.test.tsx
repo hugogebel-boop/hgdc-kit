@@ -128,11 +128,16 @@ describe("Phase calée sur l'horloge", () => {
   })
 
   it("syncFamilyLoader pose ce début sur chaque animation du H", () => {
-    const animations = [{ startTime: 12 as number | null }, { startTime: null as number | null }]
+    const animations = [
+      { animationName: "family-loader-left", startTime: 12 as number | null },
+      { animationName: "family-loader-bar", startTime: null as number | null },
+      // Une transition (fondu du chargeur) garde son départ.
+      { transitionProperty: "opacity", startTime: 40 as number | null },
+    ]
     const root = { getAnimations: () => animations } as unknown as Element
     syncFamilyLoader(root)
     const expected = familyLoaderStartTime(performance.timeOrigin)
-    expect(animations.map((animation) => animation.startTime)).toEqual([expected, expected])
+    expect(animations.map((animation) => animation.startTime)).toEqual([expected, expected, 40])
     syncFamilyLoader(null)
   })
 
