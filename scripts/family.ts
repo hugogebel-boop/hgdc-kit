@@ -5,7 +5,7 @@
 // l'original, le recopier dans family/, puis :
 //
 //   bun scripts/family.ts && bun run format
-import { readFile, writeFile } from "node:fs/promises"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { Resvg } from "@resvg/resvg-js"
 
 const FAMILY = new URL("../packages/ui/family/", import.meta.url)
@@ -49,4 +49,57 @@ ${badges.join("\n")}
 export const FAMILY_MARK_SVG: ThemedSvg = ${await pair("hcollection-icon")}
 `
 await writeFile(new URL("../packages/ui/src/family-svg.ts", import.meta.url), source)
-console.log(`family-svg.ts + ${PRODUCTS.length} icônes d'e-mail`)
+
+// Icônes d'application de chaque produit, à recopier telles quelles dans son `public/` :
+// packages/ui/family/app/<mot>/{favicon.svg, favicon.ico, apple-touch-icon.png, icon-192.png,
+// icon-512.png, icon-maskable-512.png}. favicon.svg porte les deux dessins et suit le thème du
+// système ; les PNG et l'ICO sont en clair. Fond blanc pour apple-touch (iOS remplit la
+// transparence de noir) et pour l'icône maskable, dont le pictogramme tient dans la zone sûre
+// (cercle de 80 %).
+const inner = (text: string) => text.replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "")
+const viewBox = (text: string) => /viewBox="([^"]+)"/.exec(text)?.[1] ?? "0 0 64 64"
+const prefixIds = (text: string, prefix: string) =>
+  text
+    .replace(/id="([^"]+)"/g, `id="${prefix}$1"`)
+    .replace(/url\(#([^)]+)\)/g, `url(#${prefix}$1)`)
+    .replace(/href="#([^"]+)"/g, `href="#${prefix}$1"`)
+const png = (text: string, px: number) => new Resvg(text, { fitTo: { mode: "width", value: px } }).render().asPng()
+/** Le dessin centré sur un carré de `px`, à `scale` du côté, sur fond `background`. */
+const tile = (text: string, px: number, scale: number, background: string) => {
+  const box = px * scale
+  const at = (px - box) / 2
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}" viewBox="0 0 ${px} ${px}"><rect width="${px}" height="${px}" fill="${background}"/><svg x="${at}" y="${at}" width="${box}" height="${box}" viewBox="${viewBox(text)}">${inner(text)}</svg></svg>`
+}
+/** ICO à entrées PNG (Windows Vista et suivants, tous les navigateurs). */
+const ico = (images: Array<{ px: number; data: Uint8Array }>) => {
+  const header = Buffer.alloc(6 + 16 * images.length)
+  header.writeUInt16LE(0, 0)
+  header.writeUInt16LE(1, 2)
+  header.writeUInt16LE(images.length, 4)
+  let offset = header.length
+  images.forEach(({ px, data }, i) => {
+    const at = 6 + 16 * i
+    header.writeUInt8(px >= 256 ? 0 : px, at)
+    header.writeUInt8(px >= 256 ? 0 : px, at + 1)
+    header.writeUInt16LE(1, at + 4)
+    header.writeUInt16LE(32, at + 6)
+    header.writeUInt32LE(data.length, at + 8)
+    header.writeUInt32LE(offset, at + 12)
+    offset += data.length
+  })
+  return Buffer.concat([header, ...images.map(({ data }) => Buffer.from(data))])
+}
+
+for (const product of PRODUCTS) {
+  const [light, dark] = [await svg(product), await svg(`${product}-dark`)]
+  const dir = new URL(`app/${product}/`, FAMILY)
+  await mkdir(dir, { recursive: true })
+  const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox(light)}"><style>.d{display:none}@media (prefers-color-scheme:dark){.l{display:none}.d{display:inline}}</style><g class="l">${inner(light)}</g><g class="d">${prefixIds(inner(dark), "d")}</g></svg>\n`
+  await writeFile(new URL("favicon.svg", dir), favicon)
+  await writeFile(new URL("favicon.ico", dir), ico([16, 32, 48].map((px) => ({ px, data: png(light, px) }))))
+  await writeFile(new URL("apple-touch-icon.png", dir), png(tile(light, 180, 0.7, "#ffffff"), 180))
+  await writeFile(new URL("icon-192.png", dir), png(light, 192))
+  await writeFile(new URL("icon-512.png", dir), png(light, 512))
+  await writeFile(new URL("icon-maskable-512.png", dir), png(tile(light, 512, 0.64, "#ffffff"), 512))
+}
+console.log(`family-svg.ts + ${PRODUCTS.length} icônes d'e-mail + icônes d'application (family/app/)`)
