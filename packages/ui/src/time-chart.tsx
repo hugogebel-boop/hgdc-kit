@@ -38,6 +38,14 @@ export function niceScale(max: number, ticks = 4): { max: number; step: number }
   return { max: Math.ceil(max / step) * step, step }
 }
 
+/** Lignes lues par les lecteurs d'écran au plus : au-delà, un échantillon régulier, premier et dernier inclus. */
+const SR_SAMPLE_SIZE = 60
+
+function sampleIndices(n: number): Array<number> {
+  if (n <= SR_SAMPLE_SIZE) return Array.from({ length: n }, (_, i) => i)
+  return Array.from({ length: SR_SAMPLE_SIZE }, (_, k) => Math.round((k * (n - 1)) / (SR_SAMPLE_SIZE - 1)))
+}
+
 /**
  * Série temporelle en SVG, sans bibliothèque : lignes (aire sous la courbe pour une série seule)
  * ou barres empilées. Le SVG s'étire à la largeur de son conteneur ; les traits gardent 2 px
@@ -321,32 +329,35 @@ export function TimeChart({
         </div>
       </div>
 
-      <table className="sr-only">
-        <caption>{label}</caption>
-        <thead>
-          <tr>
-            <th scope="col">Date</th>
-            {series.map((s) => (
-              <th key={s.key} scope="col">
-                {s.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {timestamps.map((t, i) => (
-            <tr key={t}>
-              <th scope="row">
-                {formatTime(t)}
-                {i === incompleteIndex ? " (en cours)" : ""}
-              </th>
+      {/* Le div porte le clip de `sr-only` : un tableau ignore la hauteur de 1 px et s'étirerait. */}
+      <div className="sr-only">
+        <table>
+          <caption>{n > SR_SAMPLE_SIZE ? `${label} (${n} mesures, échantillon de ${SR_SAMPLE_SIZE})` : label}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
               {series.map((s) => (
-                <td key={s.key}>{s.values[i] === null ? "-" : formatValue(s.values[i] ?? 0)}</td>
+                <th key={s.key} scope="col">
+                  {s.label}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {sampleIndices(n).map((i) => (
+              <tr key={timestamps[i]}>
+                <th scope="row">
+                  {formatTime(timestamps[i] ?? 0)}
+                  {i === incompleteIndex ? " (en cours)" : ""}
+                </th>
+                {series.map((s) => (
+                  <td key={s.key}>{s.values[i] === null ? "-" : formatValue(s.values[i] ?? 0)}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   )
 }
