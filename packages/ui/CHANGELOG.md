@@ -1,5 +1,12 @@
 # @hgdc/ui
 
+## 0.27.0
+
+### Minor Changes
+
+- bcabfd1: `AccountMenu` : entrée « État du service » vers la page de statut du produit, tirée d'`AppShell` (son `statusPage`, sinon `https://status.hgdc.ch/<produit>`, Docs à `/documentation`). Prop `statusPage` pour la remplacer ou la retirer (`false`).
+- 24bf922: `UptimeBar` : champ `detail` par jour (durée par niveau, incidents en liens). Le jour ouvre alors une bulle au survol, au toucher ou au clavier, dont les liens se suivent au clavier, au lieu de l'infobulle en texte.
+
 ## 0.26.0
 
 ### Minor Changes
