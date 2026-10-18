@@ -1,3 +1,4 @@
+import Alert02Icon from "@hugeicons/core-free-icons/Alert02Icon"
 import ArrowUp02Icon from "@hugeicons/core-free-icons/ArrowUp02Icon"
 import Cancel01Icon from "@hugeicons/core-free-icons/Cancel01Icon"
 import CheckmarkCircle02Icon from "@hugeicons/core-free-icons/CheckmarkCircle02Icon"
@@ -55,9 +56,18 @@ export function AssistantToolChips({
     <ul className="flex flex-wrap gap-1.5" aria-label={label}>
       {tools.map((tool) => (
         <li key={tool.id}>
-          <Badge tone={tool.status === "error" ? "destructive" : "neutral"}>
-            {tool.status === "running" ? <Spinner size={3} /> : null}
+          <Badge tone={tool.status === "error" ? "destructive" : "neutral"} data-status={tool.status}>
+            {tool.status === "running" ? (
+              <Spinner size={3} />
+            ) : (
+              <HugeiconsIcon
+                icon={tool.status === "done" ? CheckmarkCircle02Icon : Alert02Icon}
+                aria-hidden
+                className={cn("size-3.5", tool.status === "done" && "text-success")}
+              />
+            )}
             {tool.label}
+            {tool.status === "error" ? <span className="sr-only"> (échec)</span> : null}
           </Badge>
         </li>
       ))}
@@ -126,6 +136,7 @@ export function AssistantActionCard({
   cancelling = false,
   confirmLabel = "Confirmer",
   cancelLabel = "Annuler",
+  pendingLabel = "À confirmer",
 }: {
   title: ReactNode
   details?: ReadonlyArray<{ label: string; value: string }>
@@ -138,26 +149,36 @@ export function AssistantActionCard({
   cancelling?: boolean
   confirmLabel?: string
   cancelLabel?: string
+  /** Au-dessus du titre tant que la carte attend. */
+  pendingLabel?: string
 }): React.JSX.Element {
   const badge = status === "pending" ? null : ACTION_BADGE[status]
   return (
-    <Card data-slot="assistant-action-card" className="max-w-xl">
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
+    // Compacte : elle vit dans le fil, souvent dans la colonne étroite de la coque.
+    <Card
+      data-slot="assistant-action-card"
+      data-status={status}
+      className="max-w-xl card-in rounded-2xl motion-reduce:animate-none"
+    >
+      <CardHeader className="gap-0.5 px-4 pt-3.5 sm:px-4 sm:pt-3.5">
+        {status === "pending" ? <p className="text-xs font-medium text-muted-foreground">{pendingLabel}</p> : null}
+        <CardTitle className="text-[0.9375rem] leading-snug">{title}</CardTitle>
       </CardHeader>
       {details.length ? (
-        <CardContent>
-          <dl className="grid gap-2 text-sm">
+        <CardContent className="px-4 py-3 sm:px-4 sm:py-3 [[data-slot=card-header]+&]:pt-2">
+          <dl className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
             {details.map((row) => (
-              <div key={row.label} className="grid gap-0.5">
+              <div key={row.label} className="contents">
                 <dt className="text-muted-foreground">{row.label}</dt>
                 <dd className="break-words whitespace-pre-wrap">{row.value}</dd>
               </div>
             ))}
           </dl>
         </CardContent>
-      ) : null}
-      <CardFooter className="justify-start">
+      ) : (
+        <div aria-hidden className="h-3" />
+      )}
+      <CardFooter className="justify-start px-4 py-2.5 sm:px-4">
         {badge ? (
           <Badge tone={badge.tone}>{status === "failed" && result ? `${badge.label} : ${result}` : badge.label}</Badge>
         ) : (

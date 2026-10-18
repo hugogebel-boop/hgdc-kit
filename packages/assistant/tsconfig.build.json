@@ -1,0 +1,14 @@
+{
+  "extends": "../config/tsconfig/library.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "lib": ["ES2024", "DOM"],
+    "types": [],
+    // Les tables Convex (`assistantTables`) tirent leur type de `defineTable` : l'écrire à la main
+    // dupliquerait le schéma. Les autres signatures publiques restent annotées.
+    "isolatedDeclarations": false
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts", "src/fixture"]
+}

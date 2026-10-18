@@ -1,0 +1,68 @@
+{
+  "name": "@hgdc/assistant",
+  "version": "0.0.0",
+  "description": "Moteur commun de l'assistant IA des produits HGDC : outils typés (lecture, écriture, confirmation), boucle Claude en flux (Anthropic ou OpenRouter), tables et gardes Convex, crédits mensuels, clé chiffrée de l'organisation.",
+  "license": "UNLICENSED",
+  "homepage": "https://github.com/hugogebel-boop/hgdc-kit/tree/main/packages/assistant#readme",
+  "bugs": "https://github.com/hugogebel-boop/hgdc-kit/security/advisories/new",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hugogebel-boop/hgdc-kit.git",
+    "directory": "packages/assistant"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "exports": {
+    "./tools": {
+      "types": "./dist/tools.d.ts",
+      "default": "./dist/tools.js"
+    },
+    "./model": {
+      "types": "./dist/model.d.ts",
+      "default": "./dist/model.js"
+    },
+    "./secret": {
+      "types": "./dist/secret.d.ts",
+      "default": "./dist/secret.js"
+    },
+    "./convex": {
+      "types": "./dist/convex.d.ts",
+      "default": "./dist/convex.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "default": "./dist/node.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "peerDependencies": {
+    "@anthropic-ai/sdk": ">=0.134.0 <1.0.0",
+    "convex": "^1.46.0"
+  },
+  "peerDependenciesMeta": {
+    "@anthropic-ai/sdk": {
+      "optional": true
+    },
+    "convex": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "0.134.0",
+    "@edge-runtime/vm": "5.0.0",
+    "convex": "1.46.0",
+    "convex-test": "0.0.61"
+  }
+}
