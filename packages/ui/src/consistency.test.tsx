@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { AppShell } from "./app-shell.tsx"
 import { Checkbox } from "./checkbox.tsx"
@@ -15,6 +15,16 @@ import { ResourceItem, ResourceList } from "./resource-list.tsx"
 import { Table, TableHead, TableHeader, TableRow } from "./table.tsx"
 
 afterEach(cleanup)
+// Le bandeau d'état (`AppShell`) lit la page de statut : jamais de réseau ici, une lecture ratée n'affiche rien.
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => Promise.reject(new Error("hors ligne"))),
+  )
+})
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe("initials", () => {
   it("donne la même règle à une personne et à une organisation", () => {

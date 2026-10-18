@@ -35,6 +35,7 @@ import { HGDC_ACCOUNT, HGDC_PRODUCTS } from "./products.ts"
 import { ProductRailShownContext, ShellLeaveContext } from "./shell-placement.ts"
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip.tsx"
 import { cn } from "./cn.ts"
+import { ServiceStatus, statusPageUrlFor } from "./service-status.tsx"
 
 // ── Rail : la barre latérale réduite aux icônes, mémorisée par navigateur ──────────────
 
@@ -333,6 +334,7 @@ export function AppShell({
   contentKey,
   navigating = false,
   mainClassName,
+  statusPage,
 }: {
   /** Le produit affiché (`"host"`) : sa marque en haut de la barre, « vous êtes ici » dans la barre des produits. */
   product: FamilyProduct
@@ -381,6 +383,12 @@ export function AppShell({
    * une page étroite passe par `Page` (`@hgdc/ui/page-header`), pas par la coque.
    */
   mainClassName?: string
+  /**
+   * Page de statut du produit, dont le bandeau d'état se pose en tête du contenu (ADR 0017) :
+   * `https://status.hgdc.ch/<produit>` par défaut, une autre adresse (prévisualisation sur une page
+   * de test), ou `false` pour ne rien lire.
+   */
+  statusPage?: string | false | undefined
 }): React.JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false)
   // Barre des produits élargie : la barre latérale se plie le temps du survol (ADR 0011).
@@ -510,6 +518,10 @@ export function AppShell({
                     mainClassName,
                   )}
                 >
+                  <ServiceStatus
+                    pageUrl={statusPage === false ? null : (statusPage ?? statusPageUrlFor(product))}
+                    className="mb-6"
+                  />
                   <ContentLoadingContext value={registerPagePending}>
                     {contentKey === undefined ? (
                       children
