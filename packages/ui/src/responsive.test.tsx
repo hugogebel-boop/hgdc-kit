@@ -110,6 +110,20 @@ describe("ResourceItem sur écran étroit", () => {
     expect(row?.firstElementChild?.className).toContain("flex-[1_1_12rem]")
     expect(screen.getByText(/Demandé le/).className).toContain("line-clamp-2")
   })
+
+  it("le titre passe à la ligne et les actions ne dépassent pas de la carte", () => {
+    render(
+      <ResourceList aria-label="Signatures">
+        <ResourceItem title="Avenant de test" actions={<button type="button">Lire et signer</button>} />
+      </ResourceList>,
+    )
+    expect(screen.getByText("Avenant de test").className).not.toContain("truncate")
+    const trailing = document.querySelector("[data-slot=resource-item-trailing]")
+    expect(trailing?.className).toContain("min-w-0")
+    expect(trailing?.className).toContain("max-w-full")
+    expect(trailing?.lastElementChild?.className).toContain("flex-wrap")
+    expect(trailing?.lastElementChild?.className).toContain("[&>*]:max-w-full")
+  })
 })
 
 describe("Tabs défilants", () => {
