@@ -15,6 +15,7 @@
       "description": "Kit et stack commune : propagés par hgdc-kit (propagate.yml), pas par Renovate.",
       "matchPackageNames": [
         "@hgdc/*",
+        "@anthropic-ai/sdk",
         "@changesets/cli",
         "@convex-dev/better-auth",
         "@convex-dev/react-query",

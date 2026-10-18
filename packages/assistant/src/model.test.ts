@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest"
 
-import { availability, creditsFromCost, currentMonth, HAIKU_5_5, keyProvider, readKey, requestCost } from "./model.ts"
+import {
+  availability,
+  creditsFromMicros,
+  currentMonth,
+  HAIKU_5_5,
+  keyProvider,
+  readKey,
+  requestCost,
+  requestMicros,
+} from "./model.ts"
 import { keyHint, openSecret, sealSecret } from "./secret.ts"
 
 describe("clés", () => {
@@ -20,7 +29,9 @@ describe("crédits", () => {
     expect(requestCost(short, HAIKU_5_5.price)).toBeCloseTo(0.5) // 1 M d'entrée dépasse le palier
     const small = { input: 50_000, cacheWrite: 0, cacheRead: 40_000, output: 2_000 }
     expect(requestCost(small, HAIKU_5_5.price)).toBeCloseTo((50_000 * 0.1 + 40_000 * 0.01 + 2_000 * 0.5) / 1e6)
-    expect(creditsFromCost(0.0123)).toBe(1.2)
+    // Cumul en micro-dollars entiers : un tour à 0,0004 $ compte 400, il n'est jamais arrondi à zéro.
+    expect(requestMicros({ input: 1000, cacheWrite: 0, cacheRead: 0, output: 600 }, HAIKU_5_5.price)).toBe(400)
+    expect(creditsFromMicros(1200)).toBe(0.1)
   })
 
   it("avec la clé de l'organisation, les crédits ne comptent pas", () => {
@@ -39,12 +50,14 @@ describe("secret scellé", () => {
   const secret = "un-secret-de-deploiement-assez-long"
 
   it("s'ouvre avec le même secret et le même usage seulement", async () => {
-    const sealed = await sealSecret("sk-or-v1-secret", { secret })
+    const sealed = await sealSecret("sk-or-v1-secret", { secret, context: "org_1" })
     expect(sealed.startsWith("v1.")).toBe(true)
     expect(sealed).not.toContain("sk-or")
-    expect(await openSecret(sealed, { secret })).toBe("sk-or-v1-secret")
-    await expect(openSecret(sealed, { secret, purpose: "turnstile" })).rejects.toThrow("illisible")
-    await expect(openSecret(sealed, { secret: `${secret}-autre` })).rejects.toThrow("illisible")
-    await expect(sealSecret("x", { secret: "court" })).rejects.toThrow("trop court")
+    expect(await openSecret(sealed, { secret, context: "org_1" })).toBe("sk-or-v1-secret")
+    await expect(openSecret(sealed, { secret, context: "org_1", purpose: "turnstile" })).rejects.toThrow("illisible")
+    await expect(openSecret(sealed, { secret: `${secret}-autre`, context: "org_1" })).rejects.toThrow("illisible")
+    await expect(sealSecret("x", { secret: "court", context: "org_1" })).rejects.toThrow("trop court")
+    // Copiée dans une autre organisation, la valeur ne s'ouvre pas.
+    await expect(openSecret(sealed, { secret, context: "org_2" })).rejects.toThrow("illisible")
   })
 })

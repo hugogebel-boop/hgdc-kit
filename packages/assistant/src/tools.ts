@@ -2,11 +2,12 @@ import { z } from "zod"
 
 /*
  * Les outils de l'assistant d'un produit. Chaque outil reprend une action de l'interface, avec
- * les droits de la personne qui parle, jamais plus :
- * - `read` lit, sans effet ;
+ * les droits de la personne qui parle, jamais plus. Le moteur impose la classe de chaque outil :
+ * - `read` lit, sans effet : gestionnaire de lecture, dans une query ;
  * - `write` modifie sans rien envoyer ni détruire (brouillon, réglage réversible) ;
- * - `confirm` envoie, publie, supprime ou ne se rattrape pas : il devient une carte, et n'a lieu
- *   qu'au clic « Confirmer » de la personne, dans une mutation publique avec sa session.
+ * - `confirm` envoie, publie, supprime ou ne se rattrape pas : pendant le tour, il ne peut que
+ *   décrire une carte (lecture seule) ; l'action n'a lieu qu'au clic « Confirmer », dans la
+ *   mutation publique de la personne qui clique.
  * Aucune dépendance serveur : partagé par l'action Node (définitions envoyées au modèle) et les
  * fonctions Convex qui exécutent.
  */
@@ -24,6 +25,15 @@ export type ToolSpec = {
 
 export type ToolSet = Readonly<Record<string, ToolSpec>>
 
+/** Noms des outils d'une classe : `ToolNamesOf<typeof TOOLS, "confirm">`. */
+export type ToolNamesOf<T extends ToolSet, K extends ToolKind> = {
+  [N in keyof T]: T[N]["kind"] extends K ? N : never
+}[keyof T] &
+  string
+
+/** L'entrée vérifiée d'un outil. */
+export type ToolInputOf<T extends ToolSet, N extends keyof T> = z.infer<T[N]["input"]>
+
 /** Définition au format de l'API Anthropic (`Anthropic.Tool`, sans les options de requête). */
 export type ToolDefinition = {
   name: string
@@ -40,10 +50,6 @@ export function defineTools<const T extends Record<string, ToolSpec>>(tools: T):
     if (!tool.label.trim() || !tool.description.trim()) throw new Error(`Outil ${name} : libellé ou description vide`)
   }
   return tools
-}
-
-export function isToolName<T extends ToolSet>(tools: T, name: string): name is Extract<keyof T, string> {
-  return Object.hasOwn(tools, name)
 }
 
 /** Libellé d'une pastille ; le nom brut pour un outil inconnu. */
@@ -79,10 +85,14 @@ export function parseToolCall(tools: ToolSet, name: string, input: unknown): Par
   return { ok: true, name, kind: tool.kind, input: parsed.data as Record<string, unknown> }
 }
 
-/** Le résultat d'un outil pour le modèle : JSON, coupé au-delà de `max` caractères. */
-export function toolResult(value: unknown, max = 20_000): string {
-  const text = typeof value === "string" ? value : JSON.stringify(value)
-  return text.length > max ? `${text.slice(0, max)}… (tronqué)` : text
+/** Taille maximale, en caractères, d'un résultat d'outil rendu au modèle. */
+export const MAX_TOOL_RESULT = 20_000
+
+/** Le résultat d'un outil pour le modèle : JSON, toujours coupé au-delà de `max` caractères. */
+export function toolResult(value: unknown, max: number = MAX_TOOL_RESULT): string {
+  const text = typeof value === "string" ? value : (JSON.stringify(value) ?? "null")
+  const limit = Math.min(Math.max(0, max), MAX_TOOL_RESULT)
+  return text.length > limit ? `${text.slice(0, limit)}… (tronqué)` : text
 }
 
 /** Ce que rend un outil `confirm` au modèle : la carte est affichée, rien n'est parti. */
@@ -96,19 +106,22 @@ export function awaitingConfirmation(actionId: string, summary: string): string 
   })
 }
 
+/** JSON aux clés triées : la même valeur donne toujours le même texte. */
+export function stableJson(value: unknown): string {
+  return JSON.stringify(value, (_key, v: unknown) =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? Object.fromEntries(
+          Object.entries(v as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+        )
+      : v,
+  )
+}
+
 /**
- * Empreinte courte d'un texte (cyrb53) : assez pour voir qu'un contenu a bougé entre la carte et
- * le clic. Pas un hachage cryptographique : rien de secret n'en dépend.
+ * Empreinte SHA-256 (hexadécimal) d'une valeur, par Web Crypto (Convex V8 et Node) : ce que la
+ * carte montre, comparé au clic. Un contenu qui a bougé entre-temps refuse l'action.
  */
-export function fingerprint(text: string): string {
-  let h1 = 0xdeadbeef
-  let h2 = 0x41c6ce57
-  for (let i = 0; i < text.length; i++) {
-    const c = text.charCodeAt(i)
-    h1 = Math.imul(h1 ^ c, 2654435761)
-    h2 = Math.imul(h2 ^ c, 1597334677)
-  }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909)
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909)
-  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36)
+export async function snapshotHash(value: unknown): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(stableJson(value)))
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("")
 }

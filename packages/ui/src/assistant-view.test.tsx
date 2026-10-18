@@ -2,7 +2,14 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { assistantErrorText, AssistantView, type AssistantThread, type AssistantViewProps } from "./assistant-view.tsx"
+import {
+  AssistantLink,
+  assistantErrorText,
+  AssistantView,
+  renderPlainText,
+  type AssistantThread,
+  type AssistantViewProps,
+} from "./assistant-view.tsx"
 
 afterEach(cleanup)
 
@@ -141,5 +148,33 @@ describe("AssistantView", () => {
     expect(assistantErrorText({ data: "Introuvable." }, "x")).toBe("Introuvable.")
     expect(assistantErrorText({ data: { message: "Accès refusé" } }, "x")).toBe("Accès refusé")
     expect(assistantErrorText(new Error("boom"), "Réessaie.")).toBe("Réessaie.")
+  })
+
+  it("rendu par défaut : texte brut, liens https sûrs avec leur domaine, rien d'autre", () => {
+    render(<div>{renderPlainText("<img src=x onerror=alert(1)> voir https://evil.example/p?q=1")}</div>)
+    expect(document.querySelector("img")).toBeNull()
+    const link = screen.getByRole("link")
+    expect(link.getAttribute("target")).toBe("_blank")
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer nofollow")
+    expect(link.textContent).toContain("(evil.example)")
+  })
+
+  it("un lien javascript:, http: ou à identifiants devient du texte", () => {
+    render(
+      <>
+        <AssistantLink href="javascript:alert(1)">a</AssistantLink>
+        <AssistantLink href="http://example.ch">b</AssistantLink>
+        <AssistantLink href="https://user:pw@example.ch">c</AssistantLink>
+        <AssistantLink href="//evil.example">d</AssistantLink>
+        <AssistantLink href="/o/demo/projets">interne</AssistantLink>
+      </>,
+    )
+    expect(screen.getAllByRole("link").map((l) => l.textContent)).toEqual(["interne"])
+  })
+
+  it("une conversation pleine ferme la saisie", () => {
+    view({ threadId: "th1", thread: { ...THREAD, full: true } })
+    expect(screen.getByText(/Cette conversation est pleine/)).toBeTruthy()
+    expect(screen.getByLabelText("Message pour l'assistant")).toHaveProperty("disabled", true)
   })
 })

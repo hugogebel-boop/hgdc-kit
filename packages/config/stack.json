@@ -1,4 +1,5 @@
 {
+  "@anthropic-ai/sdk": "0.134.0",
   "@changesets/cli": "3.0.3",
   "@convex-dev/better-auth": "0.12.5",
   "@convex-dev/react-query": "0.1.0",

@@ -69,6 +69,8 @@ export type AssistantAction = {
 
 /** Une conversation ouverte (`readThread`). */
 export type AssistantThread = {
+  /** L'historique a atteint sa taille maximale : une nouvelle conversation s'impose. */
+  full?: boolean
   messages: ReadonlyArray<AssistantMessage>
   actions: ReadonlyArray<AssistantAction>
 }
@@ -105,6 +107,7 @@ export type AssistantLabels = {
   deleteYes: string
   deleteNo: string
   loadError: string
+  full: string
   sendError: string
   creditsLeft: (remaining: number) => string
   ownKey: (hint: string) => string
@@ -133,6 +136,7 @@ export const ASSISTANT_LABELS: AssistantLabels = {
   deleteYes: "Effacer",
   deleteNo: "Garder",
   loadError: "Cette conversation ne s'affiche pas. Réessaie dans un instant.",
+  full: "Cette conversation est pleine. Ouvre une nouvelle conversation pour continuer.",
   sendError: "Le message n'est pas parti. Réessaie dans un instant.",
   creditsLeft: (remaining) =>
     remaining <= 0
@@ -154,6 +158,67 @@ export function assistantErrorText(error: unknown, fallback: string): string {
     }
   }
   return fallback
+}
+
+/**
+ * Un lien écrit par l'assistant. Un chemin de l'application (`/…`) reste un lien interne ; une
+ * adresse `https:` s'ouvre dans un nouvel onglet, sans référent ni accès à la page, avec son domaine
+ * affiché à côté du texte (un texte trompeur ne cache pas la destination) ; tout le reste
+ * (`javascript:`, `http:`, `data:`…) devient du texte. À passer au rendu Markdown du produit
+ * (`components={{ a: AssistantLink }}`) ; `renderInternal` pour le lien du routeur.
+ */
+export function AssistantLink({
+  href,
+  children,
+  renderInternal,
+}: {
+  href?: string | undefined
+  children?: ReactNode
+  renderInternal?: (href: string, children: ReactNode) => ReactNode
+}): React.JSX.Element {
+  const value = (href ?? "").trim()
+  const className = "font-medium underline underline-offset-2"
+  if (value.startsWith("/") && !value.startsWith("//") && !value.startsWith("/\\")) {
+    return renderInternal ? (
+      <>{renderInternal(value, children)}</>
+    ) : (
+      <a href={value} className={className}>
+        {children}
+      </a>
+    )
+  }
+  let url: URL | null = null
+  try {
+    url = new URL(value)
+  } catch {
+    url = null
+  }
+  if (!url || url.protocol !== "https:" || url.username || url.password) return <span>{children}</span>
+  return (
+    <a href={url.href} target="_blank" rel="noopener noreferrer nofollow" className={className}>
+      {children}
+      <span className="ml-1 text-xs font-normal text-muted-foreground no-underline">({url.hostname})</span>
+    </a>
+  )
+}
+
+const URL_IN_TEXT = /(https:\/\/[^\s<>"')]+)/g
+
+/** Le rendu par défaut : texte brut en paragraphes, adresses https en liens sûrs. Aucun HTML. */
+export function renderPlainText(text: string): ReactNode {
+  return text.split(/\n{2,}/).map((paragraph, i) => (
+    <p key={i} className="my-2 whitespace-pre-wrap first:mt-0 last:mb-0">
+      {paragraph.split(URL_IN_TEXT).map((part, j) =>
+        j % 2 === 1 ? (
+          <AssistantLink key={j} href={part}>
+            {part}
+          </AssistantLink>
+        ) : (
+          part
+        ),
+      )}
+    </p>
+  ))
 }
 
 function remainingCredits(status: AssistantStatus): number {
@@ -375,8 +440,11 @@ export type AssistantViewProps = {
   onThreadChange: (threadId: string | null) => void
   /** La conversation ouverte ; `undefined` pendant son chargement, `null` si elle ne se lit pas. */
   thread: AssistantThread | null | undefined
-  /** Le texte d'une réponse, rendu par le produit (Markdown, liens internes). */
-  renderText: (text: string) => ReactNode
+  /**
+   * Le texte d'une réponse, rendu par le produit (Markdown avec `AssistantLink` pour les liens,
+   * sans image). Par défaut : texte brut, paragraphes, adresses https en liens sûrs.
+   */
+  renderText?: (text: string) => ReactNode
   /** Envoie la demande ; une erreur remet le texte dans la saisie et s'affiche au-dessus. */
   onSend: (text: string) => Promise<void>
   onConfirm: (actionId: string) => Promise<void>
@@ -402,7 +470,7 @@ export function AssistantView({
   threadId,
   onThreadChange,
   thread,
-  renderText,
+  renderText = renderPlainText,
   onSend,
   onConfirm,
   onCancel,
@@ -428,7 +496,8 @@ export function AssistantView({
   const answering = last?.status === "pending" || last?.status === "streaming"
   const busy = sending || answering
   const exhausted = Boolean(status && status.ready && !status.ownKey && remainingCredits(status) <= 0)
-  const blocked = status === undefined || !status.ready || exhausted
+  const full = Boolean(threadId && thread?.full)
+  const blocked = status === undefined || !status.ready || exhausted || full
 
   // Le fil suit la réponse en cours, sauf si la personne remonte pour relire.
   useEffect(() => {
@@ -586,6 +655,7 @@ export function AssistantView({
             {sendError}
           </p>
         ) : null}
+        {full ? <p className="text-sm text-muted-foreground">{labels.full}</p> : null}
         {subject ? <AssistantSubjectChip subject={subject} labels={labels} /> : null}
         <AssistantComposer
           value={draft}

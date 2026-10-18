@@ -81,9 +81,25 @@ export function requestCost(usage: Usage, price: Price): number {
   )
 }
 
-/** 1 crédit = 1 centime de dollar de coût modèle, arrondi au dixième. */
-export function creditsFromCost(dollars: number): number {
-  return Math.round(dollars * 100 * 10) / 10
+/**
+ * Coût d'une requête en micro-dollars entiers, arrondi au-dessus : les tours se cumulent sans
+ * perte (un tour à 0,0004 $ compte 400, pas 0). Un prix en dollars par million de jetons, fois un
+ * nombre de jetons, donne directement des micro-dollars.
+ */
+export function requestMicros(usage: Usage, price: Price): number {
+  return Math.ceil(requestCost(usage, price) * 1_000_000)
+}
+
+/** 1 crédit = 1 centime de dollar = 10 000 micro-dollars. */
+export const MICROS_PER_CREDIT = 10_000
+
+/** Crédits affichés pour un cumul en micro-dollars, au dixième. La conversion n'a lieu qu'à l'affichage. */
+export function creditsFromMicros(micros: number): number {
+  return Math.round((micros / MICROS_PER_CREDIT) * 10) / 10
+}
+
+export function microsFromCredits(credits: number): number {
+  return Math.round(credits * MICROS_PER_CREDIT)
 }
 
 /** Le mois civil UTC, `2026-10` : la clé d'une ligne de consommation. */

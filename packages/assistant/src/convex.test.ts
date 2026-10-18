@@ -1,302 +1,262 @@
-import {
-  defineSchema,
-  defineTable,
-  type DataModelFromSchemaDefinition,
-  type GenericMutationCtx,
-  type GenericQueryCtx,
-} from "convex/server"
-import { ConvexError, v } from "convex/values"
-import { beforeEach, describe, expect, it } from "vitest"
+import { anyApi, type ApiFromModules } from "convex/server"
+import { ConvexError } from "convex/values"
+import { convexTest } from "convex-test"
+import { describe, expect, it } from "vitest"
 
-import {
-  assistantTables,
-  cancelAction,
-  confirmAction,
-  deleteThread,
-  failStuckTurns,
-  finishTurn,
-  listThreads,
-  proposeAction,
-  readStatus,
-  readThread,
-  startTurn,
-  storeKey,
-  threadTitle,
-  type ActionId,
-  type AssistantWriter,
-  type MessageId,
-  type Speaker,
-  type ThreadId,
-} from "./convex.ts"
+import { RESERVE_MICROS, STUCK_AFTER_MS } from "./convex.ts"
+import type * as assistant from "./fixture/assistant.ts"
+import schema from "./fixture/schema.ts"
 
-// ── Le ctx d'un produit passe tel quel : schéma du produit = tables de l'assistant + les siennes ──
-
-const appSchema = defineSchema({ ...assistantTables(), projects: defineTable({ name: v.string() }) })
-type AppDataModel = DataModelFromSchemaDefinition<typeof appSchema>
-
-export async function productWiring(
-  mutationCtx: GenericMutationCtx<AppDataModel>,
-  queryCtx: GenericQueryCtx<AppDataModel>,
-): Promise<void> {
-  const speaker = { organizationId: "org_1", userId: "user_1" }
-  await startTurn(mutationCtx, speaker, { text: "Bonjour", limit: 300, platformKey: true })
-  await readStatus(queryCtx, "org_1", { limit: 300, platformKey: true })
-}
-
-// ── Base en mémoire : juste ce que les fonctions utilisent (index, eq, lt, ordre, take) ──
-
-const INDEXES: Record<string, string[]> = {
-  by_org_user: ["organizationId", "userId", "updatedAt"],
-  by_user: ["userId"],
-  by_updated: ["updatedAt"],
-  by_thread: ["threadId"],
-  by_status: ["status"],
-  by_org_month: ["organizationId", "month"],
-  by_org: ["organizationId"],
-}
-
-type Row = Record<string, unknown> & { _id: string; _creationTime: number }
-
-class FakeDb {
-  rows = new Map<string, Row>()
-  private seq = 0
-  clock = Date.now()
-
-  async get(id: string): Promise<Row | null> {
-    return this.rows.get(id) ?? null
-  }
-  async insert(table: string, doc: Record<string, unknown>): Promise<string> {
-    const id = `${table}|${++this.seq}`
-    this.rows.set(id, { ...doc, _id: id, _creationTime: this.clock++ })
-    return id
-  }
-  async patch(id: string, fields: Record<string, unknown>): Promise<void> {
-    const row = this.rows.get(id)
-    if (!row) throw new Error(`absent : ${id}`)
-    this.rows.set(id, { ...row, ...fields })
-  }
-  async delete(id: string): Promise<void> {
-    this.rows.delete(id)
-  }
-  query(table: string) {
-    let rows = [...this.rows.values()].filter((r) => r._id.startsWith(`${table}|`))
-    let desc = false
-    const builder = {
-      withIndex: (name: string, range: (q: Record<string, unknown>) => unknown) => {
-        const fields = [...(INDEXES[name] ?? []), "_creationTime"]
-        const checks: Array<(r: Row) => boolean> = []
-        const q = {
-          eq: (field: string, value: unknown) => {
-            checks.push((r) => r[field] === value)
-            return q
-          },
-          lt: (field: string, value: number) => {
-            checks.push((r) => (r[field] as number) < value)
-            return q
-          },
-        }
-        range(q)
-        rows = rows
-          .filter((r) => checks.every((c) => c(r)))
-          .sort((a, b) => {
-            for (const f of fields) {
-              const x = a[f] as string | number
-              const y = b[f] as string | number
-              if (x !== y) return x < y ? -1 : 1
-            }
-            return 0
-          })
-        return builder
-      },
-      order: (direction: "asc" | "desc") => {
-        desc = direction === "desc"
-        return builder
-      },
-      first: async () => (desc ? rows.at(-1) : rows[0]) ?? null,
-      take: async (n: number) => (desc ? [...rows].reverse() : rows).slice(0, n),
-      collect: async () => (desc ? [...rows].reverse() : rows),
-    }
-    return builder
+declare global {
+  interface ImportMeta {
+    glob(pattern: string): Record<string, () => Promise<unknown>>
   }
 }
 
-let db: FakeDb
-let ctx: AssistantWriter
-const ana: Speaker = { organizationId: "org_1", userId: "ana" }
-const ben: Speaker = { organizationId: "org_1", userId: "ben" }
-const elsewhere: Speaker = { organizationId: "org_2", userId: "ana" }
+const modules = import.meta.glob("./fixture/**/*.ts")
+const api = anyApi as unknown as ApiFromModules<{ assistant: typeof assistant }>
+const fn = api.assistant
 
-beforeEach(() => {
-  db = new FakeDb()
-  ctx = { db } as unknown as AssistantWriter
-})
+const ana = { organizationId: "org_1", userId: "ana" }
+const ben = { organizationId: "org_1", userId: "ben" }
+const elsewhere = { organizationId: "org_2", userId: "ana" }
+
+function setup() {
+  return convexTest(schema, modules)
+}
+type T = ReturnType<typeof setup>
 
 async function convexMessage(promise: Promise<unknown>): Promise<string> {
   try {
     await promise
   } catch (error) {
     if (error instanceof ConvexError && typeof error.data === "string") return error.data
+    if (error instanceof Error) return error.message
     throw error
   }
   throw new Error("aucune erreur levée")
 }
 
-describe("startTurn", () => {
-  it("écrit la demande et la réponse en attente, dans une conversation à la personne", async () => {
-    const { threadId, messageId, text } = await startTurn(ctx, ana, {
-      text: "  Où en sont mes déploiements ?  ",
-      limit: 300,
-      platformKey: true,
-    })
-    expect(text).toBe("Où en sont mes déploiements ?")
-    expect((await db.get(messageId))?.status).toBe("pending")
-    expect(await listThreads(ctx, ana)).toEqual([
-      expect.objectContaining({ _id: threadId, title: "Où en sont mes déploiements ?" }),
-    ])
-    expect(await listThreads(ctx, ben)).toEqual([])
-    // Un collègue ou la même personne dans une autre organisation : introuvable.
-    expect(await convexMessage(readThread(ctx, ben, threadId))).toBe("Introuvable.")
-    expect(await convexMessage(readThread(ctx, elsewhere, threadId))).toBe("Introuvable.")
+const done = (messageId: string, costMicros = 400) => ({
+  messageId: messageId as never,
+  organizationId: "org_1",
+  status: "done" as const,
+  text: "Voilà.",
+  tools: [],
+  history: '[{"role":"user","content":"x"}]',
+  historyFull: false,
+  notesDelivered: 0,
+  costMicros,
+  inputTokens: 1000,
+  outputTokens: 100,
+})
+
+async function turn(t: T, who = ana, text = "Bonjour", limit = 300) {
+  return await t.mutation(fn.start, { ...who, text, limit, platformKey: true })
+}
+
+describe("conversations à la personne", () => {
+  it("un collègue ou une autre organisation ne lit, n'écrit ni n'efface rien", async () => {
+    const t = setup()
+    const { threadId, messageId } = await turn(t)
+    await t.mutation(fn.finish, done(messageId))
+    expect(await convexMessage(t.query(fn.thread, { ...ben, threadId }))).toBe("Introuvable.")
+    expect(await convexMessage(t.query(fn.thread, { ...elsewhere, threadId }))).toBe("Introuvable.")
     expect(
-      await convexMessage(startTurn(ctx, ben, { threadId, text: "Et moi ?", limit: 300, platformKey: true })),
+      await convexMessage(t.mutation(fn.start, { ...ben, threadId, text: "Et moi ?", limit: 300, platformKey: true })),
     ).toBe("Introuvable.")
-  })
-
-  it("refuse une demande vide, trop longue, pendant une réponse, sans clé ni crédits", async () => {
-    expect(await convexMessage(startTurn(ctx, ana, { text: "  ", limit: 300, platformKey: true }))).toBe(
-      "Écris ta demande.",
-    )
-    expect(
-      await convexMessage(startTurn(ctx, ana, { text: "x".repeat(4001), limit: 300, platformKey: true })),
-    ).toContain("4000")
-    expect(await convexMessage(startTurn(ctx, ana, { text: "Salut", limit: 300, platformKey: false }))).toContain(
-      "pas encore branché",
-    )
-    const { threadId } = await startTurn(ctx, ana, { text: "Salut", limit: 300, platformKey: true })
-    expect(await convexMessage(startTurn(ctx, ana, { threadId, text: "Encore", limit: 300, platformKey: true }))).toBe(
-      "L'assistant répond encore. Un instant.",
-    )
-
-    await finishTurn(ctx, {
-      threadId,
-      organizationId: "org_1",
-      history: "[]",
-      credits: 300,
-      inputTokens: 1,
-      outputTokens: 1,
-      charge: true,
-    })
-    expect(await convexMessage(startTurn(ctx, ben, { text: "Salut", limit: 300, platformKey: true }))).toContain(
-      "crédits du mois",
-    )
-    // La clé de l'organisation lève la limite.
-    await storeKey(ctx, { organizationId: "org_1", sealed: "v1.a.b", hint: "abcd", updatedBy: "ana" })
-    await expect(startTurn(ctx, ben, { text: "Salut", limit: 300, platformKey: false })).resolves.toBeTruthy()
-    expect(await readStatus(ctx, "org_1", { limit: 300, platformKey: false })).toMatchObject({
-      ready: true,
-      ownKey: { hint: "abcd" },
-      credits: { used: 300, limit: 300 },
-    })
-  })
-
-  it("une réponse bloquée depuis plus de 11 minutes ne bloque plus la conversation", async () => {
-    const { threadId } = await startTurn(ctx, ana, { text: "Salut", limit: 300, platformKey: true })
-    const later = db.clock + 12 * 60_000
-    await expect(
-      startTurn(ctx, ana, { threadId, text: "Tu es là ?", limit: 300, platformKey: true, now: later }),
-    ).resolves.toBeTruthy()
-    expect(await failStuckTurns(ctx, { now: later + 12 * 60_000 })).toBe(2)
-  })
-
-  it("garde le profil d'une conversation (équipe ou client)", async () => {
-    const { threadId } = await startTurn(ctx, ana, { text: "Salut", limit: 300, platformKey: true, mode: "client" })
-    expect(await convexMessage(readThread(ctx, ana, threadId, "team"))).toBe("Introuvable.")
-    await expect(readThread(ctx, ana, threadId, "client")).resolves.toBeTruthy()
+    expect(await convexMessage(t.mutation(fn.remove, { ...ben, threadId }))).toBe("Introuvable.")
+    await t.mutation(fn.remove, { ...ana, threadId })
+    expect(await convexMessage(t.query(fn.thread, { ...ana, threadId }))).toBe("Introuvable.")
   })
 })
 
-async function pendingCard(): Promise<{ threadId: ThreadId; messageId: MessageId; actionId: ActionId }> {
-  const { threadId, messageId } = await startTurn(ctx, ana, { text: "Redéploie", limit: 300, platformKey: true })
-  const actionId = await proposeAction(ctx, {
+describe("crédits", () => {
+  it("des tours parallèles ne passent pas tous : la réservation se prend dans la transaction du contrôle", async () => {
+    const t = setup()
+    // 10 crédits = 100 000 micro-dollars : trois réservations de 30 000 tiennent, pas quatre.
+    const outcomes = await Promise.allSettled(
+      ["a", "b", "c", "d", "e"].map((u) => turn(t, { organizationId: "org_1", userId: u }, "Salut", 10)),
+    )
+    expect(outcomes.filter((o) => o.status === "fulfilled")).toHaveLength(3)
+    const [usage] = (await t.query(fn.raw, { table: "assistantUsage" })) as Array<{ reservedMicros: number }>
+    expect(usage?.reservedMicros).toBe(3 * RESERVE_MICROS)
+  })
+
+  it("la fin d'un tour lève la réservation et débite le coût exact, cumulé en micro-dollars", async () => {
+    const t = setup()
+    for (let i = 0; i < 3; i++) {
+      const { messageId } = await turn(t, ana, `Question ${i}`)
+      // 400 micro-dollars par tour : arrondi par tour, il serait perdu.
+      await t.mutation(fn.finish, done(messageId, 400))
+    }
+    const [usage] = (await t.query(fn.raw, { table: "assistantUsage" })) as Array<{
+      costMicros: number
+      reservedMicros: number
+    }>
+    expect(usage).toMatchObject({ costMicros: 1200, reservedMicros: 0 })
+    expect((await t.query(fn.status, { organizationId: "org_1" })).credits.used).toBe(0.1)
+  })
+
+  it("un fil ne s'efface pas pendant une réponse ; une réponse jamais finie garde sa réservation comme coût", async () => {
+    const t = setup()
+    const { threadId, messageId } = await turn(t)
+    expect(await convexMessage(t.mutation(fn.remove, { ...ana, threadId }))).toBe(
+      "L'assistant répond encore. Un instant.",
+    )
+    expect(await t.mutation(fn.sweep, { now: Date.now() + STUCK_AFTER_MS + 60_000 })).toBe(1)
+    const [usage] = (await t.query(fn.raw, { table: "assistantUsage" })) as Array<{
+      costMicros: number
+      reservedMicros: number
+    }>
+    expect(usage).toMatchObject({ costMicros: RESERVE_MICROS, reservedMicros: 0 })
+    // Le tour est soldé : un `finish` tardif ne débite pas deux fois.
+    await t.mutation(fn.finish, done(messageId, 999))
+    const [after] = (await t.query(fn.raw, { table: "assistantUsage" })) as Array<{ costMicros: number }>
+    expect(after?.costMicros).toBe(RESERVE_MICROS)
+  })
+
+  it("avec la clé de l'organisation, rien n'est réservé ni débité", async () => {
+    const t = setup()
+    await t.mutation(fn.saveKey, { organizationId: "org_1", updatedBy: "ana" })
+    const { messageId } = await t.mutation(fn.start, { ...ana, text: "Salut", limit: 0, platformKey: false })
+    await t.mutation(fn.finish, done(messageId))
+    expect(await t.query(fn.raw, { table: "assistantUsage" })).toEqual([])
+  })
+})
+
+describe("progression", () => {
+  it("refuse un recul d'état et une autre organisation", async () => {
+    const t = setup()
+    const { threadId, messageId } = await turn(t)
+    expect(await t.mutation(fn.progress, { messageId, organizationId: "org_2", text: "fuite", tools: [] })).toBe(false)
+    expect(await t.mutation(fn.progress, { messageId, organizationId: "org_1", text: "Je regarde", tools: [] })).toBe(
+      true,
+    )
+    await t.mutation(fn.finish, done(messageId))
+    expect(await t.mutation(fn.progress, { messageId, organizationId: "org_1", text: "trop tard", tools: [] })).toBe(
+      false,
+    )
+    const view = await t.query(fn.thread, { ...ana, threadId })
+    expect(view.messages.at(-1)).toMatchObject({ status: "done", text: "Voilà." })
+  })
+})
+
+async function proposed(t: T) {
+  const deploymentId = await t.mutation(fn.seed, { organizationId: "org_1", name: "site", status: "ready" })
+  const { threadId, messageId } = await turn(t, ana, "Redéploie")
+  const result = await t.mutation(fn.proposeTool, {
+    ...ana,
     threadId,
     messageId,
-    organizationId: "org_1",
-    tool: "redeploy",
-    input: { deploymentId: "d1" },
-    summary: "Redéployer « site »",
-    details: [{ label: "Projet", value: "site" }],
+    name: "redeploy",
+    input: { deploymentId },
   })
-  return { threadId, messageId, actionId }
+  const { actionId } = JSON.parse(result) as { actionId: string }
+  await t.mutation(fn.finish, done(messageId))
+  return { deploymentId, threadId, messageId, actionId: actionId as never }
 }
 
-describe("cartes à confirmer", () => {
-  it("n'exécute qu'au clic de la personne, une seule fois, et le note pour le modèle", async () => {
-    const { threadId, actionId } = await pendingCard()
-    const view = await readThread(ctx, ana, threadId)
-    expect(view.actions[0]).toMatchObject({ status: "pending", details: [{ label: "Projet", value: "site" }] })
-    expect(view.actions[0]).not.toHaveProperty("input")
-
-    expect(await convexMessage(confirmAction(ctx, ben, actionId, async () => "fait"))).toBe("Introuvable.")
-    const outcome = await confirmAction(ctx, ana, actionId, async (action) => {
-      expect(action.input).toEqual({ deploymentId: "d1" })
-      return "Déploiement relancé."
-    })
-    expect(outcome).toEqual({ ok: true, message: "Déploiement relancé." })
-    expect(await convexMessage(confirmAction(ctx, ana, actionId, async () => "encore"))).toBe(
-      "Cette action a déjà été traitée.",
-    )
-    const thread = await db.get(threadId)
-    expect(String(thread?.history)).toContain("La personne a confirmé : Redéployer « site »")
-  })
-
-  it("un refus métier passe la carte en échec ; une autre erreur remonte", async () => {
-    const first = await pendingCard()
+describe("outils imposés par leur classe", () => {
+  it("un outil confirm ne passe que par la carte, et la carte ne peut pas écrire", async () => {
+    const t = setup()
+    const deploymentId = await t.mutation(fn.seed, { organizationId: "org_1", name: "site", status: "ready" })
+    const { threadId, messageId } = await turn(t)
+    const call = { ...ana, threadId, messageId }
     expect(
-      await confirmAction(ctx, ana, first.actionId, async () => {
-        throw new ConvexError("Le projet est archivé.")
-      }),
-    ).toEqual({ ok: false, message: "Le projet est archivé." })
-    expect((await db.get(first.actionId))?.status).toBe("failed")
-
-    const second = await pendingCard()
-    await expect(
-      confirmAction(ctx, ana, second.actionId, async () => {
-        throw new Error("panne")
-      }),
-    ).rejects.toThrow("panne")
-    await cancelAction(ctx, ana, second.actionId)
-    expect((await db.get(second.actionId))?.status).toBe("cancelled")
-  })
-
-  it("une carte ne s'attache qu'à une réponse de la même conversation", async () => {
-    const { messageId } = await pendingCard()
-    const other = await startTurn(ctx, ben, { text: "Autre", limit: 300, platformKey: true })
+      await convexMessage(t.mutation(fn.writeTool, { ...call, name: "redeploy", input: { deploymentId } })),
+    ).toContain("pas un outil « write »")
     expect(
       await convexMessage(
-        proposeAction(ctx, {
-          threadId: other.threadId,
-          messageId,
-          organizationId: "org_1",
-          tool: "redeploy",
-          input: {},
-          summary: "x",
-        }),
+        t.mutation(fn.proposeTool, { ...call, name: "rename_deployment", input: { deploymentId, name: "x" } }),
+      ),
+    ).toContain("pas un outil « confirm »")
+    expect(await convexMessage(t.mutation(fn.proposeTool, { ...call, name: "sneaky", input: {} }))).toMatch(/insert/)
+    // Un champ inventé par le modèle est refusé avant tout gestionnaire.
+    expect(
+      await convexMessage(
+        t.mutation(fn.writeTool, { ...call, name: "rename_deployment", input: { deploymentId, name: "x", force: 1 } }),
+      ),
+    ).toContain("Paramètres invalides")
+    expect(await t.query(fn.readTool, { ...ana, name: "list_deployments", input: {} })).toContain("site")
+    // Une fois le tour fini, plus aucune écriture par l'assistant.
+    await t.mutation(fn.finish, done(messageId))
+    expect(
+      await convexMessage(
+        t.mutation(fn.writeTool, { ...call, name: "rename_deployment", input: { deploymentId, name: "x" } }),
       ),
     ).toBe("Introuvable.")
   })
 })
 
-describe("effacement", () => {
-  it("efface la conversation, ses messages et ses cartes", async () => {
-    const { threadId, actionId } = await pendingCard()
-    expect(await convexMessage(deleteThread(ctx, ben, threadId))).toBe("Introuvable.")
-    await deleteThread(ctx, ana, threadId)
-    expect(await db.get(threadId)).toBeNull()
-    expect(await db.get(actionId)).toBeNull()
-    expect([...db.rows.keys()].some((id) => id.startsWith("assistantMessages|"))).toBe(false)
+describe("cartes à confirmer", () => {
+  it("deux confirmations simultanées : une seule exécution", async () => {
+    const t = setup()
+    const { actionId, deploymentId } = await proposed(t)
+    const outcomes = await Promise.allSettled([
+      t.mutation(fn.confirm, { ...ana, actionId }),
+      t.mutation(fn.confirm, { ...ana, actionId }),
+    ])
+    expect(outcomes.filter((o) => o.status === "fulfilled")).toHaveLength(1)
+    const rejected = outcomes.find((o) => o.status === "rejected")
+    expect(rejected && (rejected.reason as ConvexError<string>).data).toBe("Cette action a déjà été traitée.")
+    const deployments = (await t.query(fn.raw, { table: "deployments" })) as Array<{ _id: string; status: string }>
+    expect(deployments.find((d) => d._id === deploymentId)?.status).toBe("building")
   })
 
-  it("un titre tient en 60 caractères", () => {
-    expect(threadTitle("a ".repeat(80)).length).toBe(58)
+  it("un collègue ne confirme pas ; un contenu changé ou une carte expirée ne s'exécutent pas", async () => {
+    const t = setup()
+    const first = await proposed(t)
+    expect(await convexMessage(t.mutation(fn.confirm, { ...ben, actionId: first.actionId }))).toBe("Introuvable.")
+    await t.mutation(fn.setDeployment, { id: first.deploymentId, name: "site-v2" })
+    expect(await t.mutation(fn.confirm, { ...ana, actionId: first.actionId })).toEqual({
+      ok: false,
+      message: "Le contenu a changé depuis la proposition. Relis-le, puis redemande l'action.",
+    })
+
+    const second = await proposed(t)
+    expect(
+      await t.mutation(fn.confirm, { ...ana, actionId: second.actionId, now: Date.now() + 25 * 60 * 60_000 }),
+    ).toMatchObject({ ok: false, message: "Cette proposition a expiré. Redemande-la." })
+  })
+
+  it("le résultat revient au modèle comme événement de l'application, au tour suivant", async () => {
+    const t = setup()
+    const { actionId, threadId } = await proposed(t)
+    await t.mutation(fn.confirm, { ...ana, actionId })
+    const next = await t.mutation(fn.start, { ...ana, threadId, text: "Merci", limit: 300, platformKey: true })
+    const context = await t.query(fn.context, { messageId: next.messageId, organizationId: "org_1" })
+    expect(context?.notes).toEqual([expect.stringContaining("La personne a confirmé : Redéployer « site »")])
+    await t.mutation(fn.finish, { ...done(next.messageId), notesDelivered: 1 })
+    const again = await t.mutation(fn.start, { ...ana, threadId, text: "Et ?", limit: 300, platformKey: true })
+    expect((await t.query(fn.context, { messageId: again.messageId, organizationId: "org_1" }))?.notes).toEqual([])
+  })
+
+  it("un refus métier passe la carte en échec ; une annulation est notée", async () => {
+    const t = setup()
+    const first = await proposed(t)
+    await t.mutation(fn.setDeployment, { id: first.deploymentId, status: "archived" })
+    // La carte montre l'état : l'archivage la rend obsolète avant même l'exécution.
+    expect((await t.mutation(fn.confirm, { ...ana, actionId: first.actionId })).ok).toBe(false)
+    const second = await proposed(t)
+    await t.mutation(fn.cancel, { ...ana, actionId: second.actionId })
+    const view = await t.query(fn.thread, { ...ana, threadId: second.threadId })
+    expect(view.actions[0]?.status).toBe("cancelled")
+  })
+})
+
+describe("nLPD", () => {
+  it("export avec les cartes, effacement par lots, clé anonymisée", async () => {
+    const t = setup()
+    await proposed(t)
+    for (let i = 0; i < 2; i++) await t.mutation(fn.finish, done((await turn(t, ana, `Q${i}`)).messageId))
+    await t.mutation(fn.saveKey, { organizationId: "org_1", updatedBy: "ana" })
+    const exported = await t.query(fn.exportOf, { userId: "ana" })
+    expect(exported).toHaveLength(3)
+    expect(exported.some((thread) => thread.actions.length === 1)).toBe(true)
+    expect(await t.mutation(fn.erase, { userId: "ana", limit: 2 })).toEqual({ erased: 2, done: false })
+    expect(await t.mutation(fn.erase, { userId: "ana", limit: 2 })).toEqual({ erased: 1, done: true })
+    const keys = (await t.query(fn.raw, { table: "assistantKeys" })) as Array<{ updatedBy: string }>
+    expect(keys[0]?.updatedBy).toBe("personne-effacee")
   })
 })

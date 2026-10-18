@@ -4,7 +4,7 @@ import { z } from "zod"
 import {
   awaitingConfirmation,
   defineTools,
-  fingerprint,
+  snapshotHash,
   parseToolCall,
   toolDefinitions,
   toolLabel,
@@ -67,6 +67,7 @@ describe("parseToolCall", () => {
 
 describe("résultats", () => {
   it("coupe un résultat trop long et décrit une carte en attente", () => {
+    expect(toolResult("a".repeat(30_000)).length).toBeLessThan(20_020)
     expect(toolResult("a".repeat(30), 10)).toBe(`${"a".repeat(10)}… (tronqué)`)
     expect(JSON.parse(awaitingConfirmation("a1", "Redéployer"))).toMatchObject({
       status: "awaiting_confirmation",
@@ -76,8 +77,9 @@ describe("résultats", () => {
     expect(toolLabel(TOOLS, "inconnu")).toBe("inconnu")
   })
 
-  it("une empreinte change avec le contenu", () => {
-    expect(fingerprint("Bonjour")).toBe(fingerprint("Bonjour"))
-    expect(fingerprint("Bonjour")).not.toBe(fingerprint("Bonjour !"))
+  it("une empreinte SHA-256 ne dépend pas de l'ordre des clés, et change avec le contenu", async () => {
+    expect(await snapshotHash({ b: 1, a: [1, 2] })).toBe(await snapshotHash({ a: [1, 2], b: 1 }))
+    expect(await snapshotHash({ a: 1 })).toMatch(/^[0-9a-f]{64}$/)
+    expect(await snapshotHash("Bonjour")).not.toBe(await snapshotHash("Bonjour !"))
   })
 })
