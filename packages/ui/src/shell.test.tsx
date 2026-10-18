@@ -11,6 +11,7 @@ import { FamilyLoaderRoot } from "./family-loader.tsx"
 import { PagePending, routerPendingDefaults, shellNavigation } from "./page-pending.tsx"
 import { PRODUCT_RAIL_OPEN_DELAY } from "./product-rail.tsx"
 import { PRODUCT_ENTRY_PATH } from "./products.ts"
+import { ThemeProvider } from "./theme.tsx"
 
 afterEach(cleanup)
 // Le bandeau d'état (`AppShell`) lit la page de statut : jamais de réseau ici, une lecture ratée n'affiche rien.
@@ -589,5 +590,40 @@ describe("shellNavigation", () => {
       navigating: false,
       contentKey: "/a",
     })
+  })
+})
+
+describe("AccountMenu, choix du thème", () => {
+  function open(): void {
+    localStorage.clear()
+    render(
+      <ThemeProvider defaultTheme="light" storageKey="theme-switch-test">
+        <AccountMenu user={{ name: "Hugo Gebel", email: "hugo@example.ch" }} onSignOut={() => {}} products={[]} />
+      </ThemeProvider>,
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Compte de Hugo Gebel" }))
+  }
+
+  it("choisit un thème sans fermer le menu", async () => {
+    open()
+    const group = await screen.findByRole("radiogroup", { name: "Thème" })
+    const radios = within(group).getAllByRole("radio")
+    expect(radios.map((r) => r.getAttribute("aria-label"))).toEqual(["Système", "Clair", "Sombre"])
+    expect(within(group).getByRole("radio", { name: "Clair" }).getAttribute("aria-checked")).toBe("true")
+    fireEvent.click(within(group).getByRole("radio", { name: "Sombre" }))
+    expect(within(group).getByRole("radio", { name: "Sombre" }).getAttribute("aria-checked")).toBe("true")
+    expect(within(group).getByRole("radio", { name: "Clair" }).getAttribute("aria-checked")).toBe("false")
+    expect(screen.getByRole("menuitem", { name: "Se déconnecter" })).toBeDefined()
+  })
+
+  it("les flèches gauche et droite changent de thème", async () => {
+    open()
+    const group = await screen.findByRole("radiogroup", { name: "Thème" })
+    const light = within(group).getByRole("radio", { name: "Clair" })
+    light.focus()
+    fireEvent.keyDown(light, { key: "ArrowRight" })
+    expect(within(group).getByRole("radio", { name: "Sombre" }).getAttribute("aria-checked")).toBe("true")
+    fireEvent.keyDown(group, { key: "ArrowLeft" })
+    expect(within(group).getByRole("radio", { name: "Clair" }).getAttribute("aria-checked")).toBe("true")
   })
 })
