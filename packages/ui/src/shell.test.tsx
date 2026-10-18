@@ -376,6 +376,58 @@ describe("AccountMenu", () => {
     const mailAgain = await screen.findByRole("menuitem", { name: "Mail" })
     expect(mailAgain.closest("[role=group]")?.className ?? "").not.toContain("lg:hidden")
   })
+
+  it("« État du service » vers la page de statut de la coque, absent hors de la coque", async () => {
+    const user = { name: "Hugo Gebel", email: "hugo@example.ch" }
+    const open = async () => {
+      fireEvent.click(screen.getAllByRole("button", { name: "Compte de Hugo Gebel" })[0] as HTMLElement)
+      await screen.findByRole("menuitem", { name: "Se déconnecter" })
+    }
+    const { unmount } = render(
+      <AppShell
+        product="docs"
+        nav={null}
+        statusPage={false}
+        sidebarFooter={
+          <AccountMenu user={user} onSignOut={() => {}} statusPage="https://status.example/documentation" />
+        }
+      >
+        Page
+      </AppShell>,
+    )
+    await open()
+    expect(screen.getByRole("menuitem", { name: "État du service" }).getAttribute("href")).toBe(
+      "https://status.example/documentation",
+    )
+    unmount()
+
+    render(<AccountMenu user={user} onSignOut={() => {}} products={[]} />)
+    await open()
+    expect(screen.queryByRole("menuitem", { name: "État du service" })).toBeNull()
+  })
+
+  it("« État du service » suit le produit de la coque, Docs à /documentation", async () => {
+    const fetchMock = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(() =>
+      Promise.reject(new Error("hors ligne")),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    render(
+      <AppShell
+        product="docs"
+        nav={null}
+        sidebarFooter={
+          <AccountMenu user={{ name: "Hugo Gebel", email: "hugo@example.ch" }} onSignOut={() => {}} products={[]} />
+        }
+      >
+        Page
+      </AppShell>,
+    )
+    fireEvent.click(screen.getAllByRole("button", { name: "Compte de Hugo Gebel" })[0] as HTMLElement)
+    expect((await screen.findByRole("menuitem", { name: "État du service" })).getAttribute("href")).toBe(
+      "https://status.hgdc.ch/documentation",
+    )
+    vi.unstubAllGlobals()
+  })
 })
 
 describe("Chargement d'une page", () => {
