@@ -41,7 +41,7 @@ export function ResourceItem({
   /** Icône, favicon ou marque, dans une tuile de 40 px. */
   icon?: ReactNode
   title: ReactNode
-  /** Une ligne de contexte : adresse, date, auteur. Deux lignes au plus sur un écran étroit, puis tronquée. */
+  /** Contexte : adresse, date, auteur. Deux lignes au plus, puis tronquée. */
   meta?: ReactNode
   badge?: ReactNode
   /** Boutons-icônes ou menu « … ». */
@@ -71,11 +71,12 @@ export function ResourceItem({
       ) : null}
       {/* Le texte réclame 12 rem. S'il ne les a pas à côté du badge et des actions (téléphone,
           texte agrandi), ceux-ci passent sous le titre au lieu de le réduire à trois lettres
-          (« Avenant… » à 360 px, 2026-10-18). Visibles partout : un rôle ou un état ne disparaît
+          (« Avenant… » à 360 px, 2026-10-18). Le titre passe à la ligne au lieu d’être tronqué, et les actions peuvent
+          elles aussi passer à la ligne plutôt que de sortir de la carte à 200 % de texte. Visibles partout : un rôle ou un état ne disparaît
           pas faute de place. */}
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2 sm:gap-x-4">
         <div className="min-w-0 flex-[1_1_12rem]">
-          <p className="truncate text-sm font-medium">
+          <p className="text-sm font-medium break-words">
             {linked ? (
               <ResourceLink href={href} render={render}>
                 {title}
@@ -89,10 +90,14 @@ export function ResourceItem({
         {badge || actions ? (
           <div
             data-slot="resource-item-trailing"
-            className="flex max-w-full shrink-0 flex-wrap items-center gap-x-3 gap-y-2 sm:gap-x-4"
+            className="flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-2 sm:gap-x-4"
           >
-            {badge ? <div className="shrink-0">{badge}</div> : null}
-            {actions ? <div className="relative z-1 flex shrink-0 items-center gap-1">{actions}</div> : null}
+            {badge ? <div className="max-w-full min-w-0">{badge}</div> : null}
+            {actions ? (
+              <div className="relative z-1 flex max-w-full min-w-0 flex-wrap items-center gap-1 [&>:not([class*=size-])]:h-auto [&>:not([class*=size-])]:min-h-9 [&>:not([class*=size-])]:py-1.5 [&>:not([class*=size-])]:text-center [&>:not([class*=size-])]:whitespace-normal [&>*]:max-w-full">
+                {actions}
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>
