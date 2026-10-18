@@ -40,6 +40,10 @@ Puis, sur npmjs.com, pour chacun :
    - `@hgdc/docs` : utilisateur `hugogebel-boop`, dépôt `hgdc-docs`, workflow `release.yml` (à créer dans `hgdc-docs` sur le modèle de celui du kit ; d'ici là, les versions suivantes partent du poste comme la première).
 2. Même page, _Publishing access_ → « Require two-factor authentication and disallow tokens ».
 
+### En attente : `@hgdc/assistant`
+
+Après fusion de la PR qui l’ajoute puis de la PR « chore: release » qui porte `@hgdc/assistant` 0.1.0 : `main` à jour, puis la voie du jeton ci-dessous (ou `npm login` et `bun run release`), `git push --tags`, et les deux réglages npm (trusted publisher `hugogebel-boop` / `hgdc-kit` / `release.yml`, 2FA sans jeton). `npm view @hgdc/assistant version` doit rendre `0.1.0`.
+
 ### Cas général
 
 `npm login`, puis `bun run release` depuis `main` à jour, `git push --tags`, et les deux réglages ci-dessus pour le nouveau paquet. Les versions suivantes passent par la CI, avec provenance.
