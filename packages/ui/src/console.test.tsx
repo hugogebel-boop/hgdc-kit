@@ -224,6 +224,35 @@ describe("UptimeBar", () => {
     expect(nextDay("ArrowRight", 2, 3)).toBe(2)
     expect(nextDay("a", 2, 3)).toBeNull()
   })
+
+  it("ouvre le détail d'un jour : durée par niveau et incidents en liens", async () => {
+    render(
+      <UptimeBar
+        days={[
+          {
+            date: Date.UTC(2026, 9, 14),
+            status: "outage",
+            uptime: "99,17 %",
+            detail: {
+              levels: [
+                { status: "outage", label: "Panne majeure", duration: "12 min" },
+                { status: "maintenance", label: "Maintenance", duration: "1 h" },
+              ],
+              incidents: [{ title: "Panne de la Console", href: "/host/incidents/abc" }],
+            },
+          },
+          { date: Date.UTC(2026, 9, 15), status: "operational", detail: { levels: [], incidents: [] } },
+        ]}
+      />,
+    )
+    const buttons = screen.getAllByRole("button")
+    expect(buttons[0]?.textContent).toContain("Panne majeure 12 min · Maintenance 1 h · Panne de la Console")
+    expect(buttons[1]?.textContent).toContain("Aucune panne ce jour-là")
+    fireEvent.click(buttons[0] as HTMLElement)
+    const link = await screen.findByRole("link", { name: "Panne de la Console" })
+    expect(link.getAttribute("href")).toBe("/host/incidents/abc")
+    expect(screen.getByRole("dialog").textContent).toContain("Maintenance1 h")
+  })
 })
 
 function makeLines(count: number): Array<LogLine> {
