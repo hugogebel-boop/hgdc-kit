@@ -13,6 +13,16 @@ import { PRODUCT_RAIL_OPEN_DELAY } from "./product-rail.tsx"
 import { PRODUCT_ENTRY_PATH } from "./products.ts"
 
 afterEach(cleanup)
+// Le bandeau d'état (`AppShell`) lit la page de statut : jamais de réseau ici, une lecture ratée n'affiche rien.
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => Promise.reject(new Error("hors ligne"))),
+  )
+})
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe("matchCommand", () => {
   it("trouve sans accents ni casse, par libellé ou mot-clé", () => {
