@@ -115,7 +115,8 @@ export function ProjectSwitcher({
   createHref,
   onCreate,
   renderLink,
-  createLabel = "Nouveau projet",
+  noun = { one: "projet", many: "projets" },
+  createLabel = `Nouveau ${noun.one}`,
   className,
 }: {
   projects: ReadonlyArray<SwitcherProject> | undefined
@@ -132,12 +133,16 @@ export function ProjectSwitcher({
   onCreate?: () => void
   /** Rend un lien du routeur du produit ; par défaut un `<a href>`. */
   renderLink?: (href: string) => ReactElement
+  /** Ce que l'on choisit, nom masculin : `{ one: "site", many: "sites" }` pour Analytics. */
+  noun?: { one: string; many: string }
   createLabel?: string
   className?: string
 }): React.JSX.Element {
+  const capitalized = (word: string) => word.charAt(0).toUpperCase() + word.slice(1)
+  const all = `Tous les ${noun.many}`
   const hasActive = activeId !== undefined && activeId !== null
   const current = hasActive ? projects?.find((p) => p.id === activeId) : undefined
-  const label = hasActive ? (current?.name ?? activeName ?? "") : "Tous les projets"
+  const label = hasActive ? (current?.name ?? activeName ?? "") : all
   const canCreate = createHref !== undefined || onCreate !== undefined
 
   return (
@@ -146,7 +151,9 @@ export function ProjectSwitcher({
         render={
           <button
             type="button"
-            aria-label={hasActive ? `Projet ${label}, changer de projet` : "Tous les projets, changer de projet"}
+            aria-label={
+              hasActive ? `${capitalized(noun.one)} ${label}, changer de ${noun.one}` : `${all}, changer de ${noun.one}`
+            }
             className={cn(
               "flex h-10 max-w-full min-w-0 items-center gap-2 rounded-xl px-2.5 text-sm font-medium outline-none transition-colors duration-(--duration-fast) ease-out hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-muted coarse:h-11",
               className,
@@ -169,14 +176,14 @@ export function ProjectSwitcher({
       <DropdownMenuContent align="start" className="w-72 max-w-[calc(100vw-2rem)]">
         <SwitcherEntry href={allHref} onSelect={() => onSelect?.(null)} renderLink={renderLink}>
           <HugeiconsIcon icon={DashboardSquare01Icon} aria-hidden className="size-4" />
-          <span className="flex-1">Tous les projets</span>
+          <span className="flex-1">{all}</span>
           {hasActive ? null : <HugeiconsIcon icon={Tick02Icon} aria-label="Vue active" className="size-4" />}
         </SwitcherEntry>
         {projects?.length ? (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuLabel>Projets</DropdownMenuLabel>
+              <DropdownMenuLabel>{capitalized(noun.many)}</DropdownMenuLabel>
               {projects.map((project) => (
                 <SwitcherEntry
                   key={project.id}
@@ -187,7 +194,7 @@ export function ProjectSwitcher({
                   <ProjectMark project={project} />
                   <span className="min-w-0 flex-1 truncate">{project.name}</span>
                   {project.id === activeId ? (
-                    <HugeiconsIcon icon={Tick02Icon} aria-label="Projet actif" className="size-4" />
+                    <HugeiconsIcon icon={Tick02Icon} aria-label={`${capitalized(noun.one)} actif`} className="size-4" />
                   ) : null}
                 </SwitcherEntry>
               ))}

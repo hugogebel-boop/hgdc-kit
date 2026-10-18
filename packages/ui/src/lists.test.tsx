@@ -144,6 +144,14 @@ describe("ProjectSwitcher", () => {
     expect(onSelect).toHaveBeenCalledWith("p1")
   })
 
+  it("nomme autre chose que des projets : les sites d'Analytics", async () => {
+    render(<ProjectSwitcher projects={projects} allHref="/o/acme" noun={{ one: "site", many: "sites" }} />)
+    fireEvent.click(screen.getByRole("button", { name: "Tous les sites, changer de site" }))
+    expect((await screen.findByRole("menuitem", { name: /Tous les sites/ })).getAttribute("href")).toBe("/o/acme")
+    expect(screen.getByText("Sites")).not.toBeNull()
+    expect(screen.queryByRole("menuitem", { name: "Nouveau site" })).toBeNull()
+  })
+
   it("rend les liens par le routeur du produit", async () => {
     render(<ProjectSwitcher projects={projects} activeId="p1" renderLink={(href) => <RouterLink to={href} />} />)
     fireEvent.click(screen.getByRole("button"))
