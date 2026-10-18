@@ -80,7 +80,7 @@ Convex refuse un push dont `auth.config.ts` lit une variable absente : la mise e
 2. Poser la variable : `npx convex run authKeys:latestJwks --prod | npx convex env set JWKS --prod` (sans `--prod` pour le dev).
 3. Passer `jwks: process.env.JWKS` à `getAuthConfigProvider` et redéployer.
 
-Un nouveau déploiement (préversion, local) pose `JWKS` avant son premier push. La variable contient la clé privée chiffrée : elle ne sort jamais du déploiement (ni affichée, ni copiée ailleurs). Après une rotation des clés, reposer la variable puis redéployer.
+Un nouveau déploiement (préversion, local) pose `JWKS` avant son premier push. La variable contient la clé privée chiffrée : elle ne s'affiche jamais. Une copie de référence vit dans Doppler `hgdc/prd`, `<P>_JWKS` (comparer par empreinte, jamais en clair), nécessaire pour poser la variable sur un nouveau déploiement ou après une bascule vers l'auto-hébergé. Après une rotation des clés (deux temps, inchangée), reposer la variable, redéployer, puis recopier dans Doppler.
 
 ## Entrée commune `/auth/hgdc`
 
