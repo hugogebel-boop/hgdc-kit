@@ -100,6 +100,29 @@ jobs:
 
 Jamais pour un dépôt public, le kit compris : un runner auto-hébergé exécuterait le code de n'importe quelle PR venue d'un fork.
 
+Recherche de secrets (gitleaks sur tout l'historique, binaire vérifié par sa somme SHA-256) : un second job, sur la même machine.
+
+```yaml
+secrets:
+  uses: hugogebel-boop/hgdc-kit/.github/workflows/secrets.yml@<sha> # main
+  with:
+    runner: ${{ vars.HGDC_RUNNER || '["self-hosted", "<étiquette>"]' }}
+```
+
+Les faux secrets des tests (clés générées, jetons volontairement faux) se lèvent par un `.gitleaks.toml` à la racine, limité à la règle générique dans les fichiers de test : une vraie clé reconnue (AWS, GitHub, Stripe…) reste détectée partout.
+
+```toml
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Faux secrets des tests"
+targetRules = ["generic-api-key"]
+paths = ['''(^|/)[^/]+\.test\.tsx?$''', '''(^|/)test\.setup\.ts$''']
+```
+
+Avant de lever une trouvaille, vérifier sans afficher la valeur qu'elle est factice (contexte du test, absente de Doppler).
+
 ## 5. Renovate et propagation
 
 ```json
