@@ -159,6 +159,22 @@ describe("TimeChart", () => {
     expect(screen.getByRole("table", { name: "Envois par jour" })).toBeDefined()
   })
 
+  it("limite le tableau réservé aux lecteurs d'écran à un échantillon, dans un conteneur sr-only", () => {
+    const many = Array.from({ length: 750 }, (_, i) => Date.UTC(2026, 0, 1) + i * 86_400_000)
+    const { container } = render(
+      <TimeChart
+        label="Visites"
+        timestamps={many}
+        series={[{ key: "v", label: "Visites", values: many.map((_, i) => i) }]}
+      />,
+    )
+    const table = screen.getByRole("table", { name: /Visites \(750 mesures, échantillon de 60\)/ })
+    expect(table.querySelectorAll("tbody tr")).toHaveLength(60)
+    expect(table.parentElement?.classList.contains("sr-only")).toBe(true)
+    expect(table.parentElement?.tagName).toBe("DIV")
+    expect(container.querySelector("table.sr-only")).toBeNull()
+  })
+
   it("dit qu'il n'y a pas de données plutôt que de tracer un axe vide", () => {
     render(<TimeChart label="Visites" timestamps={[]} series={[]} />)
     expect(screen.getByText("Aucune donnée sur cette période.")).toBeDefined()
