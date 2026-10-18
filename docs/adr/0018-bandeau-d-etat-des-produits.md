@@ -24,4 +24,4 @@ Chaque produit de la famille a sa page de statut (`https://status.hgdc.ch/<produ
 
 - Chaque produit qui monte la nouvelle version de `@hgdc/ui` reçoit le bandeau sans code de son côté.
 - Les tests qui rendent `AppShell` remplacent `fetch` par une lecture ratée : jamais de réseau en test.
-- Le lien « État du service » dans le menu d'aide reste à poser par chaque produit dans `sidebarFooter`. `AppShell` ne connaît pas l'ordre de ce pied de barre.
+- Le lien « État du service » est dans `AccountMenu` (0.27), tiré du `statusPage` d'`AppShell` : aucun code de produit. `statusPage={false}` le retire avec le bandeau.
