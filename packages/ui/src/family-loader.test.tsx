@@ -47,22 +47,26 @@ describe("FamilyLoader", () => {
     for (const piece of pieces) expect(piece.querySelector("[data-fill]")).not.toBeNull()
   })
 
-  it("pose derrière le H plein son reflet, les mêmes pièces sans remplissage animé", () => {
+  it("un seul H : trois pièces, ni reflet, ni ombre, ni double", () => {
     const { container } = render(<FamilyLoader />)
-    const reflet = container.querySelector('[data-slot="family-loader"] > [data-reflet]')
-    const pieces = [...(reflet?.querySelectorAll("[data-piece]") ?? [])]
-    expect(pieces.map((piece) => piece.getAttribute("data-piece"))).toEqual(["left", "bar", "right"])
-    expect(reflet?.querySelector("[data-fill]")).toBeNull()
-    expect(normal).toMatch(/\.family-loader>\[data-reflet\]\{[^}]*opacity:var\(--fl-reflet\)/)
-    expect(minified).toMatch(/\.family-loader\{[^}]*--fl-reflet:\.35/)
-    expect(minified).toMatch(/\.dark \.family-loader\{[^}]*--fl-reflet:\.5/)
-    expect(minified).not.toMatch(/\[data-reflet\][^{]*\{[^}]*animation/)
+    const loader = container.querySelector('[data-slot="family-loader"]')
+    expect(loader?.children.length).toBe(3)
+    expect(container.querySelectorAll("[data-piece]").length).toBe(3)
+    expect(container.querySelector("[data-reflet]")).toBeNull()
+    const loaderCss = css
+      .slice(css.indexOf(".family-loader {"), css.indexOf("/* Scène du chargement"))
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+    expect(loaderCss).not.toMatch(/reflet|shadow|drop-shadow|blur\(/)
+    expect(renderToString(<FamilyLoaderHost />)).not.toContain("reflet")
   })
 
-  it("garde la géométrie du H « Double » (cadre de 46 unités, reflet décalé de 6)", () => {
+  it("H centré dans son cadre de 46 unités (montants de 10 × 36, pont de 11 × 9)", () => {
     expect(css).toContain("--fl-u: calc(var(--fl) / 46);")
-    for (const value of ["* 2.5)", "* 10)", "* 36)", "* 5.5)", "* 25.5)", "* 15)", "* 16)", "* 11)", "* 9)", "* 6)"])
+    for (const value of ["* 5)", "* 10)", "* 36)", "* 8)", "* 28)", "* 17.5)", "* 18.5)", "* 11)", "* 9)"])
       expect(css).toContain(`calc(var(--fl-u) ${value}`)
+    // Centre du H (8 + 38) / 2 = 23 et (5 + 41) / 2 = 23 : le milieu du cadre.
+    expect((8 + 28 + 10) / 2).toBe(23)
+    expect((5 + 5 + 36) / 2).toBe(23)
   })
 
   it("40 px par défaut, 24 px en petit, 64 px en grand", () => {
@@ -116,12 +120,12 @@ describe("FamilyLoader", () => {
     expect(keyframes("family-loader-right")).toMatch(/55%,75%\{[^}]*transform:scaleY\(1\)\}/)
   })
 
-  it("mouvement réduit : le H plein respire sur la même boucle, sans mouvement", () => {
+  it("mouvement réduit : le H plein, immobile", () => {
     const reduced = minified.slice(minified.indexOf(REDUCED))
     const rule = reduced.match(/\[data-fill\]\{([^}]*)\}/)?.[1] ?? ""
     expect(rule).toContain("transform:none")
-    expect(rule).toContain("animation-name:family-loader-breathe")
-    expect(keyframes("family-loader-breathe")).not.toContain("transform")
+    expect(rule).toContain("opacity:1")
+    expect(rule).toContain("animation-name:none")
   })
 })
 

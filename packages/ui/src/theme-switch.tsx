@@ -68,14 +68,17 @@ export function ThemeSwitch({ className }: { className?: string }): React.JSX.El
                     data-theme-choice={value}
                     onClick={() => setTheme(value)}
                     className={cn(
-                      "touch-target grid size-6 cursor-default place-items-center rounded-full outline-none",
+                      "touch-target grid size-7 cursor-default place-items-center rounded-full outline-none",
                       "transition-colors duration-(--duration-fast) ease-out focus-visible:ring-2 focus-visible:ring-ring/50",
-                      active ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
+                      // Le choix actif comme dans `SegmentedControl` : encre pleine, lisible d'un coup d'œil.
+                      active
+                        ? "bg-foreground text-background"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground data-highlighted:bg-muted data-highlighted:text-foreground",
                     )}
                   />
                 }
               >
-                <HugeiconsIcon icon={icon} aria-hidden className="size-3.5" />
+                <HugeiconsIcon icon={icon} aria-hidden className="size-4" />
               </TooltipTrigger>
               <TooltipContent>{label}</TooltipContent>
             </Tooltip>

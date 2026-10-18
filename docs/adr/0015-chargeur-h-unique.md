@@ -48,7 +48,7 @@ Causes :
 | 1500-1750 ms | tout le H se vide d'un fondu, ensemble                                |
 | 1750-2000 ms | la silhouette grise seule, puis ça recommence                         |
 
-Remplissages en `--ease-in-out`, fondu en `--ease-out`. Seuls `transform` et `opacity` s'animent, sur les couches internes : l'animation tourne sur le compositeur pendant que la page charge. Mouvement réduit : le H plein respire (opacité de 0,4 à 1) sur la même boucle. La silhouette prend plus de lumière en sombre.
+Remplissages en `--ease-in-out`, fondu en `--ease-out`. Seuls `transform` et `opacity` s'animent, sur les couches internes : l'animation tourne sur le compositeur pendant que la page charge. Mouvement réduit : le H plein, immobile (0.29 ; il respirait avant). La silhouette prend plus de lumière en sombre. Depuis 0.29, un seul H : le reflet décalé du H « Double » est retiré du chargeur (ni ombre ni double à aucune image de la boucle, demande du 2026-10-18), le H recentré dans son cadre de 46 unités. La marque elle-même (`FamilyMark`, `hcollection-icon.svg`) ne change pas.
 
 **Une seule horloge.** Chaque H cale ses animations sur `(performance.timeOrigin + performance.now()) % 2000` : `startTime = -(timeOrigin % 2000)`. Deux documents, deux produits, le rendu serveur et l'hydratation tombent à la même phase sans se parler. Le calage est fait par un script en ligne juste après l'élément, dans le HTML du serveur : il s'exécute avant l'hydratation, une fois la feuille de style chargée (un script attend les feuilles qui le précèdent). Une animation recréée (`animationstart`, mouvement réduit basculé) se recale.
 

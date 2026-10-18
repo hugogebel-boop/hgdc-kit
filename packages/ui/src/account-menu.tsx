@@ -1,6 +1,4 @@
-import Activity01Icon from "@hugeicons/core-free-icons/Activity01Icon"
 import DashboardSquare01Icon from "@hugeicons/core-free-icons/DashboardSquare01Icon"
-import KeyboardIcon from "@hugeicons/core-free-icons/KeyboardIcon"
 import Logout01Icon from "@hugeicons/core-free-icons/Logout01Icon"
 import SecurityLockIcon from "@hugeicons/core-free-icons/SecurityLockIcon"
 import Tick02Icon from "@hugeicons/core-free-icons/Tick02Icon"
@@ -17,7 +15,6 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "./dropdown-menu.tsx"
 import { initials } from "./initials.ts"
@@ -25,7 +22,7 @@ import { MENU_LINK_ITEM } from "./org-switcher.tsx"
 import type { FamilyProduct } from "./family-svg.ts"
 import { ProductBadge } from "./product-badge.tsx"
 import { productMenuEntries } from "./products.ts"
-import { useLeaveOnClick, useProductRailShown, useStatusPage } from "./shell-placement.ts"
+import { useLeaveOnClick, useProductRailShown } from "./shell-placement.ts"
 import { ThemeSwitch } from "./theme-switch.tsx"
 
 export type HgdcProduct = {
@@ -44,11 +41,28 @@ export type HgdcProduct = {
 
 export type AccountUser = { name: string; email: string; image?: string | null }
 
+/** L'avatar du compte : la photo, sinon les initiales sur la teinte stable de l'adresse. */
+function AccountAvatar({ user, size }: { user: AccountUser; size?: "default" | "lg" }): React.JSX.Element {
+  return (
+    <Avatar size={size}>
+      {user.image ? <AvatarImage src={user.image} alt="" /> : null}
+      <AvatarFallback colorKey={user.email || user.name} className="text-xs font-semibold uppercase">
+        {initials(user.name, user.email)}
+      </AvatarFallback>
+    </Avatar>
+  )
+}
+
 /**
- * Le menu du compte, en bas de la barre latérale : profil, sécurité, choix du thème en trois icônes, raccourcis, autres
- * produits HGDC, déconnexion. `row` : avatar, nom et adresse (l'avatar seul en rail) ; `avatar` :
+ * Le menu du compte, en bas de la barre latérale (`account` d'`AppShell`). Dans cet ordre :
+ * l'identité (avatar, nom, adresse), Profil, Sécurité, Thème (Système, Clair, Sombre, dans le
+ * menu), les entrées propres au produit, les autres produits (sur téléphone), puis « Se
+ * déconnecter », à part. `row` : avatar, nom et adresse (l'avatar seul en rail) ; `avatar` :
  * l'avatar seul, pour une barre du haut. Le produit passe les actions ; le thème passe par
  * `ThemeProvider`.
+ *
+ * Documentation, Réglages et État du service ne sont pas ici : la coque les pose au-dessus du
+ * compte (`links` d'`AppShell`). L'aide des raccourcis garde sa touche `?`, sans entrée de menu.
  *
  * « Produits » (masquée au-delà de `lg` dans une coque qui affiche la barre des produits, où ils
  * sont déjà ; gardée sur téléphone) liste par défaut Account et les produits ouverts du catalogue
@@ -59,19 +73,20 @@ export function AccountMenu({
   user,
   onProfile,
   onSecurity,
-  onShortcuts,
   onSignOut,
   products: productsProp,
   product: currentProduct,
   accountHref,
-  statusPage,
   children,
   variant = "row",
 }: {
   user: AccountUser
   onProfile?: () => void
   onSecurity?: () => void
-  /** Ouvre l'aide des raccourcis clavier. */
+  /**
+   * @deprecated Plus d'entrée « Raccourcis clavier » dans le menu (0.29) : l'aide s'ouvre par la
+   * touche `?`, que le produit garde. Ignoré.
+   */
   onShortcuts?: () => void
   onSignOut: () => void
   /** Les produits de la famille, pour passer de l'un à l'autre. Le catalogue du kit par défaut. */
@@ -81,19 +96,16 @@ export function AccountMenu({
   /** Adresse d'Account dans la liste par défaut (un Account local en développement). */
   accountHref?: string
   /**
-   * Page de statut du produit, entrée « État du service » : celle d'`AppShell` par défaut (son
-   * `statusPage`, sinon `https://status.hgdc.ch/<produit>`), `false` pour la retirer. Hors de la
-   * coque, sans adresse donnée, pas d'entrée.
+   * @deprecated « État du service » a quitté le menu (0.29) : la coque le pose au-dessus du compte
+   * (`links.status` d'`AppShell`, la page de statut de la coque par défaut). Ignoré.
    */
   statusPage?: string | false
-  /** Entrées propres au produit (« Administration »), après le profil. */
+  /** Entrées propres au produit (« Administration »), après le thème. */
   children?: ReactNode
   variant?: "row" | "avatar"
 }): React.JSX.Element {
   const products = productsProp ?? productMenuEntries({ current: currentProduct, accountHref })
   const railShown = useProductRailShown()
-  const shellStatusPage = useStatusPage()
-  const statusPageUrl = statusPage === false ? null : (statusPage ?? shellStatusPage)
   const leaveOnClick = useLeaveOnClick()
   return (
     <DropdownMenu>
@@ -114,10 +126,7 @@ export function AccountMenu({
           )
         }
       >
-        <Avatar>
-          {user.image ? <AvatarImage src={user.image} alt="" /> : null}
-          <AvatarFallback className="text-xs font-semibold uppercase">{initials(user.name, user.email)}</AvatarFallback>
-        </Avatar>
+        <AccountAvatar user={user} />
         {variant === "row" ? (
           <span className="min-w-0 flex-1 lg:rail:hidden">
             <span className="block truncate text-sm font-medium">{user.name}</span>
@@ -128,12 +137,15 @@ export function AccountMenu({
       <DropdownMenuContent
         align={variant === "row" ? "start" : "end"}
         side={variant === "row" ? "top" : "bottom"}
-        className="w-64"
+        className="w-72"
       >
         <DropdownMenuGroup>
-          <DropdownMenuLabel>
-            <span className="block truncate text-foreground">{user.name}</span>
-            <span className="block truncate">{user.email}</span>
+          <DropdownMenuLabel className="flex items-center gap-2.5 py-2">
+            <AccountAvatar user={user} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium text-foreground">{user.name}</span>
+              <span className="block truncate">{user.email}</span>
+            </span>
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
@@ -149,20 +161,12 @@ export function AccountMenu({
             Sécurité
           </DropdownMenuItem>
         ) : null}
-        {children}
         <ThemeSwitch />
-        {onShortcuts ? (
-          <DropdownMenuItem onClick={onShortcuts}>
-            <HugeiconsIcon icon={KeyboardIcon} aria-hidden />
-            Raccourcis clavier
-            <DropdownMenuShortcut>?</DropdownMenuShortcut>
-          </DropdownMenuItem>
-        ) : null}
-        {statusPageUrl ? (
-          <MenuPrimitive.LinkItem href={statusPageUrl} className={MENU_LINK_ITEM}>
-            <HugeiconsIcon icon={Activity01Icon} aria-hidden />
-            État du service
-          </MenuPrimitive.LinkItem>
+        {children ? (
+          <>
+            <DropdownMenuSeparator />
+            {children}
+          </>
         ) : null}
         {products.length ? (
           <>

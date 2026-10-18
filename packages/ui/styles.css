@@ -100,6 +100,20 @@
   --color-inverse-foreground: var(--inverse-foreground);
   --color-inverse-muted: var(--inverse-muted);
   --color-inverse-code: var(--inverse-code);
+  --color-avatar-1: var(--avatar-1);
+  --color-avatar-1-ink: var(--avatar-1-ink);
+  --color-avatar-2: var(--avatar-2);
+  --color-avatar-2-ink: var(--avatar-2-ink);
+  --color-avatar-3: var(--avatar-3);
+  --color-avatar-3-ink: var(--avatar-3-ink);
+  --color-avatar-4: var(--avatar-4);
+  --color-avatar-4-ink: var(--avatar-4-ink);
+  --color-avatar-5: var(--avatar-5);
+  --color-avatar-5-ink: var(--avatar-5-ink);
+  --color-avatar-6: var(--avatar-6);
+  --color-avatar-6-ink: var(--avatar-6-ink);
+  --color-avatar-7: var(--avatar-7);
+  --color-avatar-7-ink: var(--avatar-7-ink);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -185,6 +199,23 @@
   --inverse-foreground: oklch(0.985 0 0);
   --inverse-muted: oklch(0.708 0 0);
   --inverse-code: oklch(0.82 0.11 296);
+  /* Avatars à initiales (`AvatarFallback`) : sept teintes, celles des icônes des produits (Host,
+     Portal, Account, Mail, Status, Analytics, Docs), en lavis avec une encre de la même teinte.
+     Initiales à 5,5:1 au moins, en clair comme en sombre (vérifié par styles.test.ts). */
+  --avatar-1: oklch(0.88 0.055 262);
+  --avatar-1-ink: oklch(0.42 0.12 262);
+  --avatar-2: oklch(0.88 0.06 293);
+  --avatar-2-ink: oklch(0.42 0.12 293);
+  --avatar-3: oklch(0.88 0.062 40);
+  --avatar-3-ink: oklch(0.42 0.12 40);
+  --avatar-4: oklch(0.88 0.063 2);
+  --avatar-4-ink: oklch(0.42 0.12 2);
+  --avatar-5: oklch(0.88 0.07 160);
+  --avatar-5-ink: oklch(0.42 0.09 160);
+  --avatar-6: oklch(0.88 0.07 75);
+  --avatar-6-ink: oklch(0.42 0.083 75);
+  --avatar-7: oklch(0.88 0.07 215);
+  --avatar-7-ink: oklch(0.42 0.07 215);
   --radius: 0.85rem;
   --scrollbar-thumb: color-mix(in oklch, var(--foreground) 18%, transparent);
 }
@@ -229,6 +260,20 @@
   --success: oklch(0.7 0.15 152);
   --success-foreground: oklch(0.16 0.02 152);
   --inverse: oklch(0.1 0 0);
+  --avatar-1: oklch(0.4 0.09 262);
+  --avatar-1-ink: oklch(0.9 0.045 262);
+  --avatar-2: oklch(0.4 0.09 293);
+  --avatar-2-ink: oklch(0.9 0.05 293);
+  --avatar-3: oklch(0.4 0.09 40);
+  --avatar-3-ink: oklch(0.9 0.05 40);
+  --avatar-4: oklch(0.4 0.09 2);
+  --avatar-4-ink: oklch(0.9 0.05 2);
+  --avatar-5: oklch(0.4 0.085 160);
+  --avatar-5-ink: oklch(0.9 0.05 160);
+  --avatar-6: oklch(0.4 0.079 75);
+  --avatar-6-ink: oklch(0.9 0.05 75);
+  --avatar-7: oklch(0.4 0.066 215);
+  --avatar-7-ink: oklch(0.9 0.05 215);
 }
 
 /* Identité H Collection. Dégradé de chaque icône produit sur fond clair, de la teinte vive à la
@@ -533,7 +578,7 @@
   }
 }
 /* Chargeur de la famille (`FamilyLoader`, ADR 0015) : silhouette grise du H, pièces remplies de
-   leurs dégradés. Géométrie du H sur 256 (FAMILY_MARK_SVG). Une seule boucle de 2 s pour tout le H,
+   leurs dégradés. Géométrie du H de FAMILY_MARK_SVG, sans le reflet. Une seule boucle de 2 s pour tout le H,
    calée sur l'horloge (`syncFamilyLoader`) : le jambage gauche monte, la barre le prolonge vers la
    droite, le jambage droit s'ouvre depuis la barre vers le haut et le bas ; le H complet tient, se
    vide d'un fondu, la silhouette reste un instant, et ça recommence. Seuls `transform` et `opacity`
@@ -551,23 +596,21 @@
 .dark .family-loader {
   --fl-ghost-mix: 19%;
 }
-/* Le H « Double » (`family/hcollection-icon.svg`, cadre de 46 unités) : le H plein, trois pièces,
-   devant son reflet décalé de 6 unités. Seul le H plein se remplit ; le reflet reste à 35 % (50 %
-   en sombre), immobile. */
+/* Un seul H, plein, trois pièces, centré dans un cadre de 46 unités (le H de la marque,
+   `family/hcollection-icon.svg`, sans son reflet) : ni ombre, ni double, à aucune image de la
+   boucle (demande de Hugo, 2026-10-18). */
 .family-loader {
   --fl-u: calc(var(--fl) / 46);
   --fl-l0: #2c78fd;
   --fl-l1: #7343fe;
   --fl-r0: #fe5292;
   --fl-r1: #ff9a46;
-  --fl-reflet: 0.35;
 }
 .dark .family-loader {
   --fl-l0: #6aa0ff;
   --fl-l1: #9a7bff;
   --fl-r0: #ff7aa8;
   --fl-r1: #ffb070;
-  --fl-reflet: 0.5;
 }
 .family-loader [data-piece] {
   position: absolute;
@@ -581,30 +624,23 @@
 .family-loader [data-piece="left"],
 .family-loader [data-piece="right"] {
   z-index: 1;
-  top: calc(var(--fl-u) * 2.5);
+  top: calc(var(--fl-u) * 5);
   width: calc(var(--fl-u) * 10);
   height: calc(var(--fl-u) * 36);
   border-radius: calc(var(--fl-u) * 3);
 }
 .family-loader [data-piece="left"] {
-  left: calc(var(--fl-u) * 5.5);
+  left: calc(var(--fl-u) * 8);
 }
 .family-loader [data-piece="right"] {
-  left: calc(var(--fl-u) * 25.5);
+  left: calc(var(--fl-u) * 28);
 }
 /* Le pont déborde d'une demi-unité sous chaque montant, comme dans le dessin. */
 .family-loader [data-piece="bar"] {
-  left: calc(var(--fl-u) * 15);
-  top: calc(var(--fl-u) * 16);
+  left: calc(var(--fl-u) * 17.5);
+  top: calc(var(--fl-u) * 18.5);
   width: calc(var(--fl-u) * 11);
   height: calc(var(--fl-u) * 9);
-}
-/* Le reflet : le même H, plein, décalé de (6, 6), en un seul calque translucide. */
-.family-loader > [data-reflet] {
-  position: absolute;
-  inset: 0;
-  opacity: var(--fl-reflet);
-  transform: translate(calc(var(--fl-u) * 6), calc(var(--fl-u) * 6));
 }
 /* Couleurs du H : chaque montant son dégradé vertical ; le pont prend celui du montant droit,
    recouvert de celui du gauche qui s'efface de gauche à droite (le masque du dessin). Le pont
@@ -626,10 +662,6 @@
   background-size: 100% 400%;
   background-position: 0 50%;
   mask-image: linear-gradient(to right, #000 4.545%, transparent 95.455%);
-}
-.family-loader [data-reflet] [data-piece] > * {
-  position: absolute;
-  inset: 0;
 }
 .family-loader [data-fill] {
   position: absolute;
@@ -723,21 +755,12 @@
     opacity: 1;
   }
 }
-/* Mouvement réduit : le H est plein et respire doucement, sur la même boucle. */
-@keyframes family-loader-breathe {
-  0%,
-  100% {
-    opacity: 0.4;
-  }
-  50% {
-    opacity: 1;
-  }
-}
+/* Mouvement réduit : le H plein, immobile. Le chargement se lit au libellé (`role="status"`). */
 @media (prefers-reduced-motion: reduce) {
   .family-loader [data-piece] [data-fill] {
     transform: none;
-    animation-name: family-loader-breathe;
-    animation-timing-function: ease-in-out;
+    opacity: 1;
+    animation-name: none;
   }
 }
 

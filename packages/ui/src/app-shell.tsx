@@ -1,6 +1,12 @@
+import Activity01Icon from "@hugeicons/core-free-icons/Activity01Icon"
+import AiMagicIcon from "@hugeicons/core-free-icons/AiMagicIcon"
+import ArrowLeft01Icon from "@hugeicons/core-free-icons/ArrowLeft01Icon"
+import BookOpen01Icon from "@hugeicons/core-free-icons/BookOpen01Icon"
+import Cancel01Icon from "@hugeicons/core-free-icons/Cancel01Icon"
 import Menu01Icon from "@hugeicons/core-free-icons/Menu01Icon"
 import PanelLeftCloseIcon from "@hugeicons/core-free-icons/PanelLeftCloseIcon"
 import PanelLeftOpenIcon from "@hugeicons/core-free-icons/PanelLeftOpenIcon"
+import Settings01Icon from "@hugeicons/core-free-icons/Settings01Icon"
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react"
 import { useRender } from "@base-ui/react/use-render"
 import {
@@ -9,6 +15,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -36,6 +43,7 @@ import { ProductRailShownContext, ShellLeaveContext, StatusPageContext } from ".
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip.tsx"
 import { cn } from "./cn.ts"
 import { ServiceStatus, statusPageUrlFor } from "./service-status.tsx"
+import { useMediaQuery } from "./use-media-query.ts"
 
 // ── Rail : la barre latérale réduite aux icônes, mémorisée par navigateur ──────────────
 
@@ -169,6 +177,270 @@ export function SidebarNavItem({
         <TooltipContent side="right">{label}</TooltipContent>
       </Tooltip>
     </li>
+  )
+}
+
+// ── Accès communs, au-dessus du compte ──────────────────────────────────────────────────
+
+/**
+ * Un accès commun de la barre : une adresse, ou un lien du routeur (`{ render: <Link to="/settings" /> }`,
+ * dont le `data-status="active"` marque la page ouverte), ou une adresse avec `active`.
+ */
+export type ShellLink = string | { href?: string; render?: React.ReactElement; active?: boolean }
+
+/** Les trois accès que la coque pose juste au-dessus du compte, toujours dans cet ordre. */
+export type AppShellLinks = {
+  /** Documentation du produit. */
+  documentation?: ShellLink
+  /** Réglages du produit ou de l'organisation. */
+  settings?: ShellLink
+  /** État du service : la page de statut de la coque (`statusPage`) par défaut, `false` pour le retirer. */
+  status?: ShellLink | false
+}
+
+const COMMON_LINKS = [
+  { key: "documentation", label: "Documentation", icon: BookOpen01Icon },
+  { key: "settings", label: "Réglages", icon: Settings01Icon },
+  { key: "status", label: "État du service", icon: Activity01Icon },
+] as const
+
+function ShellCommonLinks({
+  links,
+  statusPageUrl,
+}: {
+  links: AppShellLinks
+  statusPageUrl: string | null
+}): React.JSX.Element | null {
+  const resolved = {
+    documentation: links.documentation,
+    settings: links.settings,
+    status: links.status === false ? undefined : (links.status ?? statusPageUrl ?? undefined),
+  }
+  const items = COMMON_LINKS.flatMap(({ key, label, icon }) => {
+    const link = resolved[key]
+    if (link === undefined) return []
+    const props = typeof link === "string" ? { href: link } : link
+    return [
+      <SidebarNavItem
+        key={key}
+        icon={icon}
+        label={label}
+        {...(props.href !== undefined ? { href: props.href } : {})}
+        {...(props.render !== undefined ? { render: props.render } : {})}
+        {...(props.active !== undefined ? { active: props.active } : {})}
+      />,
+    ]
+  })
+  if (!items.length) return null
+  return (
+    <nav aria-label="Accès communs">
+      <ul data-slot="app-shell-links" className="grid gap-0.5">
+        {items}
+      </ul>
+    </nav>
+  )
+}
+
+// ── Assistant ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * L'assistant IA du produit. La coque pose son bouton juste à côté de la recherche et l'ouvre dans
+ * une colonne à droite de la page, sur le fond de l'application : la page se rétrécit et se
+ * réorganise, jamais recouverte. Sous 1280 px, là où les deux ne tiennent plus côte à côte, une
+ * vue dédiée plein écran avec « Retour à la page ». La page reste montée dans les deux cas, et le
+ * panneau, une fois ouvert, aussi : rien ne se perd en fermant ou en changeant de largeur.
+ */
+export type AppShellAssistant = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /**
+   * Le corps de l'assistant : conversation et saisie (`@hgdc/ui/assistant-chat`). La coque pose le
+   * titre, la fermeture et le retour à la page ; le panneau occupe la hauteur restante et défile.
+   */
+  panel: ReactNode
+  /** Nom du bouton et titre du panneau : « Assistant » par défaut. */
+  label?: string
+  /** Lettre du raccourci `Ctrl` (`⌘`) + lettre qui ouvre et ferme l'assistant (`"j"`). Aucun par défaut. */
+  shortcut?: string
+}
+
+/** Largeur à partir de laquelle la page et l'assistant tiennent côte à côte (`xl`). */
+const ASSISTANT_SIDE_BY_SIDE = "(min-width: 80rem)"
+
+const FOCUSABLE = 'textarea, input, [contenteditable="true"], [autofocus]'
+
+function AssistantButton({
+  assistant,
+  panelId,
+  buttonRef,
+}: {
+  assistant: AppShellAssistant
+  panelId: string
+  buttonRef: React.RefObject<HTMLButtonElement | null>
+}): React.JSX.Element {
+  const label = assistant.label ?? "Assistant"
+  const letter = assistant.shortcut?.toUpperCase()
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            ref={buttonRef}
+            type="button"
+            data-slot="app-shell-assistant-button"
+            aria-expanded={assistant.open}
+            aria-controls={panelId}
+            {...(letter ? { "aria-keyshortcuts": `Control+${letter} Meta+${letter}` } : {})}
+            onClick={() => assistant.onOpenChange(!assistant.open)}
+            className={cn(
+              "touch-target flex h-9 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-medium text-muted-foreground outline-none",
+              "transition-colors duration-(--duration-fast) ease-out hover:bg-foreground/[0.05] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50",
+              "aria-expanded:bg-foreground/[0.08] aria-expanded:text-foreground",
+              "max-lg:w-9 max-lg:justify-center max-lg:px-0",
+            )}
+          />
+        }
+      >
+        <HugeiconsIcon icon={AiMagicIcon} strokeWidth={1.8} aria-hidden className="size-[1.125rem] shrink-0" />
+        <span className="max-lg:sr-only">{label}</span>
+      </TooltipTrigger>
+      <TooltipContent>
+        <span className="flex items-center gap-2">
+          {assistant.open ? `Fermer ${label.toLocaleLowerCase("fr-CH")}` : label}
+          {letter ? (
+            <KbdGroup>
+              <Kbd>{isApplePlatform() ? "⌘" : "Ctrl"}</Kbd>
+              <Kbd>{letter}</Kbd>
+            </KbdGroup>
+          ) : null}
+        </span>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+/** `Ctrl` (`⌘`) + la lettre de l'assistant : l'ouvre ou le ferme, où que soit le focus. */
+function useAssistantShortcut(assistant: AppShellAssistant | undefined): void {
+  const latest = useRef(assistant)
+  useEffect(() => {
+    latest.current = assistant
+  })
+  const letter = assistant?.shortcut?.toLowerCase()
+  useEffect(() => {
+    if (!letter) return undefined
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() !== letter || !(event.metaKey || event.ctrlKey) || event.altKey || event.shiftKey)
+        return
+      const current = latest.current
+      if (!current) return
+      event.preventDefault()
+      current.onOpenChange(!current.open)
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [letter])
+}
+
+function AssistantPanel({
+  assistant,
+  panelId,
+  wide,
+  openAtShellMount,
+  buttonRef,
+}: {
+  assistant: AppShellAssistant
+  panelId: string
+  wide: boolean
+  openAtShellMount: boolean
+  buttonRef: React.RefObject<HTMLButtonElement | null>
+}): React.JSX.Element {
+  const { open, onOpenChange } = assistant
+  const label = assistant.label ?? "Assistant"
+  const titleId = useId()
+  const panelRef = useRef<HTMLElement>(null)
+  // Ouvert dès le premier rendu de la coque (état restauré) : le focus reste où le navigateur le met.
+  const wasOpen = useRef(openAtShellMount)
+
+  // Ouvert : le focus entre dans le panneau (sa saisie, sinon le panneau). Fermé : il revient au
+  // bouton, s'il était dans le panneau ou perdu sur la page.
+  useEffect(() => {
+    const panel = panelRef.current
+    if (open && !wasOpen.current && panel && !panel.contains(document.activeElement)) {
+      const target = panel.querySelector<HTMLElement>(FOCUSABLE) ?? panel
+      target.focus({ preventScroll: true })
+    }
+    if (!open && wasOpen.current) {
+      const active = document.activeElement
+      if (!active || active === document.body || panel?.contains(active)) buttonRef.current?.focus()
+    }
+    wasOpen.current = open
+  }, [open, buttonRef])
+
+  // Échap, le focus dans le panneau : il se ferme (sauf si un élément du panneau l'a déjà traité).
+  useEffect(() => {
+    const panel = panelRef.current
+    if (!open || !panel) return undefined
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return
+      event.preventDefault()
+      onOpenChange(false)
+    }
+    panel.addEventListener("keydown", onKey)
+    return () => panel.removeEventListener("keydown", onKey)
+  }, [open, onOpenChange])
+
+  const close = () => onOpenChange(false)
+  return (
+    <section
+      ref={panelRef}
+      id={panelId}
+      tabIndex={-1}
+      data-slot="app-shell-assistant"
+      data-open={open ? "" : undefined}
+      aria-labelledby={titleId}
+      inert={!open || undefined}
+      {...(open && !wide ? { role: "dialog", "aria-modal": true } : {})}
+      className={cn(
+        "outline-none",
+        // Vue dédiée, sous 1280 px : plein écran, la page reste montée dessous.
+        "hidden data-open:max-xl:fixed data-open:max-xl:inset-0 data-open:max-xl:z-40 data-open:max-xl:flex data-open:max-xl:flex-col data-open:max-xl:bg-background",
+        "data-open:max-xl:pt-[env(safe-area-inset-top,0px)] data-open:max-xl:soft-in motion-reduce:animate-none",
+        // Côte à côte : une colonne de la grille, qui s'ouvre en largeur ; la page se réorganise.
+        "xl:invisible xl:flex xl:w-0 xl:flex-col xl:overflow-hidden xl:transition-[width,visibility] xl:duration-(--duration-slow) xl:ease-ios motion-reduce:transition-none",
+        "xl:data-open:visible xl:data-open:w-[26rem] 2xl:data-open:w-[28rem]",
+      )}
+    >
+      <div className="flex min-h-0 flex-1 flex-col xl:w-[26rem] xl:py-2 xl:pr-2 2xl:w-[28rem]">
+        <div className="flex min-h-14 shrink-0 items-center gap-1 border-b border-foreground/5 px-2 sm:px-4 xl:border-0 xl:pr-1 xl:pl-3">
+          <button
+            type="button"
+            onClick={close}
+            className="touch-target flex h-9 shrink-0 items-center gap-1.5 rounded-xl pr-3 pl-2 text-sm font-medium text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 xl:hidden"
+          >
+            <HugeiconsIcon icon={ArrowLeft01Icon} strokeWidth={2} aria-hidden className="size-4" />
+            Retour à la page
+          </button>
+          <h2
+            id={titleId}
+            className="flex min-w-0 flex-1 items-center gap-2 truncate font-heading text-[0.9375rem] font-semibold max-xl:justify-end max-xl:pr-2"
+          >
+            <HugeiconsIcon icon={AiMagicIcon} strokeWidth={1.8} aria-hidden className="size-[1.125rem] shrink-0" />
+            {label}
+          </h2>
+          <button
+            type="button"
+            onClick={close}
+            aria-label={`Fermer ${label.toLocaleLowerCase("fr-CH")}`}
+            className="touch-target grid size-9 shrink-0 place-items-center rounded-xl text-muted-foreground outline-none hover:bg-shell-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 max-xl:hidden"
+          >
+            <HugeiconsIcon icon={Cancel01Icon} strokeWidth={1.8} aria-hidden className="size-[1.125rem]" />
+          </button>
+        </div>
+        <div data-slot="app-shell-assistant-body" className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          {assistant.panel}
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -326,10 +598,13 @@ export function AppShell({
   productRail = true,
   accountHref,
   nav,
+  links,
+  account,
   sidebarFooter,
   header,
   onSearch,
   searchLabel,
+  assistant,
   children,
   contentKey,
   navigating = false,
@@ -349,7 +624,21 @@ export function AppShell({
   accountHref?: string | undefined
   /** `SidebarNav` et ses `SidebarNavItem`. */
   nav: ReactNode
-  /** Bas de la barre : liens secondaires (Docs, Paramètres) et `AccountMenu`. */
+  /**
+   * Documentation, Réglages et État du service, juste au-dessus du compte, dans cet ordre, chacun
+   * optionnel (État du service suit `statusPage` par défaut).
+   */
+  links?: AppShellLinks
+  /** `AccountMenu`, tout en bas de la barre latérale (et du tiroir sur téléphone). */
+  account?: ReactNode
+  /**
+   * Avec `account` : entrées propres au produit, posées au-dessus des accès communs.
+   *
+   * @deprecated Comme bas de barre complet (liens et `AccountMenu`), remplacé par `links` et
+   * `account` (0.29). Sans `account`, il est rendu tel quel sous les accès communs, pour ne rien
+   * casser : déplacer `AccountMenu` dans `account`, Docs et Réglages dans `links`, et retirer
+   * l'ancien lien vers l'assistant (`assistant`).
+   */
   sidebarFooter?: ReactNode
   /**
    * Barre du haut, à gauche, après la marque sur téléphone : le contexte de la page (sélecteur de
@@ -363,6 +652,8 @@ export function AppShell({
   onSearch?: () => void
   /** Texte du champ de recherche : « Rechercher » par défaut. */
   searchLabel?: string
+  /** L'assistant IA : son bouton à côté de la recherche, son panneau à droite de la page. */
+  assistant?: AppShellAssistant
   children: ReactNode
   /**
    * Clé de la page affichée (le chemin, `location.pathname`) : la zone de contenu devient une
@@ -386,7 +677,7 @@ export function AppShell({
   /**
    * Page de statut du produit, dont le bandeau d'état se pose en tête du contenu (ADR 0018) :
    * `https://status.hgdc.ch/<produit>` par défaut, une autre adresse (prévisualisation sur une page
-   * de test), ou `false` pour ne rien lire. Le menu du compte en tire son entrée « État du service ».
+   * de test), ou `false` pour ne rien lire. L'accès « État du service », au-dessus du compte, y mène.
    */
   statusPage?: string | false | undefined
 }): React.JSX.Element {
@@ -428,6 +719,26 @@ export function AppShell({
     if (loading && contentRef.current) contentRef.current.scrollTop = 0
   }, [loading])
 
+  // Assistant : monté à la première ouverture, puis gardé (sa conversation survit à la fermeture).
+  const assistantOpen = assistant?.open ?? false
+  const [assistantMounted, setAssistantMounted] = useState(assistantOpen)
+  const [assistantOpenAtMount] = useState(assistantOpen)
+  if (assistantOpen && !assistantMounted) setAssistantMounted(true)
+  const wide = useMediaQuery(ASSISTANT_SIDE_BY_SIDE)
+  // Vue dédiée (sous 1280 px) : la page, dessous, ne reçoit ni focus ni clic.
+  const pageBlocked = assistantOpen && !wide
+  const assistantPanelId = useId()
+  const assistantButtonRef = useRef<HTMLButtonElement>(null)
+  useAssistantShortcut(assistant)
+
+  const footer = (
+    <>
+      {account !== undefined ? sidebarFooter : null}
+      <ShellCommonLinks links={links ?? {}} statusPageUrl={statusPageUrl} />
+      {account ?? sidebarFooter}
+    </>
+  )
+
   return (
     <ShellContext.Provider value={{ closeMobileNav: () => setMenuOpen(false) }}>
       <ProductRailShownContext value={productRail}>
@@ -439,9 +750,10 @@ export function AppShell({
               data-product-rail={productRail ? "" : undefined}
               data-loading={loading ? "" : undefined}
               data-hydrated={hydrated ? "" : undefined}
+              data-assistant={assistantOpen ? "" : undefined}
               className={cn(
                 "min-h-dvh lg:grid lg:h-dvh lg:bg-shell",
-                productRail ? "lg:grid-cols-[auto_auto_minmax(0,1fr)]" : "lg:grid-cols-[auto_minmax(0,1fr)]",
+                productRail ? "lg:grid-cols-[auto_auto_minmax(0,1fr)_auto]" : "lg:grid-cols-[auto_minmax(0,1fr)_auto]",
               )}
             >
               <a
@@ -451,24 +763,29 @@ export function AppShell({
                 Aller au contenu
               </a>
               {productRail ? (
-                <ProductRail
-                  current={product}
-                  organization={organization}
-                  accountHref={accountHref}
-                  onExpandedChange={setRailPeek}
-                />
+                <div className="contents" inert={pageBlocked || undefined}>
+                  <ProductRail
+                    current={product}
+                    organization={organization}
+                    accountHref={accountHref}
+                    onExpandedChange={setRailPeek}
+                  />
+                </div>
               ) : null}
               <aside
                 aria-label="Barre latérale"
+                inert={pageBlocked || undefined}
                 className="group/sidebar hidden overflow-hidden text-shell-foreground transition-[width] duration-(--duration-base) ease-ios motion-reduce:transition-none lg:flex lg:w-64 lg:flex-col lg:rail:w-16"
               >
                 <SidebarHead product={product} />
                 {!productRail && organization ? <div className="shrink-0 px-3 pb-1">{organization}</div> : null}
                 {nav}
-                {sidebarFooter ? <div className="grid gap-0.5 px-3 pt-1 pb-3">{sidebarFooter}</div> : null}
+                <div data-slot="app-shell-footer" className="grid gap-0.5 px-3 pt-1 pb-3 empty:hidden">
+                  {footer}
+                </div>
               </aside>
 
-              <div className="flex min-h-dvh flex-col lg:min-h-0 lg:p-2 lg:pl-0">
+              <div inert={pageBlocked || undefined} className="flex min-h-dvh flex-col lg:min-h-0 lg:p-2 lg:pl-0">
                 <div
                   ref={contentRef}
                   className="relative flex flex-1 flex-col lg:min-h-0 lg:overflow-y-auto lg:rounded-xl lg:bg-background lg:[scrollbar-gutter:stable]"
@@ -500,6 +817,13 @@ export function AppShell({
                         compact="mobile"
                         className="shrink-0 lg:w-96 lg:max-w-none"
                         {...(searchLabel !== undefined ? { label: searchLabel } : {})}
+                      />
+                    ) : null}
+                    {assistant ? (
+                      <AssistantButton
+                        assistant={assistant}
+                        panelId={assistantPanelId}
+                        buttonRef={assistantButtonRef}
                       />
                     ) : null}
                   </header>
@@ -534,6 +858,16 @@ export function AppShell({
                 </div>
               </div>
 
+              {assistant && assistantMounted ? (
+                <AssistantPanel
+                  assistant={assistant}
+                  panelId={assistantPanelId}
+                  wide={wide}
+                  openAtShellMount={assistantOpenAtMount}
+                  buttonRef={assistantButtonRef}
+                />
+              ) : null}
+
               {hasRoot ? null : <FamilyLoaderHost />}
 
               <Drawer side="bottom" open={menuOpen} onOpenChange={setMenuOpen}>
@@ -541,11 +875,9 @@ export function AppShell({
                   <DrawerTitle className="sr-only">Menu</DrawerTitle>
                   {organization ? <div className="px-3 pt-1">{organization}</div> : null}
                   {nav}
-                  {sidebarFooter ? (
-                    <div className="grid gap-0.5 border-t border-foreground/5 px-3 pt-2 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
-                      {sidebarFooter}
-                    </div>
-                  ) : null}
+                  <div className="grid gap-0.5 border-t border-foreground/5 px-3 pt-2 pb-[max(env(safe-area-inset-bottom),0.75rem)] empty:hidden">
+                    {footer}
+                  </div>
                 </DrawerContent>
               </Drawer>
             </div>

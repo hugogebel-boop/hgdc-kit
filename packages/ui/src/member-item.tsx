@@ -47,7 +47,9 @@ export function MemberItem({
       icon={
         <Avatar className="size-10">
           {image ? <AvatarImage src={image} alt="" /> : null}
-          <AvatarFallback className="text-xs font-semibold">{initials(name, email)}</AvatarFallback>
+          <AvatarFallback colorKey={email || name} className="text-xs font-semibold">
+            {initials(name, email)}
+          </AvatarFallback>
         </Avatar>
       }
       title={
