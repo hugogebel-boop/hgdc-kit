@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.22.1
+
+### Patch Changes
+
+- 05bc493: `ResourceItem` : à 390 px et texte 200 %, le titre passe à la ligne au lieu d'être tronqué, et badge et actions ne dépassent plus de la carte (le texte d'un bouton d'action peut passer à la ligne).
+
 ## 0.22.0
 
 ### Minor Changes
