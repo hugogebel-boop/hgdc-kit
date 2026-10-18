@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.30.1
+
+### Patch Changes
+
+- 212704d: TimeChart : le tableau réservé aux lecteurs d'écran n'allonge plus la page (zone blanche sous le graphique) et se limite à un échantillon de 60 mesures.
+
 ## 0.30.0
 
 ### Minor Changes
