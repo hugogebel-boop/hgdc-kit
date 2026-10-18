@@ -31,6 +31,20 @@ export const PRODUCT_BADGE_SVG: Readonly<Record<FamilyProduct, string>> = {
   docs: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#fff"/><svg x="7.68" y="7.68" width="48.64" height="48.64" viewBox="14 13 36 36"><defs><linearGradient id="g" x1="14" y1="14" x2="50" y2="50" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#0ec1dc"/><stop offset="1" stop-color="#0aa3c1"/></linearGradient></defs><path d="M26 13H46A3 3 0 0 1 49 16V43A3 3 0 0 1 46 46H26A3 3 0 0 1 23 43V16A3 3 0 0 1 26 13Z" fill="url(#g)" fill-opacity="0.22" fill-rule="evenodd"/><path d="M18 18H32V24.5A2.5 2.5 0 0 0 34.5 27H41V46A3 3 0 0 1 38 49H18A3 3 0 0 1 15 46V21A3 3 0 0 1 18 18ZM21.3 33H34.7A1.3 1.3 0 0 1 36 34.3V34.300000000000004A1.3 1.3 0 0 1 34.7 35.6H21.3A1.3 1.3 0 0 1 20 34.300000000000004V34.3A1.3 1.3 0 0 1 21.3 33ZM21.3 39H29.7A1.3 1.3 0 0 1 31 40.3V40.300000000000004A1.3 1.3 0 0 1 29.7 41.6H21.3A1.3 1.3 0 0 1 20 40.300000000000004V40.3A1.3 1.3 0 0 1 21.3 39Z" fill="url(#g)" fill-rule="evenodd"/><path d="M32 18L41 27H34.5A2.5 2.5 0 0 1 32 24.5Z" fill="url(#g)" fill-opacity="0.45" fill-rule="evenodd"/></svg></svg>',
 }
 
+/**
+ * Empreinte de chaque icône d'e-mail (`email-icons/<mot>.png`), ajoutée à son adresse : un client
+ * mail qui garde l'ancienne image en cache (proxy d'images de Gmail) charge la nouvelle.
+ */
+export const EMAIL_ICON_VERSION: Readonly<Record<FamilyProduct, string>> = {
+  account: "2263211d",
+  host: "ceb0451c",
+  mail: "5c18df41",
+  portal: "e18dd184",
+  status: "3f91af62",
+  analytics: "be693909",
+  docs: "4f1fb8a0",
+}
+
 /** SVG du H « Double », la marque de la H Collection, sans fond (`family/hcollection-icon(-dark).svg`). */
 export const FAMILY_MARK_SVG: ThemedSvg = {
   light:

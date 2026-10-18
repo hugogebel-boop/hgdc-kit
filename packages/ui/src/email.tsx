@@ -28,6 +28,7 @@ import {
   type EmailAccent,
   type EmailTone,
 } from "./email-palette.ts"
+import { EMAIL_ICON_BASE, emailIconUrl } from "./email-icon.ts"
 import { HGDC_ACCOUNT, HGDC_PRODUCTS, type HgdcCatalogProduct } from "./products.ts"
 
 /**
@@ -36,18 +37,13 @@ import { HGDC_ACCOUNT, HGDC_PRODUCTS, type HgdcCatalogProduct } from "./products
  * Le rendu se fait côté serveur (action Convex `"use node"`, route serveur) : `renderEmail`.
  */
 
-/** Où hgdc.ch sert les icônes des e-mails (`packages/ui/email-icons/`). */
-export const EMAIL_ICON_BASE = "https://hgdc.ch/email/"
+export { EMAIL_ICON_BASE, emailIconUrl }
+
 const MAIL_HREF = "https://mail.hgdc.ch"
 const LEGAL = "Hugo Gebel Développement Conseil, Lausanne"
 // Pas de police web : celle du système, Inter ou Geist quand elles sont installées.
 const FONT = 'Geist, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace'
-
-/** Icône en PNG du produit (`mail` → `https://hgdc.ch/email/mail.png`). */
-export function emailIconUrl(word: string): string {
-  return `${EMAIL_ICON_BASE}${word.toLowerCase()}.png`
-}
 
 function findProduct(product: HgdcCatalogProduct | string): HgdcCatalogProduct {
   if (typeof product !== "string") return product
