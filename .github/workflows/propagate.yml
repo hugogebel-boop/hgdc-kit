@@ -74,13 +74,13 @@ jobs:
       - name: Aligner sur le kit
         run: |
           # Juste après la publication, le CDN de npm sert encore l'ancienne liste de versions :
-          # on réessaie jusqu'à 5 minutes avant d'abandonner.
+          # on réessaie jusqu’à 15 minutes avant d’abandonner (plus de 5 minutes observé le 2026-10-18).
           retry() {
-            for attempt in $(seq 1 10); do
+            for attempt in $(seq 1 20); do
               "$@" && return 0
-              [ "$attempt" -eq 10 ] && return 1
-              echo "Version pas encore visible sur le registre, nouvel essai dans 30 s ($attempt/10)"
-              sleep 30
+              [ "$attempt" -eq 20 ] && return 1
+              echo "Version pas encore visible sur le registre, nouvel essai dans 45 s ($attempt/20)"
+              sleep 45
             done
           }
           if [ -f package-lock.json ]; then
