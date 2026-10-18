@@ -6,7 +6,7 @@
 //
 // Les icônes des produits se posent toujours sur un fond blanc, en clair comme en sombre, sans
 // bordure ni ombre (choix de Hugo, 2026-10-17). Le dessin est celui de la variante claire
-// (`<mot>.svg`), centré sur son encre (pas sur sa viewBox), à 10 % de marge. Formes (2026-10-18) :
+// (`<mot>.svg`), centré sur son encre (pas sur sa viewBox), à 12 % de marge. Formes (2026-10-18) :
 //   carré arrondi (rx 14/64, 22 %)  partout : barre, menu du compte, « Propulsé par », e-mails, icon-192/512
 //   plein cadre                     apple-touch et maskable (le système découpe lui-même ; la maskable
 //                                   garde l'encre dans la zone sûre, cercle de 80 %)
@@ -27,7 +27,7 @@ const EMAIL = new URL("../packages/ui/email-icons/", import.meta.url)
 const PRODUCTS = ["account", "host", "mail", "portal", "status", "analytics", "docs"] as const
 
 /** Marge du pictogramme dans sa tuile blanche, de chaque côté. */
-const MARGIN = 0.1
+const MARGIN = 0.12
 /** Marge du favicon, sans fond : le pictogramme le plus grand possible dans l'onglet. */
 const FAVICON_MARGIN = 0.04
 /** Rayon de la zone sûre d'une icône maskable (cercle de 80 %), sur 64. */

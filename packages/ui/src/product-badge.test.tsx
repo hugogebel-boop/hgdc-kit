@@ -32,6 +32,8 @@ describe("identité H Collection", () => {
       expect(PRODUCT_BADGE_SVG[product]).toContain(picto)
       expect(PRODUCT_BADGE_SVG[product]).toContain('<rect width="64" height="64" rx="14" fill="#fff"/>')
       expect(PRODUCT_BADGE_SVG[product]).not.toMatch(/<circle cx="32" cy="32" r="32"|<path d="M32 0C/)
+      // Pictogramme à 12 % de marge de chaque côté (7.68 sur 64), ADR 0017.
+      expect(PRODUCT_BADGE_SVG[product]).toContain('<svg x="7.68" y="7.68" width="48.64" height="48.64"')
     }
     expect(FAMILY_MARK_SVG.light).toBe(file("hcollection-icon"))
     expect(FAMILY_MARK_SVG.dark).toBe(file("hcollection-icon-dark"))
