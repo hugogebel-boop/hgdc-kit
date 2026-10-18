@@ -1,5 +1,11 @@
 # @hgdc/config
 
+## 0.2.0
+
+### Minor Changes
+
+- e2b8dfa: `@anthropic-ai/sdk` 0.134.0 entre dans la stack (moteur de l'assistant commun, `@hgdc/assistant`) : épinglé par `hgdc-stack sync`, propagé par le kit, plus par Renovate.
+
 ## 0.1.4
 
 ### Patch Changes

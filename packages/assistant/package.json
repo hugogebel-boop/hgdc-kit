@@ -1,6 +1,6 @@
 {
   "name": "@hgdc/assistant",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Moteur commun de l'assistant IA des produits HGDC : outils typés (lecture, écriture, confirmation), boucle Claude en flux (Anthropic ou OpenRouter), tables et gardes Convex, crédits mensuels, clé chiffrée de l'organisation.",
   "license": "UNLICENSED",
   "homepage": "https://github.com/hugogebel-boop/hgdc-kit/tree/main/packages/assistant#readme",
