@@ -24,15 +24,16 @@ const css = readFileSync(join(root, "styles.css"), "utf8")
 describe("identité H Collection", () => {
   it("embarque les icônes telles que les fichiers de family/tile/ (régénérer : bun scripts/family.ts)", () => {
     for (const product of FAMILY_PRODUCTS) {
-      expect(PRODUCT_BADGE_SVG[product].squircle).toBe(file(`tile/${product}`))
-      expect(PRODUCT_BADGE_SVG[product].round).toBe(file(`tile/${product}-round`))
-      // Le dessin clair, tel quel, sur un fond blanc.
+      expect(PRODUCT_BADGE_SVG[product]).toBe(file(`tile/${product}`))
+      // Le dessin clair, tel quel, sur un carré blanc arrondi (rx 14/64), la seule forme partout.
       const picto = file(product)
         .replace(/^<svg[^>]*>/, "")
         .replace(/<\/svg>$/, "")
-      expect(PRODUCT_BADGE_SVG[product].squircle).toContain(picto)
-      expect(PRODUCT_BADGE_SVG[product].squircle).toContain('fill="#fff"')
-      expect(PRODUCT_BADGE_SVG[product].round).toContain('<circle cx="32" cy="32" r="32" fill="#fff"/>')
+      expect(PRODUCT_BADGE_SVG[product]).toContain(picto)
+      expect(PRODUCT_BADGE_SVG[product]).toContain('<rect width="64" height="64" rx="14" fill="#fff"/>')
+      expect(PRODUCT_BADGE_SVG[product]).not.toMatch(/<circle cx="32" cy="32" r="32"|<path d="M32 0C/)
+      // Pictogramme à 12 % de marge de chaque côté (7.68 sur 64), ADR 0017.
+      expect(PRODUCT_BADGE_SVG[product]).toContain('<svg x="7.68" y="7.68" width="48.64" height="48.64"')
     }
     expect(FAMILY_MARK_SVG.light).toBe(file("hcollection-icon"))
     expect(FAMILY_MARK_SVG.dark).toBe(file("hcollection-icon-dark"))
@@ -41,8 +42,8 @@ describe("identité H Collection", () => {
   it("garde le même dégradé dans la pastille, PRODUCT_GRADIENT et les jetons", () => {
     for (const product of FAMILY_PRODUCTS) {
       const { from, to } = PRODUCT_GRADIENT[product]
-      expect(PRODUCT_BADGE_SVG[product].squircle).toContain(`stop-color="${from}"`)
-      expect(PRODUCT_BADGE_SVG[product].squircle).toContain(`stop-color="${to}"`)
+      expect(PRODUCT_BADGE_SVG[product]).toContain(`stop-color="${from}"`)
+      expect(PRODUCT_BADGE_SVG[product]).toContain(`stop-color="${to}"`)
       expect(css).toContain(`--product-${product}-from: ${from};`)
       expect(css).toContain(`--product-${product}-to: ${to};`)
     }
@@ -57,17 +58,17 @@ describe("identité H Collection", () => {
     const { container } = render(
       <>
         <ProductBadge product="host" />
-        <ProductBadge product="mail" shape="round" label="Mail" />
+        <ProductBadge product="mail" label="Mail" />
         <FamilyMark label="H Collection" />
       </>,
     )
-    const [badge, round] = [...container.querySelectorAll('[data-slot="product-badge"]')]
+    const [badge, named] = [...container.querySelectorAll('[data-slot="product-badge"]')]
     const mark = container.querySelector('[data-slot="family-mark"]')
-    expect(badge?.getAttribute("src")).toBe(`data:image/svg+xml,${encodeURIComponent(PRODUCT_BADGE_SVG.host.squircle)}`)
+    expect(badge?.getAttribute("src")).toBe(`data:image/svg+xml,${encodeURIComponent(PRODUCT_BADGE_SVG.host)}`)
     expect(badge?.getAttribute("alt")).toBe("")
     expect(badge?.getAttribute("aria-hidden")).toBe("true")
-    expect(round?.getAttribute("src")).toBe(`data:image/svg+xml,${encodeURIComponent(PRODUCT_BADGE_SVG.mail.round)}`)
-    expect(round?.getAttribute("alt")).toBe("Mail")
+    expect(named?.getAttribute("src")).toBe(`data:image/svg+xml,${encodeURIComponent(PRODUCT_BADGE_SVG.mail)}`)
+    expect(named?.getAttribute("alt")).toBe("Mail")
     // Le H garde ses deux variantes, sans fond.
     expect([...(mark?.querySelectorAll("img") ?? [])].map((img) => img.getAttribute("data-mark-theme"))).toEqual([
       "light",
@@ -89,7 +90,7 @@ describe("identité H Collection", () => {
     fireEvent.click(screen.getByRole("button", { name: "Compte de Hugo Gebel" }))
     const status = await screen.findByRole("menuitem", { name: "Status" })
     expect(status.querySelector("img")?.getAttribute("src")).toBe(
-      `data:image/svg+xml,${encodeURIComponent(PRODUCT_BADGE_SVG.status.squircle)}`,
+      `data:image/svg+xml,${encodeURIComponent(PRODUCT_BADGE_SVG.status)}`,
     )
   })
 })

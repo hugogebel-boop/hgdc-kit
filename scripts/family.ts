@@ -6,17 +6,17 @@
 //
 // Les icônes des produits se posent toujours sur un fond blanc, en clair comme en sombre, sans
 // bordure ni ombre (choix de Hugo, 2026-10-17). Le dessin est celui de la variante claire
-// (`<mot>.svg`), à 18 % de marge. Forme selon le contexte :
-//   squircle            barre des produits, menu du compte, e-mails, icon-192/512
-//   rond                « Propulsé par »
-//   carré arrondi 22 %  favicon
-//   plein cadre         apple-touch et maskable (le système découpe lui-même)
+// (`<mot>.svg`), centré sur son encre (pas sur sa viewBox), à 12 % de marge. Formes (2026-10-18) :
+//   carré arrondi (rx 14/64, 22 %)  partout : barre, menu du compte, « Propulsé par », e-mails, icon-192/512
+//   plein cadre                     apple-touch et maskable (le système découpe lui-même ; la maskable
+//                                   garde l'encre dans la zone sûre, cercle de 80 %)
+//   sans fond                       favicon, marge 4 %, variante sombre sous prefers-color-scheme: dark
 // Le H « Double » reste sans fond, en deux variantes (clair, sombre).
 //
 // Écrit :
-//   packages/ui/family/tile/<mot>.svg, <mot>-round.svg, <mot>-favicon.svg
+//   packages/ui/family/tile/<mot>.svg
 //   packages/ui/src/family-svg.ts (SVG embarqués)
-//   packages/ui/email-icons/<mot>.png (96 px, squircle : Gmail et Outlook n'affichent pas le SVG)
+//   packages/ui/email-icons/<mot>.png (96 px, carré arrondi : Gmail et Outlook n'affichent pas le SVG)
 //   packages/ui/family/app/<mot>/ : favicon.svg, favicon.ico (16, 32, 48), apple-touch-icon.png
 //     (180), icon-192.png, icon-512.png, icon-maskable-512.png, à recopier dans le public/ du produit
 import { mkdir, readFile, writeFile } from "node:fs/promises"
@@ -26,27 +26,64 @@ const FAMILY = new URL("../packages/ui/family/", import.meta.url)
 const EMAIL = new URL("../packages/ui/email-icons/", import.meta.url)
 const PRODUCTS = ["account", "host", "mail", "portal", "status", "analytics", "docs"] as const
 
+/** Marge du pictogramme dans sa tuile blanche, de chaque côté. */
+const MARGIN = 0.12
+/** Marge du favicon, sans fond : le pictogramme le plus grand possible dans l'onglet. */
+const FAVICON_MARGIN = 0.04
+/** Rayon de la zone sûre d'une icône maskable (cercle de 80 %), sur 64. */
+const MASKABLE_SAFE_RADIUS = 25.6
+
+// Sans les polices du système : leur chargement à chaque rendu rend le script très lent.
+const NO_FONTS = { font: { loadSystemFonts: false } }
+
 const svg = async (name: string) =>
   (await readFile(new URL(`${name}.svg`, FAMILY), "utf8")).replace(/\r\n/g, "\n").trim()
 const inner = (text: string) => text.replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "")
-const viewBox = (text: string) => /viewBox="([^"]+)"/.exec(text)?.[1] ?? "0 0 64 64"
-const png = (text: string, px: number) => new Resvg(text, { fitTo: { mode: "width", value: px } }).render().asPng()
+const png = (text: string, px: number) =>
+  new Resvg(text, { ...NO_FONTS, fitTo: { mode: "width", value: px } }).render().asPng()
 
-const SQUIRCLE =
-  "M32 0C48.6 0 56.9 0 60.5 3.5C64 7.1 64 15.4 64 32C64 48.6 64 56.9 60.5 60.5C56.9 64 48.6 64 32 64C15.4 64 7.1 64 3.5 60.5C0 56.9 0 48.6 0 32C0 15.4 0 7.1 3.5 3.5C7.1 0 15.4 0 32 0Z"
 const SHAPES = {
-  squircle: `<path d="${SQUIRCLE}" fill="#fff"/>`,
-  round: `<circle cx="32" cy="32" r="32" fill="#fff"/>`,
   square: `<rect width="64" height="64" rx="14" fill="#fff"/>`,
   full: `<rect width="64" height="64" fill="#fff"/>`,
 } as const
 type Shape = keyof typeof SHAPES
-/** Le pictogramme clair centré sur un fond blanc de 64, à 18 % de marge. */
-const tile = (picto: string, shape: Shape) => {
-  const box = 64 * 0.64
-  const at = (64 - box) / 2
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${SHAPES[shape]}<svg x="${at}" y="${at}" width="${box}" height="${box}" viewBox="${viewBox(picto)}">${inner(picto)}</svg></svg>`
+
+/** Encre du pictogramme dans un carré qui la centre : le centrage suit le dessin, pas sa viewBox. */
+const ink = (picto: string) => {
+  const box = new Resvg(picto, NO_FONTS).innerBBox()
+  if (!box) throw new Error("pictogramme vide")
+  const side = Math.max(box.width, box.height)
+  const round = (n: number) => Math.round(n * 100) / 100
+  return {
+    viewBox: [box.x + box.width / 2 - side / 2, box.y + box.height / 2 - side / 2, side, side].map(round).join(" "),
+    /** Diagonale de l'encre, rapportée au côté du carré. */
+    diagonal: Math.hypot(box.width, box.height) / side,
+  }
 }
+/** Le pictogramme dans un carré de 64, à `margin` de chaque côté. */
+const place = (picto: string, margin: number) => {
+  const box = 64 * (1 - 2 * margin)
+  const at = 64 * margin
+  return `<svg x="${at}" y="${at}" width="${box}" height="${box}" viewBox="${ink(picto).viewBox}">${inner(picto)}</svg>`
+}
+const tile = (picto: string, shape: Shape, margin = MARGIN) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${SHAPES[shape]}${place(picto, margin)}</svg>`
+/** Marge qui garde l'encre dans le cercle sûr de la maskable, jamais moins que MARGIN. */
+const maskableMargin = (picto: string) => {
+  const box = Math.min(64 * (1 - 2 * MARGIN), (2 * MASKABLE_SAFE_RADIUS) / ink(picto).diagonal)
+  return (64 - box) / 2 / 64
+}
+/** Préfixe les identifiants : deux dessins dans un même fichier ne se marchent pas dessus. */
+const prefixIds = (text: string, prefix: string) =>
+  text
+    .replace(/id="([^"]+)"/g, `id="${prefix}$1"`)
+    .replace(/url\(#([^)]+)\)/g, `url(#${prefix}$1)`)
+    .replace(/href="#([^"]+)"/g, `href="#${prefix}$1"`)
+/** Favicon sans fond : la variante sombre (dégradé éclairci) quand le système est en sombre. */
+const favicon = (light: string, dark: string) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><style>.d{display:none}@media (prefers-color-scheme:dark){.l{display:none}.d{display:inline}}</style><g class="l">${place(prefixIds(light, "l"), FAVICON_MARGIN)}</g><g class="d">${place(prefixIds(dark, "d"), FAVICON_MARGIN)}</g></svg>`
+const bare = (picto: string) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${place(picto, FAVICON_MARGIN)}</svg>`
 
 /** ICO à entrées PNG (Windows Vista et suivants, tous les navigateurs). */
 const ico = (images: Array<{ px: number; data: Uint8Array }>) => {
@@ -73,24 +110,21 @@ await mkdir(TILE, { recursive: true })
 const badges: Array<string> = []
 for (const product of PRODUCTS) {
   const picto = await svg(product)
-  const squircle = tile(picto, "squircle")
-  const round = tile(picto, "round")
   const square = tile(picto, "square")
   const full = tile(picto, "full")
-  await writeFile(new URL(`${product}.svg`, TILE), `${squircle}\n`)
-  await writeFile(new URL(`${product}-round.svg`, TILE), `${round}\n`)
-  await writeFile(new URL(`${product}-favicon.svg`, TILE), `${square}\n`)
-  badges.push(`  ${product}: { squircle: ${JSON.stringify(squircle)}, round: ${JSON.stringify(round)} },`)
-  await writeFile(new URL(`${product}.png`, EMAIL), png(squircle, 96))
+  const maskable = tile(picto, "full", maskableMargin(picto))
+  await writeFile(new URL(`${product}.svg`, TILE), `${square}\n`)
+  badges.push(`  ${product}: ${JSON.stringify(square)},`)
+  await writeFile(new URL(`${product}.png`, EMAIL), png(square, 96))
 
   const app = new URL(`app/${product}/`, FAMILY)
   await mkdir(app, { recursive: true })
-  await writeFile(new URL("favicon.svg", app), `${square}\n`)
-  await writeFile(new URL("favicon.ico", app), ico([16, 32, 48].map((px) => ({ px, data: png(square, px) }))))
+  await writeFile(new URL("favicon.svg", app), `${favicon(picto, await svg(`${product}-dark`))}\n`)
+  await writeFile(new URL("favicon.ico", app), ico([16, 32, 48].map((px) => ({ px, data: png(bare(picto), px) }))))
   await writeFile(new URL("apple-touch-icon.png", app), png(full, 180))
-  await writeFile(new URL("icon-192.png", app), png(squircle, 192))
-  await writeFile(new URL("icon-512.png", app), png(squircle, 512))
-  await writeFile(new URL("icon-maskable-512.png", app), png(full, 512))
+  await writeFile(new URL("icon-192.png", app), png(square, 192))
+  await writeFile(new URL("icon-512.png", app), png(square, 512))
+  await writeFile(new URL("icon-maskable-512.png", app), png(maskable, 512))
 }
 
 const pair = async (name: string) =>
@@ -108,17 +142,14 @@ export function isFamilyProduct(word: string): word is FamilyProduct {
   return (FAMILY_PRODUCTS as ReadonlyArray<string>).includes(word)
 }
 
-/** Forme du fond blanc d'une icône : squircle (barre, menu, e-mails) ou rond (« Propulsé par »). */
-export type BadgeShape = "squircle" | "round"
-
 /** Un dessin en deux variantes : sur fond clair et sur fond sombre. */
 export type ThemedSvg = Readonly<{ light: string; dark: string }>
 
 /**
- * SVG de l'icône de chaque produit sur son fond blanc, toujours le même en clair et en sombre
- * (\`family/tile/<mot>.svg\`, \`family/tile/<mot>-round.svg\`).
+ * SVG de l'icône de chaque produit sur son carré blanc arrondi, toujours le même en clair et en
+ * sombre (\`family/tile/<mot>.svg\`).
  */
-export const PRODUCT_BADGE_SVG: Readonly<Record<FamilyProduct, Readonly<Record<BadgeShape, string>>>> = {
+export const PRODUCT_BADGE_SVG: Readonly<Record<FamilyProduct, string>> = {
 ${badges.join("\n")}
 }
 
