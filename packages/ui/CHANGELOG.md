@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.30.0
+
+### Minor Changes
+
+- 5434418: `ProjectSwitcher` : prop `noun` (`{ one, many }`, nom masculin) pour choisir autre chose que des projets, par exemple `{ one: "site", many: "sites" }` dans Analytics. Libellés « Tous les sites », « Sites », « Nouveau site » et noms accessibles en conséquence. Par défaut, rien ne change.
+
 ## 0.29.0
 
 ### Minor Changes
