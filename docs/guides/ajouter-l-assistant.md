@@ -362,28 +362,32 @@ export const run = internalAction({
   },
   handler: async (ctx, { messageId, threadId, text, speaker }) => {
     const { organizationId } = speaker
-    const turn = await ctx.runQuery(internal.assistant.context, { messageId, organizationId })
-    if (!turn) return
-    const secret = process.env.BETTER_AUTH_SECRET ?? ""
-    const key = turn.sealedKey
-      ? await openSecret(turn.sealedKey, { secret, context: organizationId }).catch(() => undefined)
-      : readKey(process.env.ASSISTANT_LLM_API_KEY)
-    if (!key) {
-      await ctx.runMutation(internal.assistant.finish, {
+    const stop = (text: string) =>
+      ctx.runMutation(internal.assistant.finish, {
         messageId,
         organizationId,
         status: "error",
-        text: "L'assistant n'est pas branché. Un administrateur peut enregistrer la clé dans les réglages.",
+        text,
         tools: [],
         history: null,
         historyFull: false,
-        notesDelivered: 0,
+        notesUpTo: 0,
         costMicros: 0,
+        costComplete: true,
         inputTokens: 0,
         outputTokens: 0,
       })
-      return
-    }
+    // `null` : tour déjà soldé, ou clé de l'organisation retirée depuis la demande. Jamais de repli
+    // sur la clé de la plateforme pour un tour qui n'a rien réservé.
+    const turn = await ctx.runQuery(internal.assistant.context, { messageId, organizationId })
+    if (!turn) return await stop("La clé de l'organisation a été retirée. Réessaie.")
+    const secret = process.env.BETTER_AUTH_SECRET ?? ""
+    // `sealedKey` est nul pour un tour réservé : clé de la plateforme seulement.
+    const key = turn.sealedKey
+      ? await openSecret(turn.sealedKey, { secret, context: organizationId }).catch(() => undefined)
+      : readKey(process.env.ASSISTANT_LLM_API_KEY)
+    if (!key)
+      return await stop("L'assistant n'est pas branché. Un administrateur peut enregistrer la clé dans les réglages.")
     const { client, model, direct } = clientFor(key, { origin: "https://host.hgdc.ch", title: "Host" })
     const call = (name: string, input: Record<string, unknown>) => ({ speaker, threadId, messageId, name, input })
     const result = await runTurn({
@@ -396,6 +400,8 @@ export const run = internalAction({
       history: JSON.parse(turn.history) as Anthropic.MessageParam[],
       notes: turn.notes,
       text,
+      // La réservation du tour en est le plafond : la boucle s'arrête avant de la dépasser.
+      maxCostMicros: turn.maxCostMicros,
       // Le moteur choisit le gestionnaire selon la classe déclarée de l'outil.
       handlers: {
         read: (c) => ctx.runQuery(internal.assistantTools.runRead, { speaker, name: c.name, input: c.input }),
@@ -416,8 +422,10 @@ export const run = internalAction({
       tools: result.tools,
       history: result.history,
       historyFull: result.historyFull,
-      notesDelivered: turn.notes.length,
+      notesUpTo: turn.notesUpTo,
       costMicros: result.costMicros,
+      // Une étape perdue (rejouée, coupée) : le débit vaut au moins la réservation.
+      costComplete: result.costComplete,
       inputTokens: result.usage.input + result.usage.cacheRead + result.usage.cacheWrite,
       outputTokens: result.usage.output,
     })
@@ -440,7 +448,7 @@ export const saveOrganizationKey = action({
 })
 ```
 
-Bornes posées par `runTurn` : 12 étapes, 8 appels d'outils par étape, 8 minutes pour le tour entier (requête en cours coupée), 20 000 caractères par résultat d'outil, 700 000 octets d'historique (au-delà, la conversation est déclarée pleine).
+Bornes posées par `runTurn` : 12 étapes, 8 appels d'outils par étape, 8 minutes pour le tour entier (requête en cours coupée), le coût réservé, 20 000 caractères par résultat d'outil (balises désarmées ; `markup: true` dans `runReadTool` pour garder un corps HTML à reprendre), 700 000 octets d'historique (au-delà, la conversation est déclarée pleine).
 
 ## 6. L'interface
 

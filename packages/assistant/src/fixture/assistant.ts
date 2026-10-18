@@ -16,6 +16,8 @@ import {
   exportUser,
   failStuckTurns,
   finishTurn,
+  noteEvent,
+  removeKey,
   progressMessage,
   readStatus,
   readThread,
@@ -235,4 +237,14 @@ export const exportOf = query({
 export const raw = query({
   args: { table: v.union(v.literal("assistantUsage"), v.literal("assistantKeys"), v.literal("deployments")) },
   handler: async (ctx, { table }) => await ctx.db.query(table).collect(),
+})
+
+export const dropKey = mutation({
+  args: { organizationId: v.string() },
+  handler: async (ctx, { organizationId }) => await removeKey(ctx, organizationId),
+})
+
+export const pushNote = mutation({
+  args: { threadId: v.id("assistantThreads"), note: v.string() },
+  handler: async (ctx, { threadId, note }) => await noteEvent(ctx, threadId, note),
 })

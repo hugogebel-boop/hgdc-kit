@@ -4,11 +4,12 @@ import {
   type GenericDatabaseReader,
   type GenericDatabaseWriter,
   type SchemaDefinition,
+  type StorageReader,
 } from "convex/server"
 import { ConvexError, v, type GenericId, type Infer } from "convex/values"
 
 import { creditsFromMicros, currentMonth, microsFromCredits } from "./model.ts"
-import { awaitingConfirmation, parseToolCall, snapshotHash, toolResult } from "./tools.ts"
+import { awaitingConfirmation, neutralizeMarkup, parseToolCall, snapshotHash, toolResult } from "./tools.ts"
 import type { ToolInputOf, ToolKind, ToolNamesOf, ToolSet } from "./tools.ts"
 
 /*
@@ -66,6 +67,8 @@ export function assistantTables() {
       full: v.optional(v.boolean()),
       /** Événements de l'application (confirmations, annulations) à remettre au modèle au tour suivant. */
       notes: v.optional(v.array(v.string())),
+      /** Numéro du premier événement de `notes` (les plus anciens tombent au-delà de 20). */
+      notesBase: v.optional(v.number()),
       updatedAt: v.number(),
     })
       .index("by_org_user", ["organizationId", "userId", "updatedAt"])
@@ -153,11 +156,16 @@ function db(ctx: AssistantReader): GenericDatabaseWriter<AssistantDataModel> {
 type ReaderDb<D> = D extends GenericDatabaseWriter<infer M> ? GenericDatabaseReader<M> : D
 
 /** Le `ctx` d'une mutation réduit à la lecture : ce que reçoit la description d'une carte. */
-export type ReadOnlyCtx<Ctx extends { db: unknown }> = Omit<Ctx, "db" | "scheduler" | "runMutation" | "runAction"> & {
+export type ReadOnlyCtx<Ctx extends { db: unknown }> = Omit<
+  Ctx,
+  "db" | "storage" | "scheduler" | "runMutation" | "runAction"
+> & {
   db: ReaderDb<Ctx["db"]>
+  /** Lecture des fichiers seulement : ni `delete`, ni `generateUploadUrl`, ni `store`. */
+  storage: StorageReader
 }
 
-/** Une vue en lecture seule du `ctx` : ni `insert`, ni `patch`, ni planificateur, à l'exécution aussi. */
+/** Une vue en lecture seule du `ctx` : ni écriture en base ou en stockage, ni planificateur, à l'exécution aussi. */
 export function readOnly<Ctx extends { db: unknown }>(ctx: Ctx): ReadOnlyCtx<Ctx> {
   const source = ctx.db as GenericDatabaseReader<AssistantDataModel>
   const reader = {
@@ -170,13 +178,21 @@ export function readOnly<Ctx extends { db: unknown }>(ctx: Ctx): ReadOnlyCtx<Ctx
     scheduler: _s,
     runMutation: _m,
     runAction: _a,
+    storage,
     ...rest
   } = ctx as Ctx & {
     scheduler?: unknown
     runMutation?: unknown
     runAction?: unknown
+    storage?: StorageReader
   }
-  return { ...rest, db: reader } as unknown as ReadOnlyCtx<Ctx>
+  const files: StorageReader = {
+    getUrl: (...args: Parameters<StorageReader["getUrl"]>) =>
+      storage ? storage.getUrl(...args) : Promise.resolve(null),
+    getMetadata: (...args: Parameters<StorageReader["getMetadata"]>) =>
+      storage ? storage.getMetadata(...args) : Promise.resolve(null),
+  }
+  return { ...rest, db: reader, storage: files } as unknown as ReadOnlyCtx<Ctx>
 }
 
 /** La personne vérifiée par la garde du produit, dans l'organisation de la demande. */
@@ -190,6 +206,7 @@ export const RESERVE_MICROS = 30_000
 /** Durée de vie d'une carte à confirmer. */
 export const ACTION_TTL_MS = 24 * 60 * 60_000
 const MAX_NOTES = 20
+const MAX_NOTE = 300
 
 export type TurnTexts = {
   empty: string
@@ -259,12 +276,18 @@ async function adjustUsage(
 async function settleMessage(
   ctx: AssistantWriter,
   messageId: MessageId,
-  cost: { costMicros?: number; inputTokens?: number; outputTokens?: number } = {},
+  cost: { costMicros?: number; costComplete?: boolean; inputTokens?: number; outputTokens?: number } = {},
 ): Promise<void> {
   const message = await db(ctx).get(messageId)
   if (!message || message.role !== "assistant" || message.settled) return
   const reserved = message.reservedMicros ?? 0
-  const charged = cost.costMicros ?? reserved
+  // Coût inconnu (tour jamais fini) ou partiel (étape rejouée, coupée) : au moins la réservation.
+  const charged =
+    cost.costMicros === undefined
+      ? reserved
+      : cost.costComplete === false
+        ? Math.max(cost.costMicros, reserved)
+        : cost.costMicros
   if (reserved > 0 && message.month) {
     await adjustUsage(ctx, message.organizationId, message.month, {
       reservedMicros: -reserved,
@@ -373,20 +396,30 @@ export async function readThread(ctx: AssistantReader, speaker: Speaker, threadI
   }
 }
 
-/** Ce que l'action Node relit avant d'appeler le modèle. `null` si le tour n'est plus en cours. */
+/**
+ * Ce que l'action Node relit avant d'appeler le modèle. `null` si le tour n'est plus en cours, ou
+ * s'il a été lancé sur la clé de l'organisation et qu'elle a été retirée depuis : un tour sans
+ * réservation ne tombe jamais sur la clé de la plateforme. Un tour réservé n'utilise que celle-ci.
+ */
 export async function turnContext(ctx: AssistantReader, args: { messageId: MessageId; organizationId: string }) {
   const message = await db(ctx).get(args.messageId)
   if (!message || message.organizationId !== args.organizationId || message.settled) return null
   const thread = await db(ctx).get(message.threadId)
   if (!thread) return null
-  const key = await ownKey(ctx, args.organizationId)
+  const charged = (message.reservedMicros ?? 0) > 0
+  const key = charged ? null : await ownKey(ctx, args.organizationId)
+  if (!charged && !key) return null
   return {
     threadId: thread._id,
     history: thread.history,
     mode: thread.mode ?? null,
     notes: thread.notes ?? [],
+    /** À rendre à `finishTurn` : les événements remis jusqu'à ce numéro sont retirés. */
+    notesUpTo: (thread.notesBase ?? 0) + (thread.notes ?? []).length,
+    /** Clé de l'organisation à ouvrir ; `null` : le tour est réservé, clé de la plateforme. */
     sealedKey: key?.sealed ?? null,
-    charged: (message.reservedMicros ?? 0) > 0,
+    /** Plafond de coût du tour (`runTurn({ maxCostMicros })`) : la réservation, ou rien avec la clé de l'organisation. */
+    maxCostMicros: charged ? (message.reservedMicros ?? 0) : null,
   }
 }
 
@@ -510,9 +543,10 @@ export const vFinishTurn = {
   tools: v.array(vToolChip),
   history: v.union(v.string(), v.null()),
   historyFull: v.boolean(),
-  /** Nombre d'événements de l'application remis au modèle pendant ce tour. */
-  notesDelivered: v.number(),
+  /** `turnContext().notesUpTo` : événements remis au modèle pendant ce tour. */
+  notesUpTo: v.number(),
   costMicros: v.number(),
+  costComplete: v.boolean(),
   inputTokens: v.number(),
   outputTokens: v.number(),
 }
@@ -532,7 +566,9 @@ export async function finishTurn(
     tools: ToolChip[]
     history: string | null
     historyFull: boolean
-    notesDelivered: number
+    notesUpTo: number
+    /** Faux si une étape a échoué ou été coupée : le débit vaut alors au moins la réservation. */
+    costComplete?: boolean
     costMicros: number
     inputTokens: number
     outputTokens: number
@@ -548,16 +584,28 @@ export async function finishTurn(
   if (!thread) return
   await db(ctx).patch(thread._id, {
     updatedAt: args.now ?? Date.now(),
-    ...(args.history === null ? {} : { history: args.history, notes: (thread.notes ?? []).slice(args.notesDelivered) }),
+    ...(args.history === null ? {} : { history: args.history, ...remainingNotes(thread, args.notesUpTo) }),
     ...(args.historyFull ? { full: true } : {}),
   })
 }
 
-/** Un événement de l'application pour le prochain tour (jamais dans le texte de l'historique). */
-async function addNote(ctx: AssistantWriter, threadId: ThreadId, note: string): Promise<void> {
+/** Un événement de l'application pour le prochain tour, hors du texte de l'historique (une ligne, sans balise, 300 caractères). */
+export async function noteEvent(ctx: AssistantWriter, threadId: ThreadId, note: string): Promise<void> {
   const thread = await db(ctx).get(threadId)
   if (!thread) return
-  await db(ctx).patch(threadId, { notes: [...(thread.notes ?? []), note].slice(-MAX_NOTES) })
+  // Une ligne, sans balise, bornée : un nom piégé ne forge ni ligne ni bloc d'événements.
+  const line = neutralizeMarkup(note.replace(/\s+/g, " ").trim()).slice(0, MAX_NOTE)
+  const notes = [...(thread.notes ?? []), line]
+  const dropped = Math.max(0, notes.length - MAX_NOTES)
+  await db(ctx).patch(threadId, { notes: notes.slice(dropped), notesBase: (thread.notesBase ?? 0) + dropped })
+}
+
+/** Les événements encore à remettre après un tour qui a remis ceux d'avant `notesUpTo`. */
+function remainingNotes(thread: { notes?: string[]; notesBase?: number }, notesUpTo: number) {
+  const base = thread.notesBase ?? 0
+  const notes = thread.notes ?? []
+  const delivered = Math.min(notes.length, Math.max(0, notesUpTo - base))
+  return { notes: notes.slice(delivered), notesBase: base + delivered }
 }
 
 // ───────────────────────────── Outils ─────────────────────────────
@@ -581,7 +629,14 @@ export type ConfirmHandlers<T extends ToolSet, Ctx extends { db: unknown }> = {
   }
 }
 
-type ToolCallArgs<T extends ToolSet> = { tools: T; speaker: Speaker; name: string; input: unknown }
+type ToolCallArgs<T extends ToolSet> = {
+  tools: T
+  speaker: Speaker
+  name: string
+  input: unknown
+  /** Garder le HTML du résultat (corps d'e-mail à reprendre tel quel) ; sinon toute balise est désarmée. */
+  markup?: boolean
+}
 type TurnCallArgs<T extends ToolSet> = ToolCallArgs<T> & { threadId: ThreadId; messageId: MessageId }
 
 function checkedCall(tools: ToolSet, name: string, input: unknown, kind: ToolKind) {
@@ -619,7 +674,7 @@ export async function runReadTool<T extends ToolSet, Ctx extends AssistantReader
 ): Promise<string> {
   const call = checkedCall(args.tools, args.name, args.input, "read")
   const handler = handlerOf<(ctx: Ctx, input: unknown, speaker: Speaker) => Promise<unknown>>(handlers, call.name)
-  return toolResult(await handler(ctx, call.input, args.speaker))
+  return toolResult(await handler(ctx, call.input, args.speaker), undefined, { markup: args.markup ?? false })
 }
 
 /** Un outil d'écriture sans envoi, dans une mutation du produit, pendant un tour en cours. */
@@ -631,7 +686,7 @@ export async function runWriteTool<T extends ToolSet, Ctx extends AssistantWrite
   const call = checkedCall(args.tools, args.name, args.input, "write")
   await assertTurn(ctx, args.speaker, args.threadId, args.messageId)
   const handler = handlerOf<(ctx: Ctx, input: unknown, speaker: Speaker) => Promise<unknown>>(handlers, call.name)
-  return toolResult(await handler(ctx, call.input, args.speaker))
+  return toolResult(await handler(ctx, call.input, args.speaker), undefined, { markup: args.markup ?? false })
 }
 
 /**
@@ -688,7 +743,7 @@ export async function confirmAction<T extends ToolSet, Ctx extends AssistantWrit
   if (action.status !== "pending") throw new ConvexError(TURN_TEXTS.alreadyHandled)
   const fail = async (message: string) => {
     await db(ctx).patch(action._id, { status: "failed", result: message })
-    await addNote(ctx, action.threadId, `L'action « ${action.summary} » n'a pas eu lieu : ${message}`)
+    await noteEvent(ctx, action.threadId, `L'action « ${action.summary} » n'a pas eu lieu : ${message}`)
     return { ok: false, message }
   }
   if ((options.now ?? Date.now()) > action.expiresAt) return await fail(TURN_TEXTS.expired)
@@ -704,7 +759,7 @@ export async function confirmAction<T extends ToolSet, Ctx extends AssistantWrit
       return await fail(TURN_TEXTS.changed)
     const message = await handler.execute(ctx, call.input, speaker)
     await db(ctx).patch(action._id, { status: "confirmed", result: message })
-    await addNote(ctx, action.threadId, `La personne a confirmé : ${action.summary}. Résultat : ${message}`)
+    await noteEvent(ctx, action.threadId, `La personne a confirmé : ${action.summary}. Résultat : ${message}`)
     return { ok: true, message }
   } catch (error) {
     if (!(error instanceof ConvexError) || typeof error.data !== "string") throw error
@@ -721,7 +776,7 @@ export async function cancelAction(
   const action = await pendingAction(ctx, speaker, actionId, options.mode)
   if (action.status !== "pending") return
   await db(ctx).patch(action._id, { status: "cancelled" })
-  await addNote(ctx, action.threadId, `La personne a annulé : ${action.summary}.`)
+  await noteEvent(ctx, action.threadId, `La personne a annulé : ${action.summary}.`)
 }
 
 // ───────────────────────────── Effacement, clé, entretien ─────────────────────────────

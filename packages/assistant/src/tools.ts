@@ -89,10 +89,33 @@ export function parseToolCall(tools: ToolSet, name: string, input: unknown): Par
 export const MAX_TOOL_RESULT = 20_000
 
 /** Le résultat d'un outil pour le modèle : JSON, toujours coupé au-delà de `max` caractères. */
-export function toolResult(value: unknown, max: number = MAX_TOOL_RESULT): string {
-  const text = typeof value === "string" ? value : (JSON.stringify(value) ?? "null")
+/** Toute balise désarmée : `<` et `>` deviennent `‹` et `›`. Rien ne se retire, rien ne se recompose. */
+export function neutralizeMarkup(text: string): string {
+  return text.replace(/</g, "‹").replace(/>/g, "›")
+}
+
+/**
+ * Seule la balise des événements de l'application est désarmée (`<` remplacé, jamais retiré : un
+ * découpage du type `</application_eve</application_eventsnts>` ne recompose rien).
+ */
+export function neutralizeEventsTag(text: string): string {
+  return text.replace(/<(?=\s*\/?\s*application_events)/gi, "‹")
+}
+
+/** Coupe au-delà de `max` caractères (plafonné à `MAX_TOOL_RESULT`). */
+export function truncateResult(text: string, max: number = MAX_TOOL_RESULT): string {
   const limit = Math.min(Math.max(0, max), MAX_TOOL_RESULT)
   return text.length > limit ? `${text.slice(0, limit)}… (tronqué)` : text
+}
+
+/**
+ * Le résultat d'un outil pour le modèle : JSON, balises désarmées, toujours coupé au-delà de `max`
+ * caractères. `markup: true` garde le HTML qu'un outil doit rendre tel quel (corps d'e-mail à
+ * reprendre) ; la balise des événements reste désarmée.
+ */
+export function toolResult(value: unknown, max: number = MAX_TOOL_RESULT, options: { markup?: boolean } = {}): string {
+  const text = typeof value === "string" ? value : (JSON.stringify(value) ?? "null")
+  return truncateResult(options.markup ? neutralizeEventsTag(text) : neutralizeMarkup(text), max)
 }
 
 /** Ce que rend un outil `confirm` au modèle : la carte est affichée, rien n'est parti. */

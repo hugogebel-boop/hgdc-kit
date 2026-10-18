@@ -3,7 +3,16 @@ import { ConvexError } from "convex/values"
 
 import { addUsage, HAIKU_5_5, keyProvider, NO_USAGE, OPENROUTER_BASE_URL, requestMicros } from "./model.ts"
 import type { Model, Price, Usage } from "./model.ts"
-import { MAX_TOOL_RESULT, parseToolCall, toolDefinitions, toolLabel, toolResult } from "./tools.ts"
+import {
+  MAX_TOOL_RESULT,
+  neutralizeEventsTag,
+  neutralizeMarkup,
+  parseToolCall,
+  toolDefinitions,
+  toolLabel,
+  toolResult,
+  truncateResult,
+} from "./tools.ts"
 import type { ToolKind, ToolSet } from "./tools.ts"
 
 /*
@@ -169,6 +178,11 @@ export type RunTurnOptions = {
   /** Taille d'un résultat d'outil, plafonnée à `MAX_TOOL_RESULT`. */
   maxToolResult?: number
   maxHistoryBytes?: number
+  /**
+   * Plafond de coût du tour en micro-dollars (la réservation : `turnContext().maxCostMicros`). La
+   * boucle s'arrête avant une étape qui le dépasserait, estimée au coût de la précédente.
+   */
+  maxCostMicros?: number | null
   formal?: boolean
   /** Horloge, pour les tests. */
   now?: () => number
@@ -185,6 +199,10 @@ export type TurnResult = {
   usage: Usage
   /** Coût du tour en micro-dollars, requêtes en échec comprises quand elles sont connues. */
   costMicros: number
+  /** Faux si une étape a été perdue (rejouée, coupée, en panne) : son coût est inconnu. */
+  costComplete: boolean
+  /** Étapes perdues pendant le tour. */
+  lostSteps: number
   /** Nature d'une panne, sans détail brut : à journaliser tel quel. */
   failure?: FailureKind
 }
@@ -194,6 +212,7 @@ const ENDINGS = {
   maxTokens: "La réponse était trop longue. Demande-moi une étape à la fois.",
   maxSteps: "J'ai fait beaucoup d'étapes d'un coup : dis-moi si je continue.",
   tooLong: "Cette conversation est devenue très longue. Ouvre une nouvelle conversation pour continuer.",
+  maxCost: "J'ai atteint la limite de cette réponse. Dis-moi si je continue.",
   tooManyCalls: "Trop d'appels d'outils dans une même étape : celui-ci n'a pas été exécuté.",
 }
 
@@ -201,9 +220,10 @@ const bytes = (text: string): number => new TextEncoder().encode(text).length
 
 /** La demande avec ses événements d'application dans un bloc à part, que le texte ne peut pas imiter. */
 function userTurn(text: string, notes: ReadonlyArray<string>): Anthropic.MessageParam {
-  const safe = text.replace(/<\/?application_events/gi, (tag) => tag.replace("<", "‹"))
+  const safe = neutralizeEventsTag(text)
   if (!notes.length) return { role: "user", content: safe }
-  const events = notes.map((n) => `- ${n.replace(/<\/?application_events/gi, "")}`).join("\n")
+  // Une note par ligne, sans saut de ligne ni balise : elle ne forge ni ligne ni fin de bloc.
+  const events = notes.map((n) => `- ${neutralizeMarkup(n.replace(/\s+/g, " ").trim()).slice(0, 300)}`).join("\n")
   return {
     role: "user",
     content: [
@@ -228,6 +248,8 @@ export async function runTurn(options: RunTurnOptions): Promise<TurnResult> {
   const deadline = now() + (options.deadlineMs ?? 8 * 60_000)
   let usage: Usage = NO_USAGE
   let costMicros = 0
+  let lastStepMicros = 0
+  let lostSteps = 0
   const chips: ToolChipState[] = []
   let shown = ""
 
@@ -264,6 +286,8 @@ export async function runTurn(options: RunTurnOptions): Promise<TurnResult> {
       historyFull: full,
       usage,
       costMicros,
+      costComplete: lostSteps === 0,
+      lostSteps,
       ...(failure === undefined ? {} : { failure }),
     }
   }
@@ -291,6 +315,9 @@ export async function runTurn(options: RunTurnOptions): Promise<TurnResult> {
   try {
     for (let step = 0; step < maxSteps; step++) {
       if (now() >= deadline) return await result("error", `${shown}\n\n${friendlyError("timeout")}`, null, "timeout")
+      // Plafond du tour : l'étape suivante coûte au moins autant que la précédente.
+      if (options.maxCostMicros && costMicros + Math.max(lastStepMicros, 1) > options.maxCostMicros)
+        return await result("done", `${shown}\n\n${ENDINGS.maxCost}`, messages)
       const stream = options.client.messages.stream(
         {
           model: options.model,
@@ -314,7 +341,9 @@ export async function runTurn(options: RunTurnOptions): Promise<TurnResult> {
         message = await stream.finalMessage()
         jsonRetries = 0
       } catch (error) {
-        // Une entrée d'outil illisible (JSON coupé) : on rejoue l'étape, deux fois au plus.
+        // Une entrée d'outil illisible (JSON coupé) : on rejoue l'étape, deux fois au plus. L'étape
+        // perdue (rejouée, coupée par l'échéance ou en panne) a pu être facturée : coût inconnu.
+        lostSteps++
         if (error instanceof Anthropic.APIError || controller.signal.aborted || jsonRetries++ >= 2) throw error
         continue
       }
@@ -325,7 +354,8 @@ export async function runTurn(options: RunTurnOptions): Promise<TurnResult> {
         cacheRead: message.usage.cache_read_input_tokens ?? 0,
       }
       usage = addUsage(usage, stepUsage)
-      costMicros += requestMicros(stepUsage, price)
+      lastStepMicros = requestMicros(stepUsage, price)
+      costMicros += lastStepMicros
 
       // Un refus n'entre pas dans l'historique.
       if (message.stop_reason === "refusal") return await result("done", `${shown}\n\n${ENDINGS.refusal}`, null)
@@ -359,7 +389,11 @@ export async function runTurn(options: RunTurnOptions): Promise<TurnResult> {
                 : options.handlers.propose
           try {
             const content = await handler({ id: call.id, name: parsed.name, kind: parsed.kind, input: parsed.input })
-            outcome = { type: "tool_result", tool_use_id: call.id, content: toolResult(content, maxResult) }
+            outcome = {
+              type: "tool_result",
+              tool_use_id: call.id,
+              content: truncateResult(neutralizeEventsTag(content), maxResult),
+            }
           } catch (error) {
             outcome = {
               type: "tool_result",
