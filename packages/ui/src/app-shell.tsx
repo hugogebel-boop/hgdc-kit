@@ -635,7 +635,7 @@ export function AppShell({
    * Avec `account` : entrées propres au produit, posées au-dessus des accès communs.
    *
    * @deprecated Comme bas de barre complet (liens et `AccountMenu`), remplacé par `links` et
-   * `account` (0.28). Sans `account`, il est rendu tel quel sous les accès communs, pour ne rien
+   * `account` (0.29). Sans `account`, il est rendu tel quel sous les accès communs, pour ne rien
    * casser : déplacer `AccountMenu` dans `account`, Docs et Réglages dans `links`, et retirer
    * l'ancien lien vers l'assistant (`assistant`).
    */

@@ -84,7 +84,7 @@ export function AccountMenu({
   onProfile?: () => void
   onSecurity?: () => void
   /**
-   * @deprecated Plus d'entrée « Raccourcis clavier » dans le menu (0.28) : l'aide s'ouvre par la
+   * @deprecated Plus d'entrée « Raccourcis clavier » dans le menu (0.29) : l'aide s'ouvre par la
    * touche `?`, que le produit garde. Ignoré.
    */
   onShortcuts?: () => void
@@ -96,7 +96,7 @@ export function AccountMenu({
   /** Adresse d'Account dans la liste par défaut (un Account local en développement). */
   accountHref?: string
   /**
-   * @deprecated « État du service » a quitté le menu (0.28) : la coque le pose au-dessus du compte
+   * @deprecated « État du service » a quitté le menu (0.29) : la coque le pose au-dessus du compte
    * (`links.status` d'`AppShell`, la page de statut de la coque par défaut). Ignoré.
    */
   statusPage?: string | false

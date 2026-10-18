@@ -166,7 +166,7 @@ Le thème : `ThemeProvider` autour de l'application, et `themeInitScript` dans u
 
 La coque des consoles (0.3) : `AppShell` avec `OrgSwitcher` en haut, `SidebarNav` au milieu, `AccountMenu` en bas, et `CommandMenu` une fois dans la page (`Ctrl+K`). Poser aussi `sidebarInitScript` dans le `<head>`, à côté de `themeInitScript`, et `TooltipProvider` autour de l'application. Le kit ne connaît pas le routeur : chaque lien passe par `render={<Link to="…" />}`, et TanStack Router marque l'entrée active (`data-status="active"`) sans rien de plus. La variante `rail:` vient du kit : retirer la déclaration locale et `lib/sidebar.ts`.
 
-Depuis 0.28, le bas de la barre est à la coque : `links` (Documentation, Réglages, État du service, dans cet ordre) puis `account`. `sidebarFooter` reste rendu tel quel quand `account` manque, mais il est déprécié : y retirer les liens Docs, Réglages et Assistant. L'assistant passe par `assistant` : son bouton se pose à côté de la recherche, son panneau dans une colonne à droite ; le produit ne passe que le corps (conversation et saisie), la coque pose le titre, la fermeture et le retour à la page.
+Depuis 0.29, le bas de la barre est à la coque : `links` (Documentation, Réglages, État du service, dans cet ordre) puis `account`. `sidebarFooter` reste rendu tel quel quand `account` manque, mais il est déprécié : y retirer les liens Docs, Réglages et Assistant. L'assistant passe par `assistant` : son bouton se pose à côté de la recherche, son panneau dans une colonne à droite ; le produit ne passe que le corps (conversation et saisie), la coque pose le titre, la fermeture et le retour à la page.
 
 ```tsx
 <AppShell
