@@ -1,8 +1,9 @@
 import ArrowDown01Icon from "@hugeicons/core-free-icons/ArrowDown01Icon"
 import Cancel01Icon from "@hugeicons/core-free-icons/Cancel01Icon"
+import FilterHorizontalIcon from "@hugeicons/core-free-icons/FilterHorizontalIcon"
 import Search01Icon from "@hugeicons/core-free-icons/Search01Icon"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { useEffect, useRef, useState, type ReactNode } from "react"
+import { useEffect, useId, useRef, useState, type ReactNode } from "react"
 
 import { Button, buttonVariants } from "./button.tsx"
 import { cn } from "./cn.ts"
@@ -16,7 +17,19 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "./dropdown-menu.tsx"
+import {
+  Drawer,
+  DrawerBody,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "./drawer.tsx"
 import { Input } from "./input.tsx"
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "./popover.tsx"
+import { useIsMobile } from "./use-media-query.ts"
 
 export type FilterOption = { value: string; label: string }
 
@@ -93,16 +106,18 @@ function SearchField({
   placeholder = "Rechercher…",
   label = "Rechercher",
   delay = 250,
+  className,
 }: {
   value: string
   onChange: (value: string) => void
   placeholder?: string
   label?: string
   delay?: number
+  className?: string
 }): React.JSX.Element {
   const { draft, setDraft, flush } = useDebouncedSearch(value, onChange, delay)
   return (
-    <div className="relative min-w-0 flex-1 basis-full sm:basis-56 sm:max-w-sm">
+    <div className={cn("relative min-w-0 flex-1 basis-full sm:basis-56 sm:max-w-sm", className)}>
       <HugeiconsIcon
         icon={Search01Icon}
         strokeWidth={2}
@@ -197,6 +212,184 @@ function FilterPill({
   )
 }
 
+/** Nombre de filtres posés, sans la recherche : le compteur du bouton « Filtres ». */
+export function activeFilterOnlyCount(values: FilterValues = {}): number {
+  return activeFilterCount(values, "")
+}
+
+/** Une option du panneau : une pastille qui se coche (choix multiple) ou se choisit (choix unique). */
+function OptionChip({
+  label,
+  checked,
+  kind,
+  onClick,
+}: {
+  label: string
+  checked: boolean
+  kind: "radio" | "checkbox"
+  onClick: () => void
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      role={kind}
+      aria-checked={checked}
+      onClick={onClick}
+      className={cn(
+        "touch-target inline-flex h-9 items-center rounded-full px-3.5 text-sm outline-none transition-[background-color,color,box-shadow] duration-(--duration-fast) ease-out focus-visible:ring-3 focus-visible:ring-ring/50 lg:h-8 lg:px-3",
+        checked
+          ? "bg-foreground font-medium text-background"
+          : "bg-background text-foreground ring-1 ring-border/70 ring-inset hover:bg-muted",
+      )}
+    >
+      {label}
+    </button>
+  )
+}
+
+/** Un filtre du panneau : son nom, puis ses options en pastilles. */
+function PanelFilter({
+  filter,
+  selected = [],
+  onChange,
+}: {
+  filter: FilterDefinition
+  selected?: ReadonlyArray<string>
+  onChange: (values: Array<string>) => void
+}): React.JSX.Element {
+  const id = useId()
+  return (
+    <div className="grid gap-2">
+      <p id={id} className="text-xs font-medium text-muted-foreground">
+        {filter.label}
+      </p>
+      <div role={filter.single ? "radiogroup" : "group"} aria-labelledby={id} className="flex flex-wrap gap-1.5">
+        {filter.single ? (
+          <OptionChip label="Tous" kind="radio" checked={selected.length === 0} onClick={() => onChange([])} />
+        ) : null}
+        {filter.options.map((option) => {
+          const checked = selected.includes(option.value)
+          return (
+            <OptionChip
+              key={option.value}
+              label={option.label}
+              kind={filter.single ? "radio" : "checkbox"}
+              checked={checked}
+              onClick={() =>
+                onChange(
+                  filter.single
+                    ? checked
+                      ? []
+                      : [option.value]
+                    : toggleFilterValue(filter, selected, option.value, !checked),
+                )
+              }
+            />
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Le bouton « Filtres » et son panneau : une bulle sous le bouton sur ordinateur, une feuille du
+ * bas sur téléphone. Chaque choix s'applique aussitôt ; « Réinitialiser » retire les filtres, pas
+ * la recherche.
+ */
+function FilterPanel({
+  filters,
+  values,
+  onFilterChange,
+  onReset,
+  label,
+}: {
+  filters: Array<FilterDefinition>
+  values: FilterValues
+  onFilterChange: ((key: string, values: Array<string>) => void) | undefined
+  onReset: (() => void) | undefined
+  label: string
+}): React.JSX.Element {
+  const isMobile = useIsMobile()
+  const [open, setOpen] = useState(false)
+  const count = activeFilterOnlyCount(values)
+  const trigger = (
+    <button
+      type="button"
+      data-slot="filter-panel-trigger"
+      data-active={count > 0 || undefined}
+      aria-label={count > 0 ? `${label}, ${count} actif${count > 1 ? "s" : ""}` : label}
+      className={cn(
+        buttonVariants({ variant: "outline", size: "sm" }),
+        "gap-2 font-normal",
+        count > 0 && "font-medium",
+      )}
+    />
+  )
+  const content = (
+    <>
+      {filters.map((filter) => (
+        <PanelFilter
+          key={filter.key}
+          filter={filter}
+          {...(values[filter.key] !== undefined ? { selected: values[filter.key] } : {})}
+          onChange={(next) => onFilterChange?.(filter.key, next)}
+        />
+      ))}
+    </>
+  )
+  const face = (
+    <>
+      <HugeiconsIcon icon={FilterHorizontalIcon} strokeWidth={2} aria-hidden className="size-4" />
+      <span>{label}</span>
+      {count > 0 ? (
+        <span
+          aria-hidden
+          className="grid h-5 min-w-5 place-items-center rounded-full bg-foreground px-1.5 text-xs font-medium text-background tabular-nums"
+        >
+          {count}
+        </span>
+      ) : null}
+    </>
+  )
+  const reset =
+    onReset && count > 0 ? (
+      <Button variant="ghost" size="sm" onClick={onReset} className="text-muted-foreground">
+        Réinitialiser
+      </Button>
+    ) : null
+
+  if (isMobile)
+    return (
+      <Drawer side="bottom" open={open} onOpenChange={setOpen}>
+        <DrawerTrigger render={trigger}>{face}</DrawerTrigger>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>{label}</DrawerTitle>
+          </DrawerHeader>
+          <DrawerCloseButton />
+          <DrawerBody className="grid gap-5 pb-4">{content}</DrawerBody>
+          <DrawerFooter>
+            <Button onClick={() => setOpen(false)}>Voir les résultats</Button>
+            {reset}
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    )
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger render={trigger}>{face}</PopoverTrigger>
+      <PopoverContent align="end" className="w-[22rem] gap-0 p-0">
+        <div className="flex items-center justify-between gap-2 px-4 pt-3.5 pb-1">
+          <PopoverTitle>{label}</PopoverTitle>
+          {reset ?? <span className="h-10 lg:h-9" aria-hidden />}
+        </div>
+        <div className="grid max-h-[min(28rem,70svh)] gap-4 overflow-y-auto px-4 pt-1 pb-4">{content}</div>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 /**
  * Recherche et filtres en pastilles au-dessus d'une liste. Entièrement contrôlée, sans routeur :
  * le produit lit les valeurs dans les paramètres d'URL et les y réécrit dans les callbacks, pour
@@ -205,6 +398,10 @@ function FilterPill({
  * La recherche n'écrit qu'après 250 ms de calme (Entrée pour tout de suite, Échap pour vider).
  * Un filtre à choix multiple reste ouvert pendant qu'on coche ; `single` en fait un choix unique
  * avec « Tous ». « Effacer » apparaît dès qu'un critère est posé.
+ *
+ * `variant="panel"` range les filtres derrière un seul bouton « Filtres » (icône, compteur des
+ * filtres posés) qui ouvre un panneau : bulle sur ordinateur, feuille du bas sur téléphone. La
+ * recherche reste visible. Pour une liste qui a plus de deux filtres, ou un en-tête déjà chargé.
  */
 export function FilterBar({
   search,
@@ -212,6 +409,10 @@ export function FilterBar({
   values = {},
   onFilterChange,
   onReset,
+  onResetFilters,
+  variant = "pills",
+  panelLabel = "Filtres",
+  leading,
   actions,
   className,
 }: {
@@ -229,13 +430,39 @@ export function FilterBar({
   onFilterChange?: (key: string, values: Array<string>) => void
   /** Retire tous les critères, recherche comprise. */
   onReset?: () => void
+  /** `panel` : « Réinitialiser » du panneau, qui retire les filtres et garde la recherche. */
+  onResetFilters?: () => void
+  /** `pills` (par défaut) : une pastille par filtre. `panel` : un bouton « Filtres » et son panneau. */
+  variant?: "pills" | "panel"
+  /** Nom du bouton et du panneau en `panel`, « Filtres » par défaut. */
+  panelLabel?: string
+  /** Avant la recherche : une vue (`SegmentedControl`) qui choisit la liste plutôt que de la filtrer. */
+  leading?: ReactNode
   /** À droite : la période, un bouton d'export. */
   actions?: ReactNode
   className?: string
 }): React.JSX.Element {
   const count = activeFilterCount(values, search?.value)
+  if (variant === "panel")
+    return (
+      <div role="search" data-slot="filter-bar" className={cn("flex flex-wrap items-center gap-2", className)}>
+        {leading}
+        {search ? <SearchField {...search} className="basis-40 sm:basis-56" /> : null}
+        {filters.length ? (
+          <FilterPanel
+            filters={filters}
+            values={values}
+            onFilterChange={onFilterChange}
+            onReset={onResetFilters}
+            label={panelLabel}
+          />
+        ) : null}
+        {actions ? <div className="ml-auto flex items-center gap-2">{actions}</div> : null}
+      </div>
+    )
   return (
     <div role="search" data-slot="filter-bar" className={cn("flex flex-wrap items-center gap-2", className)}>
+      {leading}
       {search ? <SearchField {...search} /> : null}
       {filters.map((filter) => (
         <FilterPill

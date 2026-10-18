@@ -116,7 +116,7 @@ export function ProjectSwitcher({
   onCreate,
   renderLink,
   noun = { one: "projet", many: "projets" },
-  createLabel = `Nouveau ${noun.one}`,
+  createLabel = `${noun.feminine ? "Nouvelle" : "Nouveau"} ${noun.one}`,
   className,
 }: {
   projects: ReadonlyArray<SwitcherProject> | undefined
@@ -133,13 +133,16 @@ export function ProjectSwitcher({
   onCreate?: () => void
   /** Rend un lien du routeur du produit ; par défaut un `<a href>`. */
   renderLink?: (href: string) => ReactElement
-  /** Ce que l'on choisit, nom masculin : `{ one: "site", many: "sites" }` pour Analytics. */
-  noun?: { one: string; many: string }
+  /**
+   * Ce que l'on choisit : `{ one: "site", many: "sites" }` pour Analytics. Un nom féminin porte
+   * `feminine` : « Toutes les pages », « Page active », « Nouvelle page » (Status).
+   */
+  noun?: { one: string; many: string; feminine?: boolean }
   createLabel?: string
   className?: string
 }): React.JSX.Element {
   const capitalized = (word: string) => word.charAt(0).toUpperCase() + word.slice(1)
-  const all = `Tous les ${noun.many}`
+  const all = `${noun.feminine ? "Toutes" : "Tous"} les ${noun.many}`
   const hasActive = activeId !== undefined && activeId !== null
   const current = hasActive ? projects?.find((p) => p.id === activeId) : undefined
   const label = hasActive ? (current?.name ?? activeName ?? "") : all
@@ -194,7 +197,11 @@ export function ProjectSwitcher({
                   <ProjectMark project={project} />
                   <span className="min-w-0 flex-1 truncate">{project.name}</span>
                   {project.id === activeId ? (
-                    <HugeiconsIcon icon={Tick02Icon} aria-label={`${capitalized(noun.one)} actif`} className="size-4" />
+                    <HugeiconsIcon
+                      icon={Tick02Icon}
+                      aria-label={`${capitalized(noun.one)} ${noun.feminine ? "active" : "actif"}`}
+                      className="size-4"
+                    />
                   ) : null}
                 </SwitcherEntry>
               ))}

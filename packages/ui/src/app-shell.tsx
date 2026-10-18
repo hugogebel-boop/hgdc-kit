@@ -108,7 +108,10 @@ export function useAppShell(): { closeMobileNav: () => void } {
   return useContext(ShellContext)
 }
 
-/** La navigation du produit : 4 à 7 entrées, à plat. */
+/**
+ * La navigation du produit : 4 à 7 entrées, à plat. Une navigation imbriquée (l'espace d'une page,
+ * d'un projet) commence par `SidebarNavBack` et range ses entrées dans des `SidebarNavGroup`.
+ */
 export function SidebarNav({
   label,
   className,
@@ -176,6 +179,81 @@ export function SidebarNavItem({
         <TooltipTrigger render={link} />
         <TooltipContent side="right">{label}</TooltipContent>
       </Tooltip>
+    </li>
+  )
+}
+
+/**
+ * Retour au niveau du dessus, en tête d'une navigation imbriquée : « Retour aux pages » quand la
+ * barre montre l'espace d'une page, d'un projet. Premier enfant de `SidebarNav`, au-dessus des
+ * groupes. Une pastille teintée, flèche à gauche, jamais « vous êtes ici ». En rail, la flèche seule
+ * et le texte en infobulle.
+ */
+export function SidebarNavBack({
+  label,
+  href,
+  render,
+}: {
+  /** « Retour aux pages » */
+  label: string
+  href?: string
+  /** Lien du routeur : `render={<Link to="…" />}`. */
+  render?: React.ReactElement
+}): React.JSX.Element {
+  const rail = useSidebarRail()
+  const { closeMobileNav } = useAppShell()
+  const link = useRender({
+    defaultTagName: "a",
+    render,
+    props: {
+      href,
+      onClick: closeMobileNav,
+      "data-slot": "sidebar-nav-back",
+      className: cn(
+        // Jamais marqué actif : le lien du routeur pose `data-status="active"` sur un parent ouvert.
+        "group/back flex items-center gap-2 rounded-xl bg-muted/70 px-3 py-2.5 text-sm font-medium whitespace-nowrap text-foreground outline-none transition-colors duration-(--duration-fast) ease-out",
+        "hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50",
+        "min-h-11 lg:min-h-9 coarse:min-h-11 lg:py-2 lg:bg-shell-hover lg:text-shell-foreground lg:hover:bg-shell-active",
+        "lg:rail:justify-center lg:rail:px-0",
+      ),
+      children: (
+        <>
+          <HugeiconsIcon
+            icon={ArrowLeft01Icon}
+            strokeWidth={2}
+            aria-hidden
+            className="size-4.5 shrink-0 text-muted-foreground transition-transform duration-(--duration-fast) ease-out group-hover/back:-translate-x-0.5 motion-reduce:transition-none lg:size-4 lg:text-shell-muted"
+          />
+          <span className="truncate lg:rail:sr-only">{label}</span>
+        </>
+      ),
+    },
+  })
+  return (
+    <li className="pb-2">
+      <Tooltip disabled={!rail}>
+        <TooltipTrigger render={link} />
+        <TooltipContent side="right">{label}</TooltipContent>
+      </Tooltip>
+    </li>
+  )
+}
+
+/**
+ * Un groupe titré de la barre : « Suivi », « Réglages ». Ses `SidebarNavItem` en enfants. Le titre
+ * nomme la liste pour les lecteurs d'écran ; en rail, il cède la place à un trait.
+ */
+export function SidebarNavGroup({ label, children }: { label: string; children: ReactNode }): React.JSX.Element {
+  const id = useId()
+  return (
+    <li data-slot="sidebar-nav-group" className="pt-4 first:pt-0">
+      <p id={id} className="px-3 pb-1.5 text-xs font-medium text-muted-foreground lg:text-shell-muted lg:rail:sr-only">
+        {label}
+      </p>
+      <span aria-hidden className="mx-auto mb-2 hidden h-px w-6 bg-border lg:rail:block" />
+      <ul aria-labelledby={id} className="grid gap-0.5">
+        {children}
+      </ul>
     </li>
   )
 }

@@ -4,7 +4,14 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { DataTable, nextSort, type DataTableColumn } from "./data-table.tsx"
 import { DnsRecordTable } from "./dns-record-table.tsx"
-import { FilterBar, activeFilterCount, filterSummary, toggleFilterValue, type FilterDefinition } from "./filter-bar.tsx"
+import {
+  FilterBar,
+  activeFilterCount,
+  activeFilterOnlyCount,
+  filterSummary,
+  toggleFilterValue,
+  type FilterDefinition,
+} from "./filter-bar.tsx"
 import { LogViewer, filterLogLines, formatLogLines, visibleRange, type LogLine } from "./log-viewer.tsx"
 import { MiddleTruncate, splitForTruncation } from "./middle-truncate.tsx"
 import { Sparkline, describeSparkline } from "./sparkline.tsx"
@@ -67,6 +74,59 @@ describe("FilterBar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Effacer" }))
     expect(onReset).toHaveBeenCalledOnce()
     expect(screen.getByRole("search")).toBeTruthy()
+  })
+})
+
+describe("FilterBar en panneau", () => {
+  const PERIOD: FilterDefinition = {
+    key: "period",
+    label: "Période",
+    single: true,
+    options: [
+      { value: "7d", label: "7 jours" },
+      { value: "30d", label: "30 jours" },
+    ],
+  }
+
+  it("range les filtres derrière « Filtres », compte ceux posés sans la recherche", () => {
+    expect(activeFilterOnlyCount({ status: ["error", "ready"], period: [] })).toBe(1)
+    render(
+      <FilterBar
+        variant="panel"
+        search={{ value: "acme", onChange: () => {} }}
+        filters={[STATUS, PERIOD]}
+        values={{ status: ["error"], period: ["7d"] }}
+      />,
+    )
+    expect(screen.getByRole("searchbox")).toBeTruthy()
+    expect(screen.queryByRole("button", { name: /^Statut/ })).toBeNull()
+    const trigger = screen.getByRole("button", { name: "Filtres, 2 actifs" })
+    expect(trigger.textContent).toContain("2")
+  })
+
+  it("ouvre le panneau : choix multiple, choix unique avec « Tous », réinitialiser garde la recherche", () => {
+    const onFilterChange = vi.fn<(key: string, values: Array<string>) => void>()
+    const onResetFilters = vi.fn<() => void>()
+    render(
+      <FilterBar
+        variant="panel"
+        filters={[STATUS, PERIOD]}
+        values={{ status: ["error"] }}
+        onFilterChange={onFilterChange}
+        onResetFilters={onResetFilters}
+      />,
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Filtres, 1 actif" }))
+    const status = screen.getByRole("group", { name: "Statut" })
+    expect(within(status).getByRole("checkbox", { name: "Erreur" }).getAttribute("aria-checked")).toBe("true")
+    fireEvent.click(within(status).getByRole("checkbox", { name: "Prêt" }))
+    expect(onFilterChange).toHaveBeenLastCalledWith("status", ["ready", "error"])
+    const period = screen.getByRole("radiogroup", { name: "Période" })
+    expect(within(period).getByRole("radio", { name: "Tous" }).getAttribute("aria-checked")).toBe("true")
+    fireEvent.click(within(period).getByRole("radio", { name: "30 jours" }))
+    expect(onFilterChange).toHaveBeenLastCalledWith("period", ["30d"])
+    fireEvent.click(screen.getByRole("button", { name: "Réinitialiser" }))
+    expect(onResetFilters).toHaveBeenCalledOnce()
   })
 })
 

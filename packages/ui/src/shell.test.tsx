@@ -5,7 +5,7 @@ import { useState } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { AccountMenu } from "./account-menu.tsx"
-import { AppShell, SidebarNav, SidebarNavItem, toggleSidebar } from "./app-shell.tsx"
+import { AppShell, SidebarNav, SidebarNavBack, SidebarNavGroup, SidebarNavItem, toggleSidebar } from "./app-shell.tsx"
 import { Avatar, AvatarFallback } from "./avatar.tsx"
 import { avatarTone } from "./initials.ts"
 import { CommandMenu, matchCommand } from "./command-menu.tsx"
@@ -103,6 +103,33 @@ describe("AppShell", () => {
     expect(document.documentElement.dataset.sidebar).toBeUndefined()
     act(() => toggleSidebar())
     expect(document.documentElement.dataset.sidebar).toBe("rail")
+  })
+
+  it("imbrique une navigation : retour en tête, groupes titrés", () => {
+    render(
+      <AppShell
+        product="status"
+        nav={
+          <SidebarNav label="Page">
+            <SidebarNavBack label="Retour aux pages" href="/pages" />
+            <SidebarNavItem icon={DashboardSquare01Icon} label="Vue d'ensemble" href="/p" active />
+            <SidebarNavGroup label="Réglages">
+              <SidebarNavItem icon={DashboardSquare01Icon} label="Apparence" href="/p/apparence" />
+            </SidebarNavGroup>
+          </SidebarNav>
+        }
+      >
+        Page
+      </AppShell>,
+    )
+    const back = screen.getByRole("link", { name: "Retour aux pages" })
+    expect(back.getAttribute("href")).toBe("/pages")
+    expect(back.getAttribute("aria-current")).toBeNull()
+    const nav = screen.getByRole("navigation", { name: "Page" })
+    // Le retour est la première entrée de la navigation.
+    expect(nav.querySelector("li a")).toBe(back)
+    const group = within(nav).getByRole("list", { name: "Réglages" })
+    expect(within(group).getByRole("link", { name: "Apparence" }).getAttribute("href")).toBe("/p/apparence")
   })
 
   it("garde le bouton Déplier à la place du logo, jamais dessous", () => {

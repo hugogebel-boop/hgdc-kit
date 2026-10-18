@@ -152,6 +152,22 @@ describe("ProjectSwitcher", () => {
     expect(screen.queryByRole("menuitem", { name: "Nouveau site" })).toBeNull()
   })
 
+  it("accorde un nom féminin : les pages de Status", async () => {
+    render(
+      <ProjectSwitcher
+        projects={projects}
+        activeId="p1"
+        allHref="/o/acme/pages"
+        createHref="/o/acme/pages?nouvelle=1"
+        noun={{ one: "page", many: "pages", feminine: true }}
+      />,
+    )
+    fireEvent.click(screen.getByRole("button", { name: /changer de page$/ }))
+    expect(await screen.findByRole("menuitem", { name: /Toutes les pages/ })).not.toBeNull()
+    expect(screen.getByRole("menuitem", { name: "Nouvelle page" })).not.toBeNull()
+    expect(screen.getByLabelText("Page active")).not.toBeNull()
+  })
+
   it("rend les liens par le routeur du produit", async () => {
     render(<ProjectSwitcher projects={projects} activeId="p1" renderLink={(href) => <RouterLink to={href} />} />)
     fireEvent.click(screen.getByRole("button"))
