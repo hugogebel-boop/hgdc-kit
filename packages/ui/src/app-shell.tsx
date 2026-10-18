@@ -384,7 +384,7 @@ export function AppShell({
    */
   mainClassName?: string
   /**
-   * Page de statut du produit, dont le bandeau d'état se pose en tête du contenu (ADR 0017) :
+   * Page de statut du produit, dont le bandeau d'état se pose en tête du contenu (ADR 0018) :
    * `https://status.hgdc.ch/<produit>` par défaut, une autre adresse (prévisualisation sur une page
    * de test), ou `false` pour ne rien lire.
    */

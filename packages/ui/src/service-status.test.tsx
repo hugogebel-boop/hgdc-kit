@@ -2,7 +2,13 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { eventsFromSummary, ServiceStatus, statusPageUrlFor, UPCOMING_NOTICE_MS } from "./service-status.tsx"
+import {
+  eventsFromSummary,
+  safeEventHref,
+  ServiceStatus,
+  statusPageUrlFor,
+  UPCOMING_NOTICE_MS,
+} from "./service-status.tsx"
 
 const NOW = Date.parse("2026-10-18T12:30:00Z")
 const PAGE = "https://status.hgdc.ch/host"
@@ -50,7 +56,7 @@ afterEach(() => {
 
 describe("eventsFromSummary", () => {
   it("incident ouvert, puis maintenance des 24 prochaines heures ; rien au-delà", () => {
-    const events = eventsFromSummary(summary(), NOW)
+    const events = eventsFromSummary(summary(), NOW, PAGE)
     expect(events.map((e) => [e.kind, e.status, e.title])).toEqual([
       ["incident", "outage", "Panne de Connexion et données"],
       ["upcoming", "maintenance", "Mise à jour de l'API"],
@@ -74,10 +80,28 @@ describe("eventsFromSummary", () => {
         ],
       }),
       NOW,
+      PAGE,
     )
     expect(events.map((e) => [e.kind, e.title, e.detail])).toEqual([["maintenance", "Envoi", "jusqu'à 15:00"]])
-    expect(eventsFromSummary(null, NOW)).toEqual([])
-    expect(eventsFromSummary({ incidents: "?" }, NOW)).toEqual([])
+    expect(eventsFromSummary(null, NOW, PAGE)).toEqual([])
+    expect(eventsFromSummary({ incidents: "?" }, NOW, PAGE)).toEqual([])
+  })
+
+  it("lien d'un événement : https et même origine que la page, sinon la page", () => {
+    expect(safeEventHref(`${PAGE}/incidents/i1`, PAGE)).toBe(`${PAGE}/incidents/i1`)
+    expect(safeEventHref("/host/incidents/i1", PAGE)).toBe(`${PAGE}/incidents/i1`)
+    for (const bad of ["javascript:alert(1)", "https://ailleurs.example/x", "http://status.hgdc.ch/host", "", 42, null])
+      expect(safeEventHref(bad, PAGE)).toBe(PAGE)
+    const [event] = eventsFromSummary(
+      summary({
+        incidents: [
+          { id: "i9", name: "Piège", status: "investigating", impact: "major", shortlink: "javascript:alert(1)" },
+        ],
+      }),
+      NOW,
+      PAGE,
+    )
+    expect(event?.href).toBe(PAGE)
   })
 
   it("Docs vit à /documentation", () => {

@@ -8,7 +8,7 @@ import type { FamilyProduct } from "./family-svg.ts"
 import { StatusDot, type ServiceStatus } from "./status.tsx"
 
 /**
- * Bandeau d'état d'un produit (ADR 0017) : lit `summary.json` de sa page de statut (format
+ * Bandeau d'état d'un produit (ADR 0018) : lit `summary.json` de sa page de statut (format
  * Statuspage, CORS ouvert) depuis le navigateur, après le premier rendu, puis toutes les
  * 2 minutes quand l'onglet est visible. Il ne retarde jamais le produit, et une lecture qui
  * échoue n'affiche rien : jamais de fausse alerte. Pas de liseré : le point et les mots portent l'état.
@@ -62,6 +62,21 @@ type SummaryEvent = {
 }
 
 const text = (v: unknown) => (typeof v === "string" ? v : "")
+
+/**
+ * Lien d'un événement, lu dans `summary.json` : jamais rendu tel quel. Seule une adresse `https:`
+ * de la même origine que la page de statut est gardée ; sinon, la page elle-même.
+ */
+export function safeEventHref(candidate: unknown, pageUrl: string): string {
+  try {
+    const page = new URL(pageUrl)
+    const url = new URL(text(candidate), page)
+    if (url.protocol === "https:" && url.origin === page.origin) return url.href
+  } catch {
+    // Adresse illisible : la page.
+  }
+  return pageUrl
+}
 const instant = (v: unknown) => (typeof v === "string" ? Date.parse(v) : Number.NaN)
 
 function incidentTone(impact: string): ServiceStatus {
@@ -70,13 +85,13 @@ function incidentTone(impact: string): ServiceStatus {
 
 /**
  * Événements à montrer, d'après un `summary.json` : incidents ouverts, maintenances en cours,
- * maintenances qui commencent dans les 24 h. Pannes d'abord. Tout champ manquant ou d'une autre
+ * maintenances qui commencent dans les 24 h. Pannes d'abord. Les liens restent sur `pageUrl` (`safeEventHref`) :
+ * l'adresse annoncée par le fichier lui-même n'est jamais crue. Tout champ manquant ou d'une autre
  * forme écarte l'événement, jamais le bandeau entier.
  */
-export function eventsFromSummary(summary: unknown, now: number): ServiceEvent[] {
+export function eventsFromSummary(summary: unknown, now: number, pageUrl: string): ServiceEvent[] {
   if (!summary || typeof summary !== "object") return []
-  const root = summary as { page?: { url?: unknown }; incidents?: unknown; scheduled_maintenances?: unknown }
-  const pageUrl = text(root.page?.url)
+  const root = summary as { incidents?: unknown; scheduled_maintenances?: unknown }
   const out: ServiceEvent[] = []
   const list = (v: unknown): SummaryEvent[] => (Array.isArray(v) ? (v as SummaryEvent[]) : [])
 
@@ -93,7 +108,7 @@ export function eventsFromSummary(summary: unknown, now: number): ServiceEvent[]
       detail: [STATUS_WORDS[status], Number.isNaN(updatedAt) ? null : `mis à jour à ${time.format(updatedAt)}`]
         .filter(Boolean)
         .join(" · "),
-      href: text(incident.shortlink) || pageUrl,
+      href: safeEventHref(incident.shortlink, pageUrl),
       version: `${status}:${text(incident.updated_at)}`,
     })
   }
@@ -118,7 +133,7 @@ export function eventsFromSummary(summary: unknown, now: number): ServiceEvent[]
         : sameDay
           ? `${dayMonth.format(from)}, de ${time.format(from)} à ${time.format(until)}`
           : `du ${dayMonth.format(from)}, ${time.format(from)}, au ${dayMonth.format(until)}, ${time.format(until)}`,
-      href: text(m.shortlink) || pageUrl,
+      href: safeEventHref(m.shortlink, pageUrl),
       version: `${status}:${text(m.updated_at)}`,
     })
   }
@@ -162,7 +177,7 @@ export function useServiceStatus(pageUrl: string | null): {
           headers: { accept: "application/json" },
         })
         if (!response.ok) throw new Error(String(response.status))
-        const next = eventsFromSummary(await response.json(), Date.now())
+        const next = eventsFromSummary(await response.json(), Date.now(), pageUrl)
         if (!cancelled) setEvents(next)
       } catch {
         if (!cancelled) setEvents([])
