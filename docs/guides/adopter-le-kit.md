@@ -225,6 +225,84 @@ La recherche n'écrit dans l'URL qu'après 250 ms de calme : `replace: true` pou
 
 Une erreur de chargement : `ErrorCard` à la place du contenu (`error={<ErrorCard detail={String(error)} reference={requestId} onRetry={refetch} />}` dans un `DataTable`). Une suppression : `DestructiveDialog` remplace la copie `confirm-delete-dialog.tsx` de Mail, même API (`formatError` en plus pour traduire une `ConvexError`). Une action réversible : `toastUndo(message, { onUndo })` plutôt qu'une confirmation, avec le `Toaster` du kit monté une fois.
 
+### Sélecteur de projet et grandes listes (0.28)
+
+Dans la barre du haut d'`AppShell` (`header`), un produit qui a des projets pose `ProjectSwitcher` : le projet ouvert avec sa marque, ou « Tous les projets », la liste, « Nouveau projet ». Le kit ne lit rien : le produit passe la liste et le routeur.
+
+```tsx
+<ProjectSwitcher
+  projects={projects?.map((p) => ({
+    id: p._id,
+    name: p.name,
+    iconUrl: p.faviconUrl,
+    mark: "D",
+    href: `/o/${team}/${p.slug}`,
+  }))}
+  activeId={current?._id ?? null}
+  activeName={params.project} // affiché pendant le chargement
+  allHref={`/o/${team}`}
+  createHref={`/o/${team}/new`}
+  renderLink={(href) => <Link to={href} />}
+/>
+```
+
+Règle commune des grandes listes (appels, journaux, envois, événements) : **200 lignes par page**, Précédent et Suivant, filtres (période, statut ou résultat, recherche) appliqués côté serveur sur toutes les données, retour à la première page quand un filtre change. Jamais tout l'historique chargé puis découpé dans le navigateur, jamais de « Charger plus » qui empile des milliers de lignes. La hauteur de la liste suit les lignes affichées : pas de `max-h` qui laisse une zone blanche derrière elle. 200 lignes se rendent sans virtualisation ; `LogViewer` reste pour un flux en direct.
+
+Côté Convex, un index par combinaison de filtres, l'ordre `_creationTime` décroissant (stable : chaque index finit par `_creationTime`), la période en plage sur l'index :
+
+```ts
+// convex/schema.ts
+calls: defineTable({ monitorId: v.id("monitors"), ok: v.boolean(), status: v.number() })
+  .index("by_monitor", ["monitorId"])
+  .index("by_monitor_ok", ["monitorId", "ok"]),
+
+// convex/calls.ts
+export const list = query({
+  args: {
+    monitorId: v.id("monitors"),
+    result: v.optional(v.union(v.literal("ok"), v.literal("error"))),
+    from: v.number(),
+    to: v.number(),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, { monitorId, result, from, to, paginationOpts }) => {
+    await requireMonitorAccess(ctx, monitorId) // la garde du produit, avant toute lecture
+    const calls =
+      result === undefined
+        ? ctx.db
+            .query("calls")
+            .withIndex("by_monitor", (q) =>
+              q.eq("monitorId", monitorId).gte("_creationTime", from).lt("_creationTime", to),
+            )
+        : ctx.db
+            .query("calls")
+            .withIndex("by_monitor_ok", (q) =>
+              q.eq("monitorId", monitorId).eq("ok", result === "ok").gte("_creationTime", from).lt("_creationTime", to),
+            )
+    return await calls.order("desc").paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, 200) })
+  },
+})
+```
+
+Côté page, `useCursorPages` tient la pile des curseurs, `CursorPager` la navigation :
+
+```tsx
+const filters = { monitorId, result: search.result, from: search.from, to: search.to }
+const pages = useCursorPages(JSON.stringify(filters)) // nouvelle clé : page 1
+const data = useQuery(api.calls.list, { ...filters, paginationOpts: pages.paginationOpts })
+const top = useRef<HTMLDivElement>(null)
+
+<div ref={top}>
+  <DataTable label="Appels" rows={data?.page} columns={columns} rowKey={(c) => c._id} filters={<FilterBar …/>} filtered={…} />
+</div>
+<CursorPager pages={pages} result={data} scrollTarget={top} label="Pagination des appels" />
+```
+
+- La période vit dans l'URL en dates fixes (`from`, `to`) : un « dernières 24 heures » recalculé à chaque rendu par `Date.now()` changerait la clé, donc la page, sans arrêt.
+- Revenir en arrière relit la page avec `endCursor` (la borne déjà connue) : ni ligne perdue ni doublon quand de nouvelles lignes arrivent ; la première page peut alors en montrer un peu plus de 200 jusqu'au prochain changement de filtre.
+- Un filtre qu'aucun index ne porte (`.filter()` avant `paginate`) donne des pages courtes et lit tout le reste : ajouter l'index. La recherche passe par un `searchIndex` avec `filterFields` (ordre de pertinence, pas `_creationTime`).
+- Erreur de la query : `ErrorCard` à la place du tableau ; chargement : `rows={undefined}` (squelette) et le pager garde sa place.
+
 ### Réglages, champs et tableaux de bord (0.5)
 
 - Une page de réglages : un `SettingsSection` par bloc, chacun son bouton Enregistrer (`dirty`, `saving`, `onSave`). Host retire `SettingsSection` de `components/page.tsx`.
