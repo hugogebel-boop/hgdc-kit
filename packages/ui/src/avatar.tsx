@@ -2,6 +2,7 @@ import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar"
 import * as React from "react"
 
 import { cn } from "./cn.ts"
+import { avatarTone, type AvatarTone } from "./initials.ts"
 
 function Avatar({
   className,
@@ -33,16 +34,44 @@ function AvatarImage({ className, ...props }: AvatarPrimitive.Image.Props): Reac
   )
 }
 
-function AvatarFallback({ className, ...props }: AvatarPrimitive.Fallback.Props): React.JSX.Element {
+/** Lavis et encre de chaque teinte (`--avatar-<n>`, `styles.css`), à 4,5:1 en clair et en sombre. */
+const TONE_CLASSES: Readonly<Record<AvatarTone, string>> = {
+  1: "bg-avatar-1 text-avatar-1-ink",
+  2: "bg-avatar-2 text-avatar-2-ink",
+  3: "bg-avatar-3 text-avatar-3-ink",
+  4: "bg-avatar-4 text-avatar-4-ink",
+  5: "bg-avatar-5 text-avatar-5-ink",
+  6: "bg-avatar-6 text-avatar-6-ink",
+  7: "bg-avatar-7 text-avatar-7-ink",
+}
+
+/**
+ * Ce qui s'affiche sans photo (la photo, `AvatarImage`, reste prioritaire). Des initiales en
+ * texte prennent une teinte de la marque, stable : celle de `colorKey` (identifiant ou adresse
+ * e-mail, à préférer, deux homonymes n'ont pas la même couleur), sinon celle du texte. Une icône,
+ * ou `colorKey={null}`, garde le gris neutre.
+ */
+function AvatarFallback({
+  className,
+  colorKey,
+  children,
+  ...props
+}: AvatarPrimitive.Fallback.Props & { colorKey?: string | null | undefined }): React.JSX.Element {
+  const key = colorKey === undefined ? (typeof children === "string" ? children : "") : (colorKey ?? "")
+  const tone = key.trim() ? avatarTone(key) : null
   return (
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
+      data-tone={tone ?? undefined}
       className={cn(
-        "flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground group-data-[size=sm]/avatar:text-xs",
+        "flex size-full items-center justify-center rounded-full text-sm group-data-[size=sm]/avatar:text-xs",
+        tone ? cn("font-semibold", TONE_CLASSES[tone]) : "bg-muted text-muted-foreground",
         className,
       )}
       {...props}
-    />
+    >
+      {children}
+    </AvatarPrimitive.Fallback>
   )
 }
 

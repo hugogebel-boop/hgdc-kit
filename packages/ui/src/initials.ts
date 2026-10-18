@@ -21,3 +21,22 @@ export function initials(name: string | null | undefined, fallback?: string | nu
   if (fromName) return fromName
   return firstLetters((fallback ?? "").split("@")[0] ?? "", /[\s._+-]+/) || "?"
 }
+
+/** Nombre de teintes d'avatar (`--avatar-1` à `--avatar-7`, `styles.css`). */
+export const AVATAR_TONES = 7
+
+export type AvatarTone = 1 | 2 | 3 | 4 | 5 | 6 | 7
+
+/**
+ * La teinte de l'avatar à initiales d'une personne ou d'une organisation, stable : la même clé
+ * (identifiant, ou adresse e-mail, sans tenir compte de la casse ni des espaces autour) donne
+ * toujours la même teinte, dans tous les produits. FNV-1a 32 bits, puis modulo 7.
+ */
+export function avatarTone(key: string): AvatarTone {
+  let hash = 0x811c9dc5
+  for (const char of key.trim().toLocaleLowerCase("fr-CH")) {
+    hash ^= char.codePointAt(0) ?? 0
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return ((hash % AVATAR_TONES) + 1) as AvatarTone
+}

@@ -82,3 +82,40 @@ describe("contrôle éteint (WCAG 1.4.11)", () => {
         expect(contrast(off, grey(selector, surface)), surface).toBeGreaterThanOrEqual(3)
     })
 })
+
+describe("avatars à initiales (WCAG 1.4.3)", () => {
+  // OKLCH vers sRGB linéaire (Björn Ottosson), puis luminance relative.
+  function linear(L: number, C: number, H: number): Array<number> {
+    const h = (H * Math.PI) / 180
+    const a = C * Math.cos(h)
+    const b = C * Math.sin(h)
+    const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3
+    const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3
+    const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3
+    return [
+      4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+      -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+      -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+    ]
+  }
+  function color(selector: string, token: string): Array<number> {
+    const match = block(selector).match(new RegExp(String.raw`^\s*${token}: oklch\(([\d.]+) ([\d.]+) ([\d.]+)\);`, "m"))
+    expect(match, `${selector} ${token}`).toBeTruthy()
+    return linear(Number(match?.[1]), Number(match?.[2]), Number(match?.[3]))
+  }
+  const luminance = ([r = 0, g = 0, b = 0]: Array<number>) => 0.2126 * r + 0.7152 * g + 0.0722 * b
+  const contrast = (a: number, b: number) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
+
+  for (const selector of [":root", ".dark"])
+    it(`${selector} : sept teintes dans le gamut sRGB, initiales à 4,5:1 au moins`, () => {
+      for (let tone = 1; tone <= 7; tone++) {
+        const background = color(selector, `--avatar-${tone}`)
+        const ink = color(selector, `--avatar-${tone}-ink`)
+        for (const channel of [...background, ...ink]) {
+          expect(channel, `--avatar-${tone}`).toBeGreaterThanOrEqual(0)
+          expect(channel, `--avatar-${tone}`).toBeLessThanOrEqual(1)
+        }
+        expect(contrast(luminance(background), luminance(ink)), `--avatar-${tone}`).toBeGreaterThanOrEqual(4.5)
+      }
+    })
+})
