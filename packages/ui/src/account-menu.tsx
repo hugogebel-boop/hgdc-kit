@@ -1,3 +1,4 @@
+import Activity01Icon from "@hugeicons/core-free-icons/Activity01Icon"
 import DashboardSquare01Icon from "@hugeicons/core-free-icons/DashboardSquare01Icon"
 import KeyboardIcon from "@hugeicons/core-free-icons/KeyboardIcon"
 import Logout01Icon from "@hugeicons/core-free-icons/Logout01Icon"
@@ -24,7 +25,7 @@ import { MENU_LINK_ITEM } from "./org-switcher.tsx"
 import type { FamilyProduct } from "./family-svg.ts"
 import { ProductBadge } from "./product-badge.tsx"
 import { productMenuEntries } from "./products.ts"
-import { useLeaveOnClick, useProductRailShown } from "./shell-placement.ts"
+import { useLeaveOnClick, useProductRailShown, useStatusPage } from "./shell-placement.ts"
 import { ThemeSwitch } from "./theme-switch.tsx"
 
 export type HgdcProduct = {
@@ -63,6 +64,7 @@ export function AccountMenu({
   products: productsProp,
   product: currentProduct,
   accountHref,
+  statusPage,
   children,
   variant = "row",
 }: {
@@ -78,12 +80,20 @@ export function AccountMenu({
   product?: string
   /** Adresse d'Account dans la liste par défaut (un Account local en développement). */
   accountHref?: string
+  /**
+   * Page de statut du produit, entrée « État du service » : celle d'`AppShell` par défaut (son
+   * `statusPage`, sinon `https://status.hgdc.ch/<produit>`), `false` pour la retirer. Hors de la
+   * coque, sans adresse donnée, pas d'entrée.
+   */
+  statusPage?: string | false
   /** Entrées propres au produit (« Administration »), après le profil. */
   children?: ReactNode
   variant?: "row" | "avatar"
 }): React.JSX.Element {
   const products = productsProp ?? productMenuEntries({ current: currentProduct, accountHref })
   const railShown = useProductRailShown()
+  const shellStatusPage = useStatusPage()
+  const statusPageUrl = statusPage === false ? null : (statusPage ?? shellStatusPage)
   const leaveOnClick = useLeaveOnClick()
   return (
     <DropdownMenu>
@@ -147,6 +157,12 @@ export function AccountMenu({
             Raccourcis clavier
             <DropdownMenuShortcut>?</DropdownMenuShortcut>
           </DropdownMenuItem>
+        ) : null}
+        {statusPageUrl ? (
+          <MenuPrimitive.LinkItem href={statusPageUrl} className={MENU_LINK_ITEM}>
+            <HugeiconsIcon icon={Activity01Icon} aria-hidden />
+            État du service
+          </MenuPrimitive.LinkItem>
         ) : null}
         {products.length ? (
           <>

@@ -32,7 +32,7 @@ import { ProductBadge } from "./product-badge.tsx"
 import { ProductRail } from "./product-rail.tsx"
 import { useProductSwitch } from "./product-switch.ts"
 import { HGDC_ACCOUNT, HGDC_PRODUCTS } from "./products.ts"
-import { ProductRailShownContext, ShellLeaveContext } from "./shell-placement.ts"
+import { ProductRailShownContext, ShellLeaveContext, StatusPageContext } from "./shell-placement.ts"
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip.tsx"
 import { cn } from "./cn.ts"
 import { ServiceStatus, statusPageUrlFor } from "./service-status.tsx"
@@ -386,7 +386,7 @@ export function AppShell({
   /**
    * Page de statut du produit, dont le bandeau d'état se pose en tête du contenu (ADR 0018) :
    * `https://status.hgdc.ch/<produit>` par défaut, une autre adresse (prévisualisation sur une page
-   * de test), ou `false` pour ne rien lire.
+   * de test), ou `false` pour ne rien lire. Le menu du compte en tire son entrée « État du service ».
    */
   statusPage?: string | false | undefined
 }): React.JSX.Element {
@@ -416,6 +416,7 @@ export function AppShell({
     window.addEventListener("pageshow", onPageShow)
     return () => window.removeEventListener("pageshow", onPageShow)
   }, [])
+  const statusPageUrl = statusPage === false ? null : (statusPage ?? statusPageUrlFor(product))
   const loading = useContentLoading({ navigating, pending: pagePending > 0 || leaving })
   // Avant l'hydratation, le CSS montre le calque et le H dès qu'une page attend (`:has`) ; ensuite
   // `data-loading` prend le relais dans la même image.
@@ -431,125 +432,124 @@ export function AppShell({
     <ShellContext.Provider value={{ closeMobileNav: () => setMenuOpen(false) }}>
       <ProductRailShownContext value={productRail}>
         <ShellLeaveContext value={leave}>
-          <div
-            data-slot="app-shell"
-            data-rail-peek={railPeek ? "" : undefined}
-            data-product-rail={productRail ? "" : undefined}
-            data-loading={loading ? "" : undefined}
-            data-hydrated={hydrated ? "" : undefined}
-            className={cn(
-              "min-h-dvh lg:grid lg:h-dvh lg:bg-shell",
-              productRail ? "lg:grid-cols-[auto_auto_minmax(0,1fr)]" : "lg:grid-cols-[auto_minmax(0,1fr)]",
-            )}
-          >
-            <a
-              href="#contenu"
-              className="sr-only z-50 rounded-xl bg-background px-4 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:ring-2 focus:ring-ring"
+          <StatusPageContext value={statusPageUrl}>
+            <div
+              data-slot="app-shell"
+              data-rail-peek={railPeek ? "" : undefined}
+              data-product-rail={productRail ? "" : undefined}
+              data-loading={loading ? "" : undefined}
+              data-hydrated={hydrated ? "" : undefined}
+              className={cn(
+                "min-h-dvh lg:grid lg:h-dvh lg:bg-shell",
+                productRail ? "lg:grid-cols-[auto_auto_minmax(0,1fr)]" : "lg:grid-cols-[auto_minmax(0,1fr)]",
+              )}
             >
-              Aller au contenu
-            </a>
-            {productRail ? (
-              <ProductRail
-                current={product}
-                organization={organization}
-                accountHref={accountHref}
-                onExpandedChange={setRailPeek}
-              />
-            ) : null}
-            <aside
-              aria-label="Barre latérale"
-              className="group/sidebar hidden overflow-hidden text-shell-foreground transition-[width] duration-(--duration-base) ease-ios motion-reduce:transition-none lg:flex lg:w-64 lg:flex-col lg:rail:w-16"
-            >
-              <SidebarHead product={product} />
-              {!productRail && organization ? <div className="shrink-0 px-3 pb-1">{organization}</div> : null}
-              {nav}
-              {sidebarFooter ? <div className="grid gap-0.5 px-3 pt-1 pb-3">{sidebarFooter}</div> : null}
-            </aside>
-
-            <div className="flex min-h-dvh flex-col lg:min-h-0 lg:p-2 lg:pl-0">
-              <div
-                ref={contentRef}
-                className="relative flex flex-1 flex-col lg:min-h-0 lg:overflow-y-auto lg:rounded-xl lg:bg-background lg:[scrollbar-gutter:stable]"
+              <a
+                href="#contenu"
+                className="sr-only z-50 rounded-xl bg-background px-4 py-2 text-sm font-medium focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:ring-2 focus:ring-ring"
               >
-                {/* Texte agrandi (200 %) : la barre ne garde pas 56 px coûte que coûte, elle passe
+                Aller au contenu
+              </a>
+              {productRail ? (
+                <ProductRail
+                  current={product}
+                  organization={organization}
+                  accountHref={accountHref}
+                  onExpandedChange={setRailPeek}
+                />
+              ) : null}
+              <aside
+                aria-label="Barre latérale"
+                className="group/sidebar hidden overflow-hidden text-shell-foreground transition-[width] duration-(--duration-base) ease-ios motion-reduce:transition-none lg:flex lg:w-64 lg:flex-col lg:rail:w-16"
+              >
+                <SidebarHead product={product} />
+                {!productRail && organization ? <div className="shrink-0 px-3 pb-1">{organization}</div> : null}
+                {nav}
+                {sidebarFooter ? <div className="grid gap-0.5 px-3 pt-1 pb-3">{sidebarFooter}</div> : null}
+              </aside>
+
+              <div className="flex min-h-dvh flex-col lg:min-h-0 lg:p-2 lg:pl-0">
+                <div
+                  ref={contentRef}
+                  className="relative flex flex-1 flex-col lg:min-h-0 lg:overflow-y-auto lg:rounded-xl lg:bg-background lg:[scrollbar-gutter:stable]"
+                >
+                  {/* Texte agrandi (200 %) : la barre ne garde pas 56 px coûte que coûte, elle passe
                     à la ligne. Le contexte de la page (`header`) réclame 7 rem ; s'il ne les a pas à
                     côté de la marque, il descend sur une deuxième ligne avec la recherche, au lieu
                     d'être écrasé sous la loupe. À taille normale, tout tient sur une ligne. */}
-                <header className="sticky top-[env(safe-area-inset-top,0px)] z-30 flex min-h-14 shrink-0 flex-wrap items-center gap-x-1 gap-y-1 border-b border-foreground/5 bg-background px-2 py-1.5 sm:px-4 lg:top-0">
-                  <button
-                    type="button"
-                    onClick={() => setMenuOpen(true)}
-                    aria-label="Ouvrir le menu"
-                    className="touch-target grid size-10 shrink-0 place-items-center rounded-xl text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 lg:hidden"
-                  >
-                    <HugeiconsIcon icon={Menu01Icon} aria-hidden className="size-5" />
-                  </button>
-                  {/* Sur téléphone, la marque du produit est toujours là : pastille et nom. */}
-                  <div data-slot="app-shell-brand" className="flex shrink-0 items-center gap-2 pr-1 lg:hidden">
-                    <ProductBadge product={product} className="size-6" />
-                    <span className="font-heading text-[0.9375rem] font-semibold">{productName(product)}</span>
+                  <header className="sticky top-[env(safe-area-inset-top,0px)] z-30 flex min-h-14 shrink-0 flex-wrap items-center gap-x-1 gap-y-1 border-b border-foreground/5 bg-background px-2 py-1.5 sm:px-4 lg:top-0">
+                    <button
+                      type="button"
+                      onClick={() => setMenuOpen(true)}
+                      aria-label="Ouvrir le menu"
+                      className="touch-target grid size-10 shrink-0 place-items-center rounded-xl text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 lg:hidden"
+                    >
+                      <HugeiconsIcon icon={Menu01Icon} aria-hidden className="size-5" />
+                    </button>
+                    {/* Sur téléphone, la marque du produit est toujours là : pastille et nom. */}
+                    <div data-slot="app-shell-brand" className="flex shrink-0 items-center gap-2 pr-1 lg:hidden">
+                      <ProductBadge product={product} className="size-6" />
+                      <span className="font-heading text-[0.9375rem] font-semibold">{productName(product)}</span>
+                    </div>
+                    <div className={cn("flex min-w-0 items-center gap-2", header ? "flex-[1_1_7rem]" : "flex-1")}>
+                      {header}
+                    </div>
+                    {onSearch ? (
+                      <CommandMenuButton
+                        onClick={onSearch}
+                        compact="mobile"
+                        className="shrink-0 lg:w-96 lg:max-w-none"
+                        {...(searchLabel !== undefined ? { label: searchLabel } : {})}
+                      />
+                    ) : null}
+                  </header>
+                  <div data-slot="app-shell-loading" aria-hidden={!loading} className={CONTENT_LOADING_LAYER}>
+                    {loading ? (
+                      <span role="status" className="sr-only">
+                        Chargement…
+                      </span>
+                    ) : null}
                   </div>
-                  <div className={cn("flex min-w-0 items-center gap-2", header ? "flex-[1_1_7rem]" : "flex-1")}>
-                    {header}
-                  </div>
-                  {onSearch ? (
-                    <CommandMenuButton
-                      onClick={onSearch}
-                      compact="mobile"
-                      className="shrink-0 lg:w-96 lg:max-w-none"
-                      {...(searchLabel !== undefined ? { label: searchLabel } : {})}
-                    />
-                  ) : null}
-                </header>
-                <div data-slot="app-shell-loading" aria-hidden={!loading} className={CONTENT_LOADING_LAYER}>
-                  {loading ? (
-                    <span role="status" className="sr-only">
-                      Chargement…
-                    </span>
-                  ) : null}
-                </div>
-                <main
-                  id="contenu"
-                  tabIndex={-1}
-                  aria-busy={loading ? true : undefined}
-                  inert={loading || undefined}
-                  className={cn(
-                    "mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-16 outline-none sm:px-6 lg:px-10 lg:pt-8",
-                    mainClassName,
-                  )}
-                >
-                  <ServiceStatus
-                    pageUrl={statusPage === false ? null : (statusPage ?? statusPageUrlFor(product))}
-                    className="mb-6"
-                  />
-                  <ContentLoadingContext value={registerPagePending}>
-                    {contentKey === undefined ? (
-                      children
-                    ) : (
-                      <Suspense key={contentKey} fallback={<PagePending />}>
-                        {children}
-                      </Suspense>
+                  <main
+                    id="contenu"
+                    tabIndex={-1}
+                    aria-busy={loading ? true : undefined}
+                    inert={loading || undefined}
+                    className={cn(
+                      "mx-auto w-full max-w-6xl flex-1 px-4 pt-6 pb-16 outline-none sm:px-6 lg:px-10 lg:pt-8",
+                      mainClassName,
                     )}
-                  </ContentLoadingContext>
-                </main>
+                  >
+                    <ServiceStatus pageUrl={statusPageUrl} className="mb-6" />
+                    <ContentLoadingContext value={registerPagePending}>
+                      {contentKey === undefined ? (
+                        children
+                      ) : (
+                        <Suspense key={contentKey} fallback={<PagePending />}>
+                          {children}
+                        </Suspense>
+                      )}
+                    </ContentLoadingContext>
+                  </main>
+                </div>
               </div>
+
+              {hasRoot ? null : <FamilyLoaderHost />}
+
+              <Drawer side="bottom" open={menuOpen} onOpenChange={setMenuOpen}>
+                <DrawerContent className="lg:hidden">
+                  <DrawerTitle className="sr-only">Menu</DrawerTitle>
+                  {organization ? <div className="px-3 pt-1">{organization}</div> : null}
+                  {nav}
+                  {sidebarFooter ? (
+                    <div className="grid gap-0.5 border-t border-foreground/5 px-3 pt-2 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
+                      {sidebarFooter}
+                    </div>
+                  ) : null}
+                </DrawerContent>
+              </Drawer>
             </div>
-
-            {hasRoot ? null : <FamilyLoaderHost />}
-
-            <Drawer side="bottom" open={menuOpen} onOpenChange={setMenuOpen}>
-              <DrawerContent className="lg:hidden">
-                <DrawerTitle className="sr-only">Menu</DrawerTitle>
-                {organization ? <div className="px-3 pt-1">{organization}</div> : null}
-                {nav}
-                {sidebarFooter ? (
-                  <div className="grid gap-0.5 border-t border-foreground/5 px-3 pt-2 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
-                    {sidebarFooter}
-                  </div>
-                ) : null}
-              </DrawerContent>
-            </Drawer>
-          </div>
+          </StatusPageContext>
         </ShellLeaveContext>
       </ProductRailShownContext>
     </ShellContext.Provider>

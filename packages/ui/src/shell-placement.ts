@@ -40,3 +40,14 @@ export function useLeaveOnClick(): (event: React.MouseEvent<HTMLAnchorElement>) 
     leave()
   }
 }
+
+/**
+ * Page de statut du produit affiché, posée par `AppShell` (son `statusPage`, sinon
+ * `https://status.hgdc.ch/<produit>`) : le menu du compte en tire son entrée « État du service ».
+ * `null` hors de la coque ou quand la coque ne lit aucune page.
+ */
+export const StatusPageContext: React.Context<string | null> = createContext<string | null>(null)
+
+export function useStatusPage(): string | null {
+  return useContext(StatusPageContext)
+}
