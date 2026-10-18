@@ -4,6 +4,10 @@
 //
 //   bun scripts/family.ts && bun run format
 //
+// Puis un changeset @hgdc/ui et la release : les produits et le site reçoivent la nouvelle version
+// (propagate.yml) et posent les icônes à leur build (`hgdc-brand`). Rien à recopier à la main
+// (runbook docs/runbooks/changer-une-icone.md).
+//
 // Les icônes des produits se posent toujours sur un fond blanc, en clair comme en sombre, sans
 // bordure ni ombre (choix de Hugo, 2026-10-17). Le dessin est celui de la variante claire
 // (`<mot>.svg`), centré sur son encre (pas sur sa viewBox), à 12 % de marge. Formes (2026-10-18) :
@@ -15,10 +19,12 @@
 //
 // Écrit :
 //   packages/ui/family/tile/<mot>.svg
-//   packages/ui/src/family-svg.ts (SVG embarqués)
+//   packages/ui/src/family-svg.ts (SVG embarqués, empreinte des icônes d'e-mail)
 //   packages/ui/email-icons/<mot>.png (96 px, carré arrondi : Gmail et Outlook n'affichent pas le SVG)
 //   packages/ui/family/app/<mot>/ : favicon.svg, favicon.ico (16, 32, 48), apple-touch-icon.png
-//     (180), icon-192.png, icon-512.png, icon-maskable-512.png, à recopier dans le public/ du produit
+//     (180), icon-192.png, icon-512.png, icon-maskable-512.png, posés dans le public/ du produit
+//     par `hgdc-brand sync <mot>` à chaque build
+import { createHash } from "node:crypto"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { Resvg } from "@resvg/resvg-js"
 
@@ -108,6 +114,7 @@ const ico = (images: Array<{ px: number; data: Uint8Array }>) => {
 const TILE = new URL("tile/", FAMILY)
 await mkdir(TILE, { recursive: true })
 const badges: Array<string> = []
+const emailVersions: Array<string> = []
 for (const product of PRODUCTS) {
   const picto = await svg(product)
   const square = tile(picto, "square")
@@ -115,7 +122,9 @@ for (const product of PRODUCTS) {
   const maskable = tile(picto, "full", maskableMargin(picto))
   await writeFile(new URL(`${product}.svg`, TILE), `${square}\n`)
   badges.push(`  ${product}: ${JSON.stringify(square)},`)
-  await writeFile(new URL(`${product}.png`, EMAIL), png(square, 96))
+  const email = png(square, 96)
+  await writeFile(new URL(`${product}.png`, EMAIL), email)
+  emailVersions.push(`  ${product}: "${createHash("sha256").update(email).digest("hex").slice(0, 8)}",`)
 
   const app = new URL(`app/${product}/`, FAMILY)
   await mkdir(app, { recursive: true })
@@ -151,6 +160,14 @@ export type ThemedSvg = Readonly<{ light: string; dark: string }>
  */
 export const PRODUCT_BADGE_SVG: Readonly<Record<FamilyProduct, string>> = {
 ${badges.join("\n")}
+}
+
+/**
+ * Empreinte de chaque icône d'e-mail (\`email-icons/<mot>.png\`), ajoutée à son adresse : un client
+ * mail qui garde l'ancienne image en cache (proxy d'images de Gmail) charge la nouvelle.
+ */
+export const EMAIL_ICON_VERSION: Readonly<Record<FamilyProduct, string>> = {
+${emailVersions.join("\n")}
 }
 
 /** SVG du H « Double », la marque de la H Collection, sans fond (\`family/hcollection-icon(-dark).svg\`). */

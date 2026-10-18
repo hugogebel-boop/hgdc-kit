@@ -1,74 +1,120 @@
-# Ouvre dans chaque produit une PR qui passe à `@hgdc/config@<version>` et réaligne sa stack
-# (`hgdc-stack sync`), fusionnée automatiquement quand sa CI passe.
-# Appelé par release.yml ; à la main pour rattraper un produit : Actions → Propagate → Run workflow.
-# Produits : variable de dépôt HGDC_PRODUCTS (tableau JSON). Jeton : secret HGDC_BOT_TOKEN
-# (jeton fin, Contents et Pull requests en écriture sur les produits ; source Doppler hgdc/prd).
+# Ouvre dans chaque dépôt une seule PR qui passe aux nouvelles versions du kit, fusionnée
+# automatiquement quand sa CI passe :
+#   @hgdc/config  produits (variable HGDC_PRODUCTS), puis `hgdc-stack sync`
+#   @hgdc/ui      produits et site hgdc.ch (variable HGDC_UI_REPOS) : favicon, icônes d'application
+#                 et icônes d'e-mail suivent, posées à leur build par `hgdc-brand`
+# Une seule PR par dépôt : deux PR qui touchent le même bun.lock se bloqueraient l'une l'autre.
+# Appelé par release.yml ; à la main pour rattraper un dépôt : Actions → Propagate → Run workflow.
+# Variables de dépôt : tableaux JSON. Jeton : secret HGDC_BOT_TOKEN (jeton fin, Contents et Pull
+# requests en écriture sur ces dépôts ; source Doppler hgdc/prd).
 name: Propagate
 
 on:
   workflow_call:
     inputs:
-      version:
+      config:
         type: string
-        required: true
+        default: ""
+      ui:
+        type: string
+        default: ""
     secrets:
       HGDC_BOT_TOKEN:
         required: true
   workflow_dispatch:
     inputs:
-      version:
-        description: Version de @hgdc/config à propager
+      config:
+        description: Version de @hgdc/config à propager (vide pour ne pas la changer)
         type: string
-        required: true
+        default: ""
+      ui:
+        description: Version de @hgdc/ui à propager (vide pour ne pas la changer)
+        type: string
+        default: ""
 
 permissions: {}
 
 jobs:
   propagate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        repo: ${{ fromJSON(vars.HGDC_PRODUCTS) }}
+        repo: ${{ fromJSON(inputs.ui != '' && vars.HGDC_UI_REPOS || vars.HGDC_PRODUCTS) }}
     name: ${{ matrix.repo }}
     env:
-      VERSION: ${{ inputs.version }}
+      CONFIG: ${{ inputs.config }}
+      UI: ${{ inputs.ui }}
     steps:
-      - name: Version
-        run: '[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Version invalide : $VERSION"; exit 1; }'
+      - name: Versions
+        run: |
+          semver='^[0-9]+\.[0-9]+\.[0-9]+$'
+          [[ -z "$CONFIG" || "$CONFIG" =~ $semver ]] || { echo "Version invalide : $CONFIG"; exit 1; }
+          [[ -z "$UI" || "$UI" =~ $semver ]] || { echo "Version invalide : $UI"; exit 1; }
+          [[ -n "$CONFIG$UI" ]] || { echo "Aucune version à propager"; exit 1; }
+          title="chore(deps):"
+          [ -n "$CONFIG" ] && title="$title @hgdc/config $CONFIG"
+          [ -n "$CONFIG" ] && [ -n "$UI" ] && title="$title,"
+          [ -n "$UI" ] && title="$title @hgdc/ui $UI"
+          echo "TITLE=$title" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ matrix.repo }}
           token: ${{ secrets.HGDC_BOT_TOKEN }}
           persist-credentials: false
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - if: hashFiles('bun.lock') != ''
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
+      - if: hashFiles('package-lock.json') != ''
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
       - name: Aligner sur le kit
         run: |
           # Juste après la publication, le CDN de npm sert encore l'ancienne liste de versions :
           # on réessaie jusqu'à 5 minutes avant d'abandonner.
-          for attempt in $(seq 1 10); do
-            bun add --dev --exact "@hgdc/config@$VERSION" && break
-            [ "$attempt" -eq 10 ] && exit 1
-            echo "@hgdc/config@$VERSION pas encore visible sur le registre, nouvel essai dans 30 s ($attempt/10)"
-            sleep 30
-          done
-          bunx hgdc-stack sync
+          retry() {
+            for attempt in $(seq 1 10); do
+              "$@" && return 0
+              [ "$attempt" -eq 10 ] && return 1
+              echo "Version pas encore visible sur le registre, nouvel essai dans 30 s ($attempt/10)"
+              sleep 30
+            done
+          }
+          if [ -f package-lock.json ]; then
+            # Site hgdc.ch (npm) : @hgdc/ui ne sert qu'à son build, pour les icônes d'e-mail.
+            [ -z "$UI" ] || retry npm install --save-dev --save-exact --ignore-scripts --no-audit --no-fund "@hgdc/ui@$UI"
+            exit 0
+          fi
+          [ -z "$UI" ] || retry bun add --exact "@hgdc/ui@$UI"
+          if [ -n "$CONFIG" ]; then
+            retry bun add --dev --exact "@hgdc/config@$CONFIG"
+            bunx hgdc-stack sync
+          fi
           bun install
       - id: pr
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ secrets.HGDC_BOT_TOKEN }}
-          branch: hgdc-kit/config
-          commit-message: "chore(deps): @hgdc/config ${{ inputs.version }}"
-          title: "chore(deps): @hgdc/config ${{ inputs.version }}"
-          body: "Nouvelle version de `@hgdc/config` et stack réalignée par `hgdc-stack sync`. Ouverte par hgdc-kit, fusionnée automatiquement quand la CI passe."
+          branch: hgdc-kit/release
+          commit-message: ${{ env.TITLE }}
+          title: ${{ env.TITLE }}
+          body: "Nouvelles versions du kit, ouverte par hgdc-kit (propagate.yml) et fusionnée automatiquement quand la CI passe."
           delete-branch: true
       - if: steps.pr.outputs.pull-request-operation == 'created'
         env:
           GH_TOKEN: ${{ secrets.HGDC_BOT_TOKEN }}
           REPO: ${{ matrix.repo }}
           PR: ${{ steps.pr.outputs.pull-request-number }}
-        run: gh pr merge --auto --squash --repo "$REPO" "$PR"
+        run: |
+          gh pr merge --auto --squash --repo "$REPO" "$PR" && exit 0
+          # Dépôt sans fusion automatique (site hgdc.ch, sans règle sur main) : attendre que ses checks
+          # démarrent puis passent, et fusionner.
+          for _ in $(seq 1 12); do
+            gh pr checks --repo "$REPO" "$PR" 2>&1 | grep -q "no checks reported" || break
+            sleep 10
+          done
+          gh pr checks --watch --fail-fast --repo "$REPO" "$PR"
+          gh pr merge --squash --delete-branch --repo "$REPO" "$PR"

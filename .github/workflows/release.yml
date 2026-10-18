@@ -1,6 +1,6 @@
 # Publication : changesets ouvre la PR « chore: release » ; sa fusion publie sur npm
 # par OIDC (trusted publishing, nom de ce fichier déclaré sur npmjs.com) puis aligne les produits
-# (propagate.yml) si @hgdc/config a changé.
+# (propagate.yml) si @hgdc/config ou @hgdc/ui a changé.
 name: Release
 
 on:
@@ -20,7 +20,8 @@ jobs:
       pull-requests: write
       id-token: write
     outputs:
-      config-version: ${{ steps.config.outputs.version }}
+      config-version: ${{ steps.versions.outputs.config }}
+      ui-version: ${{ steps.versions.outputs.ui }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -45,17 +46,20 @@ jobs:
           # que la règle de main exige. Contents et Pull requests en écriture sur ce dépôt.
           # v2 lit le jeton dans l'entrée `github-token`, et refuse un GITHUB_TOKEN différent dans l'environnement.
           github-token: ${{ secrets.HGDC_BOT_TOKEN }}
-      - id: config
+      - id: versions
         if: steps.changesets.outputs.published == 'true'
         env:
           PACKAGES: ${{ steps.changesets.outputs.published-packages }}
-        run: echo "version=$(jq -r '.[] | select(.name == "@hgdc/config") | .version' <<< "$PACKAGES")" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "config=$(jq -r '.[] | select(.name == "@hgdc/config") | .version' <<< "$PACKAGES")" >> "$GITHUB_OUTPUT"
+          echo "ui=$(jq -r '.[] | select(.name == "@hgdc/ui") | .version' <<< "$PACKAGES")" >> "$GITHUB_OUTPUT"
 
   propagate:
     needs: release
-    if: needs.release.outputs.config-version != '' && vars.HGDC_PRODUCTS != ''
+    if: (needs.release.outputs.config-version != '' || needs.release.outputs.ui-version != '') && vars.HGDC_PRODUCTS != ''
     uses: ./.github/workflows/propagate.yml
     with:
-      version: ${{ needs.release.outputs.config-version }}
+      config: ${{ needs.release.outputs.config-version }}
+      ui: ${{ needs.release.outputs.ui-version }}
     secrets:
       HGDC_BOT_TOKEN: ${{ secrets.HGDC_BOT_TOKEN }}

@@ -13,6 +13,7 @@ import {
   emailIconUrl,
   renderEmail,
 } from "./email.tsx"
+import { EMAIL_ICON_VERSION } from "./family-svg.ts"
 import { EMAIL_DARK, EMAIL_LIGHT, EMAIL_TONES, HGDC_EMAIL_ACCENT, contrastRatio, readableOn } from "./email-palette.ts"
 import { HGDC_ACCOUNT, HGDC_PRODUCTS } from "./products.ts"
 
@@ -34,7 +35,10 @@ describe("EmailLayout", () => {
       </EmailLayout>,
     )
     expect(html).toContain(">Status<")
-    expect(attributes(html, "src")).toEqual(["https://hgdc.ch/email/status.png", "https://hgdc.ch/email/mail.png"])
+    expect(attributes(html, "src")).toEqual([
+      `https://hgdc.ch/email/status.png?v=${EMAIL_ICON_VERSION.status}`,
+      `https://hgdc.ch/email/mail.png?v=${EMAIL_ICON_VERSION.mail}`,
+    ])
     expect(html).toContain("Envoyé avec")
     expect(html).toContain(">Mail de la H Collection</a>")
     expect(attributes(html, "href")).toContain("https://mail.hgdc.ch")
@@ -207,7 +211,7 @@ describe("blocs", () => {
 describe("couleurs", () => {
   it("chaque produit a son icône et un accent lisible sous son texte de bouton", () => {
     for (const product of [HGDC_ACCOUNT, ...HGDC_PRODUCTS]) {
-      expect(emailIconUrl(product.word)).toMatch(/^https:\/\/hgdc\.ch\/email\/[a-z]+\.png$/)
+      expect(emailIconUrl(product.word)).toMatch(/^https:\/\/hgdc\.ch\/email\/[a-z]+\.png\?v=[0-9a-f]{8}$/)
       const accent = product.accent ?? HGDC_EMAIL_ACCENT
       for (const color of [accent.light, accent.dark])
         expect(contrastRatio(color, readableOn(color))).toBeGreaterThanOrEqual(4.5)
