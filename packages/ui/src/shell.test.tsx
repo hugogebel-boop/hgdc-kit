@@ -1,10 +1,13 @@
 // @vitest-environment happy-dom
 import DashboardSquare01Icon from "@hugeicons/core-free-icons/DashboardSquare01Icon"
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react"
+import { useState } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { AccountMenu } from "./account-menu.tsx"
 import { AppShell, SidebarNav, SidebarNavItem, toggleSidebar } from "./app-shell.tsx"
+import { Avatar, AvatarFallback } from "./avatar.tsx"
+import { avatarTone } from "./initials.ts"
 import { CommandMenu, matchCommand } from "./command-menu.tsx"
 import { OrgSwitcher } from "./org-switcher.tsx"
 import { FamilyLoaderRoot } from "./family-loader.tsx"
@@ -377,56 +380,233 @@ describe("AccountMenu", () => {
     expect(mailAgain.closest("[role=group]")?.className ?? "").not.toContain("lg:hidden")
   })
 
-  it("« État du service » vers la page de statut de la coque, absent hors de la coque", async () => {
-    const user = { name: "Hugo Gebel", email: "hugo@example.ch" }
-    const open = async () => {
-      fireEvent.click(screen.getAllByRole("button", { name: "Compte de Hugo Gebel" })[0] as HTMLElement)
-      await screen.findByRole("menuitem", { name: "Se déconnecter" })
-    }
-    const { unmount } = render(
-      <AppShell
-        product="docs"
-        nav={null}
-        statusPage={false}
-        sidebarFooter={
-          <AccountMenu user={user} onSignOut={() => {}} statusPage="https://status.example/documentation" />
-        }
-      >
-        Page
-      </AppShell>,
+  it("dans l'ordre : identité, Profil, Sécurité, Thème, puis Se déconnecter à part ; ni raccourcis, ni état du service", async () => {
+    render(
+      <AccountMenu
+        user={{ name: "Hugo Gebel", email: "hugo@example.ch" }}
+        onProfile={() => {}}
+        onSecurity={() => {}}
+        onShortcuts={() => {}}
+        statusPage="https://status.example/host"
+        onSignOut={() => {}}
+        products={[]}
+      />,
     )
-    await open()
-    expect(screen.getByRole("menuitem", { name: "État du service" }).getAttribute("href")).toBe(
-      "https://status.example/documentation",
+    fireEvent.click(screen.getByRole("button", { name: "Compte de Hugo Gebel" }))
+    const menu = await screen.findByRole("menu")
+    const entries = [...menu.querySelectorAll('[role="menuitem"], [role="radiogroup"]')].map(
+      (node) => node.getAttribute("aria-label") ?? node.textContent?.trim(),
     )
-    unmount()
-
-    render(<AccountMenu user={user} onSignOut={() => {}} products={[]} />)
-    await open()
+    expect(entries).toEqual(["Profil", "Sécurité", "Thème", "Se déconnecter"])
+    expect(within(menu).getByText("hugo@example.ch")).toBeDefined()
+    expect(screen.queryByRole("menuitem", { name: /Raccourcis/ })).toBeNull()
     expect(screen.queryByRole("menuitem", { name: "État du service" })).toBeNull()
   })
+})
 
-  it("« État du service » suit le produit de la coque, Docs à /documentation", async () => {
-    const fetchMock = vi.fn<(input: RequestInfo | URL) => Promise<Response>>(() =>
-      Promise.reject(new Error("hors ligne")),
-    )
-    vi.stubGlobal("fetch", fetchMock)
+describe("AppShell, accès au-dessus du compte", () => {
+  const account = (
+    <AccountMenu user={{ name: "Hugo Gebel", email: "hugo@example.ch" }} onSignOut={() => {}} products={[]} />
+  )
+
+  it("Documentation, Réglages, État du service, dans cet ordre, juste au-dessus du compte", () => {
     render(
       <AppShell
         product="docs"
         nav={null}
-        sidebarFooter={
-          <AccountMenu user={{ name: "Hugo Gebel", email: "hugo@example.ch" }} onSignOut={() => {}} products={[]} />
-        }
+        links={{ documentation: "https://docs.example/docs", settings: { href: "/reglages", active: true } }}
+        account={account}
       >
         Page
       </AppShell>,
     )
-    fireEvent.click(screen.getAllByRole("button", { name: "Compte de Hugo Gebel" })[0] as HTMLElement)
-    expect((await screen.findByRole("menuitem", { name: "État du service" })).getAttribute("href")).toBe(
+    const aside = screen.getByRole("complementary", { name: "Barre latérale" })
+    const common = within(aside).getByRole("navigation", { name: "Accès communs" })
+    const links = within(common).getAllByRole("link")
+    expect(links.map((link) => link.textContent)).toEqual(["Documentation", "Réglages", "État du service"])
+    expect(links.map((link) => link.getAttribute("href"))).toEqual([
+      "https://docs.example/docs",
+      "/reglages",
+      // La page de statut de la coque par défaut.
       "https://status.hgdc.ch/documentation",
+    ])
+    expect(links[1]?.getAttribute("aria-current")).toBe("page")
+    // Le compte suit immédiatement les accès communs.
+    const button = within(aside).getByRole("button", { name: "Compte de Hugo Gebel" })
+    expect(common.nextElementSibling?.contains(button)).toBe(true)
+  })
+
+  it("chaque accès est optionnel : `status: false` le retire, `statusPage` le change", () => {
+    const { unmount } = render(
+      <AppShell product="host" nav={null} statusPage="https://status.example/host" account={account}>
+        Page
+      </AppShell>,
     )
-    vi.unstubAllGlobals()
+    const aside = () => screen.getByRole("complementary", { name: "Barre latérale" })
+    expect(
+      within(aside())
+        .getAllByRole("link")
+        .map((link) => link.getAttribute("href")),
+    ).toEqual(["https://status.example/host"])
+    unmount()
+    render(
+      <AppShell product="host" nav={null} links={{ status: false }} account={account}>
+        Page
+      </AppShell>,
+    )
+    expect(within(aside()).queryByRole("navigation", { name: "Accès communs" })).toBeNull()
+  })
+
+  it("`sidebarFooter` sans `account` (déprécié) : rendu tel quel, sous les accès communs", () => {
+    render(
+      <AppShell product="host" nav={null} sidebarFooter={<a href="/ancien">Ancien pied</a>}>
+        Page
+      </AppShell>,
+    )
+    const aside = screen.getByRole("complementary", { name: "Barre latérale" })
+    expect(
+      within(aside)
+        .getAllByRole("link")
+        .map((link) => link.textContent),
+    ).toEqual(["État du service", "Ancien pied"])
+  })
+})
+
+describe("AppShell, assistant", () => {
+  function stubWide(wide: boolean): void {
+    vi.stubGlobal(
+      "matchMedia",
+      (query: string) =>
+        ({
+          matches: query === "(min-width: 80rem)" ? wide : false,
+          media: query,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+        }) as unknown as MediaQueryList,
+    )
+  }
+
+  function Harness({ initial = false }: { initial?: boolean }): React.JSX.Element {
+    const [open, setOpen] = useState(initial)
+    return (
+      <AppShell
+        product="mail"
+        nav={null}
+        onSearch={() => {}}
+        assistant={{ open, onOpenChange: setOpen, shortcut: "j", panel: <textarea aria-label="Message" /> }}
+      >
+        <button type="button">Action de la page</button>
+      </AppShell>
+    )
+  }
+
+  it("bouton juste après la recherche, qui ouvre une colonne à droite sans couvrir la page (≥ 1280 px)", () => {
+    stubWide(true)
+    render(<Harness />)
+    const search = screen.getByRole("button", { name: /Rechercher/ })
+    const button = screen.getByRole("button", { name: "Assistant" })
+    expect(search.nextElementSibling).toBe(button)
+    expect(button.getAttribute("aria-expanded")).toBe("false")
+    // Rien de monté avant la première ouverture.
+    expect(document.querySelector('[data-slot="app-shell-assistant"]')).toBeNull()
+
+    fireEvent.click(button)
+    expect(button.getAttribute("aria-expanded")).toBe("true")
+    const panel = screen.getByRole("region", { name: "Assistant" })
+    expect(button.getAttribute("aria-controls")).toBe(panel.id)
+    // Le focus entre dans la saisie ; la page reste utilisable à côté.
+    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Message" }))
+    expect(screen.getByRole("button", { name: "Action de la page" }).closest("[inert]")).toBeNull()
+    // Quatrième colonne de la grille : la page se rétrécit.
+    const shell = document.querySelector('[data-slot="app-shell"]')
+    expect(shell?.className).toContain("lg:grid-cols-[auto_auto_minmax(0,1fr)_auto]")
+    expect(shell?.hasAttribute("data-assistant")).toBe(true)
+    expect(panel.className).toContain("xl:data-open:w-[26rem]")
+    expect(panel.className).toContain("motion-reduce:transition-none")
+  })
+
+  it("Échap ferme, le focus revient au bouton, la conversation reste montée", () => {
+    stubWide(true)
+    render(<Harness initial />)
+    const input = screen.getByRole("textbox", { name: "Message" })
+    fireEvent.change(input, { target: { value: "Pourquoi ?" } })
+    act(() => input.focus())
+    fireEvent.keyDown(input, { key: "Escape" })
+    const button = screen.getByRole("button", { name: "Assistant" })
+    expect(button.getAttribute("aria-expanded")).toBe("false")
+    expect(document.activeElement).toBe(button)
+    const panel = document.querySelector('[data-slot="app-shell-assistant"]')
+    expect(panel?.hasAttribute("inert")).toBe(true)
+    expect(panel?.hasAttribute("data-open")).toBe(false)
+    expect(panel?.querySelector("textarea")?.value).toBe("Pourquoi ?")
+  })
+
+  it("Ctrl+J ouvre et ferme", () => {
+    stubWide(true)
+    render(<Harness />)
+    const button = screen.getByRole("button", { name: "Assistant" })
+    expect(button.getAttribute("aria-keyshortcuts")).toBe("Control+J Meta+J")
+    act(() => {
+      fireEvent.keyDown(document, { key: "j", ctrlKey: true })
+    })
+    expect(button.getAttribute("aria-expanded")).toBe("true")
+    act(() => {
+      fireEvent.keyDown(document, { key: "j", metaKey: true })
+    })
+    expect(button.getAttribute("aria-expanded")).toBe("false")
+  })
+
+  it("sous 1280 px : vue dédiée, la page inerte dessous, « Retour à la page » la rend", () => {
+    stubWide(false)
+    render(<Harness />)
+    fireEvent.click(screen.getByRole("button", { name: "Assistant" }))
+    const dialog = screen.getByRole("dialog", { name: "Assistant" })
+    expect(dialog.getAttribute("aria-modal")).toBe("true")
+    expect(dialog.className).toContain("data-open:max-xl:fixed")
+    expect(document.querySelector("main")?.closest("[inert]")).not.toBeNull()
+    fireEvent.click(within(dialog).getByRole("button", { name: "Retour à la page" }))
+    expect(screen.queryByRole("dialog")).toBeNull()
+    expect(document.querySelector("main")?.closest("[inert]")).toBeNull()
+  })
+})
+
+describe("Avatars à initiales", () => {
+  it("une teinte stable par clé, sans tenir compte de la casse, répartie sur les sept", () => {
+    expect(avatarTone("hugo@example.ch")).toBe(avatarTone(" Hugo@Example.ch "))
+    const tones = new Set(Array.from({ length: 200 }, (_, i) => avatarTone(`personne${i}@example.ch`)))
+    expect([...tones].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 7])
+  })
+
+  it("AvatarFallback colore les initiales par `colorKey`, sinon par le texte ; `colorKey={null}` reste neutre", () => {
+    render(
+      <>
+        <Avatar>
+          <AvatarFallback colorKey="hugo@example.ch">HG</AvatarFallback>
+        </Avatar>
+        <Avatar>
+          <AvatarFallback>AL</AvatarFallback>
+        </Avatar>
+        <Avatar>
+          <AvatarFallback colorKey={null}>?</AvatarFallback>
+        </Avatar>
+      </>,
+    )
+    const [byKey, byText, neutral] = [...document.querySelectorAll('[data-slot="avatar-fallback"]')]
+    expect(byKey?.getAttribute("data-tone")).toBe(String(avatarTone("hugo@example.ch")))
+    expect(byKey?.className).toContain(`bg-avatar-${avatarTone("hugo@example.ch")}`)
+    expect(byText?.getAttribute("data-tone")).toBe(String(avatarTone("AL")))
+    expect(neutral?.hasAttribute("data-tone")).toBe(false)
+    expect(neutral?.className).toContain("bg-muted")
+  })
+
+  it("AccountMenu : la même teinte dans la barre et dans le menu, tirée de l'adresse", async () => {
+    render(<AccountMenu user={{ name: "Hugo Gebel", email: "hugo@example.ch" }} onSignOut={() => {}} products={[]} />)
+    fireEvent.click(screen.getByRole("button", { name: "Compte de Hugo Gebel" }))
+    await screen.findByRole("menu")
+    const tones = [...document.querySelectorAll('[data-slot="avatar-fallback"]')].map((node) =>
+      node.getAttribute("data-tone"),
+    )
+    expect(tones).toEqual([String(avatarTone("hugo@example.ch")), String(avatarTone("hugo@example.ch"))])
   })
 })
 
