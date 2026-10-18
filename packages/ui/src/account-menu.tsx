@@ -1,10 +1,7 @@
-import ComputerIcon from "@hugeicons/core-free-icons/ComputerIcon"
 import DashboardSquare01Icon from "@hugeicons/core-free-icons/DashboardSquare01Icon"
 import KeyboardIcon from "@hugeicons/core-free-icons/KeyboardIcon"
 import Logout01Icon from "@hugeicons/core-free-icons/Logout01Icon"
-import Moon02Icon from "@hugeicons/core-free-icons/Moon02Icon"
 import SecurityLockIcon from "@hugeicons/core-free-icons/SecurityLockIcon"
-import Sun03Icon from "@hugeicons/core-free-icons/Sun03Icon"
 import Tick02Icon from "@hugeicons/core-free-icons/Tick02Icon"
 import UserIcon from "@hugeicons/core-free-icons/UserIcon"
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react"
@@ -18,13 +15,8 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "./dropdown-menu.tsx"
 import { initials } from "./initials.ts"
@@ -33,7 +25,7 @@ import type { FamilyProduct } from "./family-svg.ts"
 import { ProductBadge } from "./product-badge.tsx"
 import { productMenuEntries } from "./products.ts"
 import { useLeaveOnClick, useProductRailShown } from "./shell-placement.ts"
-import { useTheme, type Theme } from "./theme.tsx"
+import { ThemeSwitch } from "./theme-switch.tsx"
 
 export type HgdcProduct = {
   /** « Host ». */
@@ -51,10 +43,8 @@ export type HgdcProduct = {
 
 export type AccountUser = { name: string; email: string; image?: string | null }
 
-const THEMES: ReadonlyArray<Theme> = ["light", "dark", "system"]
-
 /**
- * Le menu du compte, en bas de la barre latérale : profil, sécurité, thème, raccourcis, autres
+ * Le menu du compte, en bas de la barre latérale : profil, sécurité, choix du thème en trois icônes, raccourcis, autres
  * produits HGDC, déconnexion. `row` : avatar, nom et adresse (l'avatar seul en rail) ; `avatar` :
  * l'avatar seul, pour une barre du haut. Le produit passe les actions ; le thème passe par
  * `ThemeProvider`.
@@ -92,7 +82,6 @@ export function AccountMenu({
   children?: ReactNode
   variant?: "row" | "avatar"
 }): React.JSX.Element {
-  const { theme, setTheme } = useTheme()
   const products = productsProp ?? productMenuEntries({ current: currentProduct, accountHref })
   const railShown = useProductRailShown()
   const leaveOnClick = useLeaveOnClick()
@@ -151,28 +140,7 @@ export function AccountMenu({
           </DropdownMenuItem>
         ) : null}
         {children}
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>
-            <HugeiconsIcon
-              icon={theme === "dark" ? Moon02Icon : theme === "light" ? Sun03Icon : ComputerIcon}
-              aria-hidden
-            />
-            Thème
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            <DropdownMenuRadioGroup
-              value={theme}
-              onValueChange={(value: unknown) => {
-                const next = THEMES.find((t) => t === value)
-                if (next) setTheme(next)
-              }}
-            >
-              <DropdownMenuRadioItem value="light">Clair</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="dark">Sombre</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="system">Système</DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
+        <ThemeSwitch />
         {onShortcuts ? (
           <DropdownMenuItem onClick={onShortcuts}>
             <HugeiconsIcon icon={KeyboardIcon} aria-hidden />
