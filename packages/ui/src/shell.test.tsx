@@ -132,6 +132,107 @@ describe("AppShell", () => {
     expect(within(group).getByRole("link", { name: "Apparence" }).getAttribute("href")).toBe("/p/apparence")
   })
 
+  describe("groupe repliable", () => {
+    beforeEach(() => localStorage.clear())
+
+    const pageNav = (props: { active?: boolean; current?: boolean } = {}) => (
+      <SidebarNav label="Page">
+        <SidebarNavGroup label="Réglages" collapsible icon={DashboardSquare01Icon} active={props.active}>
+          <SidebarNavItem
+            icon={DashboardSquare01Icon}
+            label="Apparence"
+            href="/p/apparence"
+            active={props.current ?? false}
+          />
+        </SidebarNavGroup>
+      </SidebarNav>
+    )
+
+    const disclosure = () => screen.getAllByRole("button", { name: "Réglages" })[0]!
+
+    it("se ferme par défaut et se déroule au clic, mémorisé", () => {
+      render(
+        <AppShell product="status" nav={pageNav()}>
+          Page
+        </AppShell>,
+      )
+      const button = disclosure()
+      expect(button.getAttribute("aria-expanded")).toBe("false")
+      const list = document.getElementById(button.getAttribute("aria-controls") ?? "")
+      expect(list?.tagName).toBe("UL")
+      expect(list?.getAttribute("aria-labelledby")).toBe(button.id)
+      // Fermé : la liste ne se voit pas et sort de l'ordre de tabulation.
+      expect(list?.parentElement?.className).toContain("invisible")
+      // En rail, ses rubriques restent visibles.
+      expect(list?.parentElement?.className).toContain("lg:rail:visible")
+      expect(button.className).toContain("lg:rail:hidden")
+
+      fireEvent.click(button)
+      expect(button.getAttribute("aria-expanded")).toBe("true")
+      expect(list?.parentElement?.className).toContain("grid-rows-[1fr]")
+      expect(localStorage.getItem("sidebar-group:Réglages")).toBe("open")
+      fireEvent.click(button)
+      expect(button.getAttribute("aria-expanded")).toBe("false")
+      expect(localStorage.getItem("sidebar-group:Réglages")).toBe("closed")
+    })
+
+    it("reprend l'état mémorisé", () => {
+      localStorage.setItem("sidebar-group:Réglages", "open")
+      render(
+        <AppShell product="status" nav={pageNav()}>
+          Page
+        </AppShell>,
+      )
+      expect(disclosure().getAttribute("aria-expanded")).toBe("true")
+    })
+
+    it("s'ouvre quand une rubrique est la page ouverte, même mémorisé fermé", () => {
+      localStorage.setItem("sidebar-group:Réglages", "closed")
+      render(
+        <AppShell product="status" nav={pageNav({ current: true })}>
+          Page
+        </AppShell>,
+      )
+      expect(disclosure().getAttribute("aria-expanded")).toBe("true")
+    })
+
+    it("suit `active`, et se laisse refermer", () => {
+      const { rerender } = render(
+        <AppShell product="status" nav={pageNav({ active: false })}>
+          Page
+        </AppShell>,
+      )
+      expect(disclosure().getAttribute("aria-expanded")).toBe("false")
+      rerender(
+        <AppShell product="status" nav={pageNav({ active: true })}>
+          Page
+        </AppShell>,
+      )
+      expect(disclosure().getAttribute("aria-expanded")).toBe("true")
+      fireEvent.click(disclosure())
+      expect(disclosure().getAttribute("aria-expanded")).toBe("false")
+    })
+
+    it("garde le groupe titré sans `collapsible`", () => {
+      render(
+        <AppShell
+          product="status"
+          nav={
+            <SidebarNav label="Page">
+              <SidebarNavGroup label="Suivi">
+                <SidebarNavItem icon={DashboardSquare01Icon} label="Moniteurs" href="/p/moniteurs" />
+              </SidebarNavGroup>
+            </SidebarNav>
+          }
+        >
+          Page
+        </AppShell>,
+      )
+      expect(screen.queryByRole("button", { name: "Suivi" })).toBeNull()
+      expect(screen.getAllByRole("list", { name: "Suivi" }).length).toBeGreaterThan(0)
+    })
+  })
+
   it("garde le bouton Déplier à la place du logo, jamais dessous", () => {
     const { container } = render(
       <AppShell product="mail" nav={nav}>
