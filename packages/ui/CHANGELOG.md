@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.34.0
+
+### Minor Changes
+
+- e74c79a: Les icônes de produit n'ont plus de carré blanc. Le pictogramme clair, inchangé, remplit le cadre dans l'interface, les e-mails et les icônes d'application.
+
 ## 0.33.0
 
 ### Minor Changes
