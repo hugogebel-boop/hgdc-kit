@@ -62,9 +62,8 @@ function ThemedMark({ svg, slot, className, label }: MarkProps & { svg: ThemedSv
 }
 
 /**
- * Icône d'un produit : le pictogramme dans le dégradé du produit, sur son carré blanc arrondi, le
- * même en clair et en sombre et dans tous les contextes, sans bordure ni ombre. `size-4` par
- * défaut, à agrandir par `className`.
+ * Icône d'un produit : le pictogramme clair seul, sans fond, le même dans tous les contextes.
+ * Il remplit le cadre (`size-4` par défaut, à agrandir par `className`).
  */
 export function ProductBadge({ product, className, label }: MarkProps & { product: FamilyProduct }): React.JSX.Element {
   return (

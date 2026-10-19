@@ -8,19 +8,17 @@
 // (propagate.yml) et posent les icônes à leur build (`hgdc-brand`). Rien à recopier à la main
 // (runbook docs/runbooks/changer-une-icone.md).
 //
-// Les icônes des produits se posent toujours sur un fond blanc, en clair comme en sombre, sans
-// bordure ni ombre (choix de Hugo, 2026-10-17). Le dessin est celui de la variante claire
-// (`<mot>.svg`), centré sur son encre (pas sur sa viewBox), à 12 % de marge. Formes (2026-10-18) :
-//   carré arrondi (rx 14/64, 22 %)  partout : barre, menu du compte, « Propulsé par », e-mails, icon-192/512
-//   plein cadre                     apple-touch et maskable (le système découpe lui-même ; la maskable
-//                                   garde l'encre dans la zone sûre, cercle de 80 %)
-//   sans fond                       favicon, marge 4 %, variante sombre sous prefers-color-scheme: dark
+// Les icônes des produits sont le pictogramme clair seul (`<mot>.svg`), sans cellule blanche
+// (choix de Hugo, 2026-10-19, version « fond gris, sans blanc »). Le dessin n'est pas retouché :
+// mêmes traits, mêmes opacités. Il est centré sur son encre et remplit le cadre, pour occuper
+// la place de l'ancienne tuile. La maskable garde l'encre dans le cercle sûr (80 %), toujours
+// sans fond. Le favicon reste sans fond, marge 4 %, variante sombre sous prefers-color-scheme: dark.
 // Le H « Double » reste sans fond, en deux variantes (clair, sombre).
 //
 // Écrit :
 //   packages/ui/family/tile/<mot>.svg
 //   packages/ui/src/family-svg.ts (SVG embarqués, empreinte des icônes d'e-mail)
-//   packages/ui/email-icons/<mot>.png (96 px, carré arrondi : Gmail et Outlook n'affichent pas le SVG)
+//   packages/ui/email-icons/<mot>.png (96 px, pictogramme seul : Gmail et Outlook n'affichent pas le SVG)
 //   packages/ui/family/app/<mot>/ : favicon.svg, favicon.ico (16, 32, 48), apple-touch-icon.png
 //     (180), icon-192.png, icon-512.png, icon-maskable-512.png, posés dans le public/ du produit
 //     par `hgdc-brand sync <mot>` à chaque build
@@ -32,8 +30,6 @@ const FAMILY = new URL("../packages/ui/family/", import.meta.url)
 const EMAIL = new URL("../packages/ui/email-icons/", import.meta.url)
 const PRODUCTS = ["account", "host", "mail", "portal", "status", "analytics", "docs"] as const
 
-/** Marge du pictogramme dans sa tuile blanche, de chaque côté. */
-const MARGIN = 0.12
 /** Marge du favicon, sans fond : le pictogramme le plus grand possible dans l'onglet. */
 const FAVICON_MARGIN = 0.04
 /** Rayon de la zone sûre d'une icône maskable (cercle de 80 %), sur 64. */
@@ -47,12 +43,6 @@ const svg = async (name: string) =>
 const inner = (text: string) => text.replace(/^<svg[^>]*>/, "").replace(/<\/svg>$/, "")
 const png = (text: string, px: number) =>
   new Resvg(text, { ...NO_FONTS, fitTo: { mode: "width", value: px } }).render().asPng()
-
-const SHAPES = {
-  square: `<rect width="64" height="64" rx="14" fill="#fff"/>`,
-  full: `<rect width="64" height="64" fill="#fff"/>`,
-} as const
-type Shape = keyof typeof SHAPES
 
 /** Encre du pictogramme dans un carré qui la centre : le centrage suit le dessin, pas sa viewBox. */
 const ink = (picto: string) => {
@@ -72,11 +62,12 @@ const place = (picto: string, margin: number) => {
   const at = 64 * margin
   return `<svg x="${at}" y="${at}" width="${box}" height="${box}" viewBox="${ink(picto).viewBox}">${inner(picto)}</svg>`
 }
-const tile = (picto: string, shape: Shape, margin = MARGIN) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${SHAPES[shape]}${place(picto, margin)}</svg>`
-/** Marge qui garde l'encre dans le cercle sûr de la maskable, jamais moins que MARGIN. */
+/** Pictogramme seul, centré, qui remplit le carré de 64. */
+const mark = (picto: string, margin = 0) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${place(picto, margin)}</svg>`
+/** Marge qui garde l'encre dans le cercle sûr de la maskable. */
 const maskableMargin = (picto: string) => {
-  const box = Math.min(64 * (1 - 2 * MARGIN), (2 * MASKABLE_SAFE_RADIUS) / ink(picto).diagonal)
+  const box = (2 * MASKABLE_SAFE_RADIUS) / ink(picto).diagonal
   return (64 - box) / 2 / 64
 }
 /** Préfixe les identifiants : deux dessins dans un même fichier ne se marchent pas dessus. */
@@ -117,12 +108,11 @@ const badges: Array<string> = []
 const emailVersions: Array<string> = []
 for (const product of PRODUCTS) {
   const picto = await svg(product)
-  const square = tile(picto, "square")
-  const full = tile(picto, "full")
-  const maskable = tile(picto, "full", maskableMargin(picto))
-  await writeFile(new URL(`${product}.svg`, TILE), `${square}\n`)
-  badges.push(`  ${product}: ${JSON.stringify(square)},`)
-  const email = png(square, 96)
+  const glyph = mark(picto)
+  const maskable = mark(picto, maskableMargin(picto))
+  await writeFile(new URL(`${product}.svg`, TILE), `${glyph}\n`)
+  badges.push(`  ${product}: ${JSON.stringify(glyph)},`)
+  const email = png(glyph, 96)
   await writeFile(new URL(`${product}.png`, EMAIL), email)
   emailVersions.push(`  ${product}: "${createHash("sha256").update(email).digest("hex").slice(0, 8)}",`)
 
@@ -130,9 +120,9 @@ for (const product of PRODUCTS) {
   await mkdir(app, { recursive: true })
   await writeFile(new URL("favicon.svg", app), `${favicon(picto, await svg(`${product}-dark`))}\n`)
   await writeFile(new URL("favicon.ico", app), ico([16, 32, 48].map((px) => ({ px, data: png(bare(picto), px) }))))
-  await writeFile(new URL("apple-touch-icon.png", app), png(full, 180))
-  await writeFile(new URL("icon-192.png", app), png(square, 192))
-  await writeFile(new URL("icon-512.png", app), png(square, 512))
+  await writeFile(new URL("apple-touch-icon.png", app), png(glyph, 180))
+  await writeFile(new URL("icon-192.png", app), png(glyph, 192))
+  await writeFile(new URL("icon-512.png", app), png(glyph, 512))
   await writeFile(new URL("icon-maskable-512.png", app), png(maskable, 512))
 }
 
@@ -155,8 +145,8 @@ export function isFamilyProduct(word: string): word is FamilyProduct {
 export type ThemedSvg = Readonly<{ light: string; dark: string }>
 
 /**
- * SVG de l'icône de chaque produit sur son carré blanc arrondi, toujours le même en clair et en
- * sombre (\`family/tile/<mot>.svg\`).
+ * SVG de l'icône de chaque produit : le pictogramme clair seul, sans fond
+ * (\`family/tile/<mot>.svg\`).
  */
 export const PRODUCT_BADGE_SVG: Readonly<Record<FamilyProduct, string>> = {
 ${badges.join("\n")}

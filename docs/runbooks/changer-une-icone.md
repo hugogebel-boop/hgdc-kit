@@ -9,7 +9,7 @@ Favicon, icônes d'application, tuile de l'interface et icônes des e-mails vien
 
 ## Changer une variable (marge, forme, taille)
 
-1. Modifier la constante dans `scripts/family.ts` (`MARGIN`, `FAVICON_MARGIN`, `SHAPES`, tailles des PNG).
+1. Modifier la constante dans `scripts/family.ts` (`FAVICON_MARGIN`, marge de la maskable, tailles des PNG).
 2. `bun scripts/family.ts && bun run format`, puis vérifier les images dans `packages/ui/family/app/` et `packages/ui/email-icons/`.
 3. `bun changeset` (`@hgdc/ui`, `minor`), PR, fusion. Fusionner ensuite la PR « chore: release ».
 
