@@ -25,15 +25,14 @@ describe("identité H Collection", () => {
   it("embarque les icônes telles que les fichiers de family/tile/ (régénérer : bun scripts/family.ts)", () => {
     for (const product of FAMILY_PRODUCTS) {
       expect(PRODUCT_BADGE_SVG[product]).toBe(file(`tile/${product}`))
-      // Le dessin clair, tel quel, sur un carré blanc arrondi (rx 14/64), la seule forme partout.
+      // Le dessin clair, tel quel, sans cellule blanche, centré et à la taille du cadre.
       const picto = file(product)
         .replace(/^<svg[^>]*>/, "")
         .replace(/<\/svg>$/, "")
       expect(PRODUCT_BADGE_SVG[product]).toContain(picto)
-      expect(PRODUCT_BADGE_SVG[product]).toContain('<rect width="64" height="64" rx="14" fill="#fff"/>')
+      expect(PRODUCT_BADGE_SVG[product]).not.toContain('fill="#fff"')
       expect(PRODUCT_BADGE_SVG[product]).not.toMatch(/<circle cx="32" cy="32" r="32"|<path d="M32 0C/)
-      // Pictogramme à 12 % de marge de chaque côté (7.68 sur 64), ADR 0017.
-      expect(PRODUCT_BADGE_SVG[product]).toContain('<svg x="7.68" y="7.68" width="48.64" height="48.64"')
+      expect(PRODUCT_BADGE_SVG[product]).toContain('<svg x="0" y="0" width="64" height="64"')
     }
     expect(FAMILY_MARK_SVG.light).toBe(file("hcollection-icon"))
     expect(FAMILY_MARK_SVG.dark).toBe(file("hcollection-icon-dark"))
