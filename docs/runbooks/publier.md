@@ -40,9 +40,7 @@ Puis, sur npmjs.com, pour chacun :
    - `@hgdc/docs` : utilisateur `hugogebel-boop`, dépôt `hgdc-docs`, workflow `release.yml` (à créer dans `hgdc-docs` sur le modèle de celui du kit ; d'ici là, les versions suivantes partent du poste comme la première).
 2. Même page, _Publishing access_ → « Require two-factor authentication and disallow tokens ».
 
-### En attente : `@hgdc/assistant`
-
-Après fusion de la PR qui l’ajoute puis de la PR « chore: release » qui porte `@hgdc/assistant` 0.1.0 : `main` à jour, puis la voie du jeton ci-dessous (ou `npm login` et `bun run release`), `git push --tags`, et les deux réglages npm (trusted publisher `hugogebel-boop` / `hgdc-kit` / `release.yml`, 2FA sans jeton). `npm view @hgdc/assistant version` doit rendre `0.1.0`.
+`@hgdc/assistant` 0.1.0 : publié le 2026-10-18 depuis le poste par la voie du jeton ci-dessous ; trusted publisher déclaré ensuite sur npmjs.com (`hugogebel-boop` / `hgdc-kit` / `release.yml`). Les versions suivantes passent par la CI, avec provenance.
 
 ### Cas général
 
@@ -60,5 +58,5 @@ umask 077 && rc="$(mktemp)"   && printf '//registry.npmjs.org/:_authToken=%s
 ## Incidents
 
 - **`E404` ou `ENEEDAUTH` au publish** : trusted publisher mal déclaré (dépôt ou nom de fichier du workflow, sensibles à la casse) ou `repository.url` du `package.json` différent du dépôt.
-- **PR de mise à jour non ouverte dans un produit** : secret `HGDC_BOT_TOKEN` absent ou expiré (source : Doppler `hgdc/prd`, à recopier avec `doppler secrets get HGDC_BOT_TOKEN --project hgdc --config prd --plain | gh secret set HGDC_BOT_TOKEN --repo hugogebel-boop/hgdc-kit`), jeton sans accès au dépôt, ou dépôt absent de `HGDC_PRODUCTS` / `HGDC_UI_REPOS`. `No version matching` dans le log : le CDN de npm n'exposait pas encore la version, et les 5 minutes de réessais n'ont pas suffi. Corriger puis relancer : `gh workflow run propagate.yml --repo hugogebel-boop/hgdc-kit -f config=<version> -f ui=<version>` (laisser vide la version qui ne change pas).
+- **PR de mise à jour non ouverte dans un produit** : secret `HGDC_BOT_TOKEN` absent ou expiré (source : Doppler `hgdc/prd`, à recopier avec `doppler secrets get HGDC_BOT_TOKEN --project hgdc --config prd --plain | gh secret set HGDC_BOT_TOKEN --repo hugogebel-boop/hgdc-kit`), jeton sans accès au dépôt, ou dépôt absent de `HGDC_PRODUCTS` / `HGDC_UI_REPOS`. `No version matching` dans le log : le CDN de npm n'exposait pas encore la version, et les 15 minutes de réessais (20 × 45 s, hgdc-kit#128) n'ont pas suffi. Corriger puis relancer : `gh workflow run propagate.yml --repo hugogebel-boop/hgdc-kit -f config=<version> -f ui=<version>` (laisser vide la version qui ne change pas).
 - **Version publiée cassée** : `npm deprecate @hgdc/<paquet>@<version> "<raison>"`, puis publier un correctif. Jamais `npm unpublish`.
