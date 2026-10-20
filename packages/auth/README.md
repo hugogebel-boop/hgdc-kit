@@ -171,12 +171,13 @@ const { userId, role } = await requireOrgMember(ctx, organizationId, {
 
 Un refus est une `ConvexError({ code, reason, message })`. `message` s'affiche tel quel (tutoiement) ; pour décider quoi montrer, lire `reason`, jamais le texte :
 
-| `reason`            | `code`            | Cas                                       |
-| ------------------- | ----------------- | ----------------------------------------- |
-| `no_session`        | `UNAUTHENTICATED` | Personne n'est connecté                   |
-| `wrong_issuer`      | `UNAUTHENTICATED` | Jeton d'un autre émetteur                 |
-| `not_member`        | `FORBIDDEN`       | La personne n'est pas dans l'organisation |
-| `insufficient_role` | `FORBIDDEN`       | Elle en est membre, rôle insuffisant      |
+| `reason`            | `code`            | Cas                                        |
+| ------------------- | ----------------- | ------------------------------------------ |
+| `no_session`        | `UNAUTHENTICATED` | Personne n'est connecté                    |
+| `wrong_issuer`      | `UNAUTHENTICATED` | Jeton d'un autre émetteur                  |
+| `unknown_user`      | `UNAUTHENTICATED` | Jeton de l'app, jamais connecté au produit |
+| `not_member`        | `FORBIDDEN`       | La personne n'est pas dans l'organisation  |
+| `insufficient_role` | `FORBIDDEN`       | Elle en est membre, rôle insuffisant       |
 
 ```ts
 import { authErrorReason } from "@hgdc/auth/convex"
@@ -212,6 +213,24 @@ await requireIdentity(ctx, { issuer: convexIssuers(process.env) })
 3. Attendre 30 minutes (deux fois la durée d'un jeton), retirer la variable, redéployer.
 
 Hors bascule, la variable est absente et rien ne change : `convexAuthProviders` rend le seul fournisseur, `convexIssuers` la seule `CONVEX_SITE_URL`. La liste ne sert qu'à donner deux adresses au même émetteur (même clé, mêmes utilisateurs), jamais à accepter un autre fournisseur.
+
+### Ouvrir le Convex du produit à l'app de bureau
+
+L'app de bureau affiche les écrans des produits en appelant leur Convex directement, avec l'id_token qu'Account lui émet (RS256, audience : son client OAuth, renouvelé par son jeton de renouvellement). Le produit l'accepte quand `HGDC_APP_CLIENT_ID` est posée :
+
+```ts
+// convex/auth.config.ts : le fournisseur de l'app vient après, `currentAuthConfig` ne garde que le premier
+providers: [...convexAuthProviders(provider, process.env), ...appAuthProviders(process.env)]
+
+// gardes : l'id_token désigne la personne par son identifiant Account, traduit en utilisateur du produit
+const app = appAccess<QueryCtx>(process.env, async (ctx, accountUserId) =>
+  userIdOfAccount(await ctx.runQuery(components.betterAuth.adapter.findOne, hgdcAccountLookup(accountUserId))),
+)
+await requireOrgMember(ctx, organizationId, { issuer: convexIssuers(process.env), app, load })
+const { userId } = await requireUser(ctx, { issuer: convexIssuers(process.env), app })
+```
+
+`identity.subject` reste un identifiant du produit (l'identifiant Account est dans `accountUserId`). `HGDC_ISSUER` doit être en https, sauf Account local. L'appartenance reste celle de la copie du produit : une personne qui ne s'est jamais connectée au produit reçoit `unknown_user`. `requireIdentity` n'accepte toujours que les jetons du produit.
 
 ## Synchroniser les organisations
 
