@@ -3,7 +3,10 @@ import { ConvexError } from "convex/values"
 import { describe, expect, it } from "vitest"
 
 import {
+  appAccess,
+  appAuthProviders,
   AUTH_ERROR_MESSAGES,
+  hgdcAccountLookup,
   authErrorReason,
   convexAuthProviders,
   convexIssuers,
@@ -11,6 +14,8 @@ import {
   isAuthError,
   requireIdentity,
   requireOrgMember,
+  requireUser,
+  userIdOfAccount,
   type Membership,
 } from "./convex.ts"
 
@@ -225,5 +230,99 @@ describe("raison des refus", () => {
     expect(authErrorReason(new ConvexError({ code: "FORBIDDEN", message: "x" }))).toBe("not_member")
     expect(authErrorReason(new Error("rôle"))).toBeNull()
     expect(authErrorReason(new ConvexError({ code: "AUTRE" }))).toBeNull()
+  })
+})
+
+describe("jetons de l'app de bureau", () => {
+  const ACCOUNT = "https://account.hgdc.ch/api/auth"
+  const env = { HGDC_APP_CLIENT_ID: "app-client" }
+  // Identifiants Account (`sub`) des personnes connues du produit.
+  const accounts: Record<string, string> = { "acc-ada": "ada", "acc-bob": "bob" }
+  const resolveUser = async (_ctx: Ctx, accountUserId: string) => accounts[accountUserId] ?? null
+  const app = appAccess<Ctx>(env, resolveUser)
+
+  it("déclare un fournisseur RS256 limité à l'audience de l'app, ou aucun sans client", () => {
+    expect(appAuthProviders(env)).toEqual([
+      { type: "customJwt", issuer: ACCOUNT, jwks: `${ACCOUNT}/jwks`, algorithm: "RS256", applicationID: "app-client" },
+    ])
+    expect(appAuthProviders({ ...env, HGDC_ISSUER: "https://account.test/api/auth/" })[0]?.jwks).toBe(
+      "https://account.test/api/auth/jwks",
+    )
+    expect(appAuthProviders({})).toEqual([])
+    expect(appAccess({}, resolveUser)).toBeUndefined()
+  })
+
+  it("traduit l'identifiant Account en utilisateur du produit", async () => {
+    const access = await requireOrgMember(ctxFor("acc-ada", acme, ACCOUNT), "acme", { load, issuer: ISSUER, app })
+    expect(access).toMatchObject({ userId: "ada", via: "app", role: "owner", accountUserId: "acc-ada" })
+    // `identity.subject` reste un identifiant du produit, quel que soit le chemin.
+    expect(access.identity.subject).toBe("ada")
+  })
+
+  it("ne lit jamais le sub d'Account comme un identifiant du produit", async () => {
+    // `ada` est un identifiant du produit, pas d'Account : aucune correspondance.
+    await expect(
+      requireOrgMember(ctxFor("ada", acme, ACCOUNT), "acme", { load, issuer: ISSUER, app }),
+    ).rejects.toMatchObject({
+      data: { code: "UNAUTHENTICATED", reason: "unknown_user" },
+    })
+  })
+
+  it("garde le contrôle d'appartenance et de rôle", async () => {
+    expect(
+      await codeOf(
+        requireOrgMember(ctxFor("acc-bob", acme, ACCOUNT), "acme", { load, issuer: ISSUER, app, minRole: "admin" }),
+      ),
+    ).toBe("FORBIDDEN")
+    expect(
+      await codeOf(requireOrgMember(ctxFor("acc-ada", acme, ACCOUNT), "autre", { load, issuer: ISSUER, app })),
+    ).toBe("FORBIDDEN")
+  })
+
+  it("refuse les jetons d'Account quand le produit n'ouvre pas l'app", async () => {
+    await expect(requireUser(ctxFor("acc-ada", [], ACCOUNT), { issuer: ISSUER })).rejects.toMatchObject({
+      data: { reason: "wrong_issuer" },
+    })
+  })
+
+  it("garde les jetons du produit tels quels", async () => {
+    expect(await requireUser(ctxFor("ada", [], ISSUER), { issuer: ISSUER, app })).toMatchObject({
+      userId: "ada",
+      via: "session",
+    })
+    await expect(
+      requireUser(ctxFor("ada", [], "https://autre.example"), { issuer: ISSUER, app }),
+    ).rejects.toMatchObject({
+      data: { reason: "wrong_issuer" },
+    })
+    await expect(requireUser(ctxFor(null, []), { issuer: ISSUER, app })).rejects.toMatchObject({
+      data: { reason: "no_session" },
+    })
+  })
+
+  it("exige https pour l'émetteur d'Account, sauf en local", () => {
+    expect(() => appAuthProviders({ ...env, HGDC_ISSUER: "http://account.example/api/auth" })).toThrow(/https/)
+    expect(() => appAccess({ ...env, HGDC_ISSUER: "http://account.example/api/auth" }, resolveUser)).toThrow(/https/)
+    expect(appAuthProviders({ ...env, HGDC_ISSUER: "http://localhost:3200/api/auth" })[0]?.issuer).toBe(
+      "http://localhost:3200/api/auth",
+    )
+    expect(() => appAuthProviders({ ...env, HGDC_ISSUER: "http://localhost.evil.example/api/auth" })).toThrow(/https/)
+  })
+
+  it("cherche le compte du seul fournisseur HGDC et lit son utilisateur", () => {
+    expect(hgdcAccountLookup("acc-ada")).toEqual({
+      model: "account",
+      where: [
+        { field: "accountId", value: "acc-ada" },
+        { field: "providerId", value: "hgdc" },
+      ],
+    })
+    expect(userIdOfAccount({ userId: "ada" })).toBe("ada")
+    for (const row of [null, undefined, {}, { userId: "" }, { userId: 42 }, "ada"])
+      expect(userIdOfAccount(row)).toBeNull()
+  })
+
+  it("refuse une configuration où l'app et le produit partagent un émetteur", async () => {
+    await expect(requireUser(ctxFor("ada", [], ACCOUNT), { issuer: `${ACCOUNT}/`, app })).rejects.toThrow(/émetteur/)
   })
 })
