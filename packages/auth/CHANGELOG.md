@@ -1,5 +1,11 @@
 # @hgdc/auth
 
+## 0.16.0
+
+### Minor Changes
+
+- 7b3f2ec: Servir un produit sous un chemin (`https://<hôte>/<produit>`) : option `basePath` de `createAuthProxy` (3e argument), option `appBasePath` de `createHgdcEntry`, option `basePath` de `safeNextPath`, `hgdcEntryUrl`, `hgdcRefreshPath` et `useOrganizationRefresh`, nouveaux `normalizeBasePath` et `withBasePath`. Sans option, rien ne change.
+
 ## 0.15.0
 
 ### Minor Changes

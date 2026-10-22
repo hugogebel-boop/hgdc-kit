@@ -1,6 +1,6 @@
 {
   "name": "@hgdc/status",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Intégrer une page de HGDC Status dans un site : chargement du composant web <hgdc-status> et composant React.",
   "license": "UNLICENSED",
   "homepage": "https://github.com/hugogebel-boop/hgdc-kit/tree/main/packages/status#readme",
