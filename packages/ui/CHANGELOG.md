@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.35.0
+
+### Minor Changes
+
+- 7b3f2ec: Catalogue des produits : table `PRODUCT_ORIGINS` (origine et base de chemin par produit, adresse actuelle par défaut), `productOrigin` et `productEntryHref`. `entryHref` suit la table, produit par produit.
+
 ## 0.34.0
 
 ### Minor Changes
