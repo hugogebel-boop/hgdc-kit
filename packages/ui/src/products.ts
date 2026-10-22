@@ -58,6 +58,41 @@ export type HgdcCatalogProduct = {
  */
 export const PRODUCT_ENTRY_PATH = "/auth/hgdc"
 
+/** Où un produit est servi : l'origine et, s'il partage son hôte avec d'autres, sa base de chemin. */
+export type ProductOrigin = { origin: string; basePath: string }
+
+/**
+ * Adresse de l'app de chaque produit, par mot en minuscules. Défaut : `https://<mot>.hgdc.ch` sans
+ * base. Un produit servi sous `https://app.hgdc.ch/<mot>` (`@hgdc/auth`, `appBasePath`) migre en
+ * ajoutant sa ligne ici, une à la fois, quand son déploiement est prêt :
+ *
+ * ```ts
+ * analytics: { origin: "https://app.hgdc.ch", basePath: "/analytics" },
+ * ```
+ *
+ * Ne change que l'entrée dans l'app (`entryHref`, menus et barre) : la page d'accueil publique
+ * (`href`) reste `https://<mot>.hgdc.ch`.
+ */
+export const PRODUCT_ORIGINS: Readonly<Record<string, ProductOrigin>> = {}
+
+/** Adresse de l'app d'un produit : celle de `PRODUCT_ORIGINS`, sinon `https://<mot>.hgdc.ch`. */
+export function productOrigin(
+  word: string,
+  origins: Readonly<Record<string, ProductOrigin>> = PRODUCT_ORIGINS,
+): ProductOrigin {
+  const key = word.toLowerCase()
+  return Object.hasOwn(origins, key) ? origins[key]! : { origin: `https://${key}.hgdc.ch`, basePath: "" }
+}
+
+/** Entrée dans l'app d'un produit avec la session HGDC : `https://app.hgdc.ch/analytics/auth/hgdc?refresh=background&next=/`. */
+export function productEntryHref(
+  word: string,
+  origins: Readonly<Record<string, ProductOrigin>> = PRODUCT_ORIGINS,
+): string {
+  const app = productOrigin(word, origins)
+  return `${app.origin}${app.basePath}${PRODUCT_ENTRY_PATH}?${PRODUCT_ENTRY_REFRESH_QUERY}`
+}
+
 /**
  * Requête de l'entrée depuis un autre produit : arriver sur l'accueil, relire les organisations en
  * arrière-plan (`refresh=background`, ADR 0016).
@@ -74,7 +109,7 @@ function product(word: string, pitch: string, icon: IconSvgElement, stage: Produ
     name: word,
     subdomain,
     href,
-    entryHref: `${href}${PRODUCT_ENTRY_PATH}?${PRODUCT_ENTRY_REFRESH_QUERY}`,
+    entryHref: productEntryHref(badge),
     pitch,
     badge,
     icon,

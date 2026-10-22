@@ -1,6 +1,6 @@
 import { useEffect, useState, type ButtonHTMLAttributes, type ReactElement } from "react"
 
-import { HGDC_PROVIDER_ID, hasSyncedMarker, hgdcRefreshPath } from "./index.ts"
+import { HGDC_PROVIDER_ID, hasSyncedMarker, hgdcRefreshPath, normalizeBasePath, type BasePathOptions } from "./index.ts"
 
 /** Ce que le bouton utilise du client better-auth (plugin `genericOAuthClient`). */
 export type HgdcAuthClient = {
@@ -158,19 +158,25 @@ export function HgdcSignInButton({
  *
  * Côté client seulement : à appeler une fois la liste des organisations chargée.
  *
+ * Produit servi sous un chemin : `useOrganizationRefresh(unknown, { basePath: "/analytics" })`. La
+ * base est retirée de l'adresse du navigateur, puis remise devant l'entrée.
+ *
  * ```tsx
  * const refreshing = useOrganizationRefresh(viewer !== undefined && !space)
  * if (refreshing) return <FamilyLoader page />
  * if (!space) return <NotFound />
  * ```
  */
-export function useOrganizationRefresh(unknown: boolean): boolean {
+export function useOrganizationRefresh(unknown: boolean, options: BasePathOptions = {}): boolean {
+  const base = normalizeBasePath(options.basePath)
   const synced = typeof window === "undefined" || hasSyncedMarker(window.location.search)
   const refreshing = unknown && !synced
   useEffect(() => {
     if (!refreshing) return
     const { pathname, search, hash } = window.location
-    window.location.replace(hgdcRefreshPath(`${pathname}${search}${hash}`))
-  }, [refreshing])
+    const inApp =
+      base && (pathname === base || pathname.startsWith(`${base}/`)) ? pathname.slice(base.length) || "/" : pathname
+    window.location.replace(hgdcRefreshPath(`${inApp}${search}${hash}`, { basePath: base }))
+  }, [refreshing, base])
   return refreshing
 }

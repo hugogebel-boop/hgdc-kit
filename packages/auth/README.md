@@ -40,6 +40,29 @@ import { HgdcSignInButton } from "@hgdc/auth/react"
 
 Le bouton n'a pas de style propre : le produit le met en forme. L'attente est exposée par `aria-busy` et `data-pending`.
 
+## Servir le produit sous un chemin
+
+Un produit peut être servi sous `https://<hôte>/<produit>` (base `/analytics`) au lieu de la racine d'un sous-domaine. Chaque option est absente par défaut : sans elle, le comportement est celui d'un produit à la racine. Règle commune : `next` et `errorCallbackURL` sont des chemins **du produit, sans la base** (ceux du routeur) ; le kit remet la base devant avant de rediriger.
+
+```ts
+const BASE = "/analytics" // même valeur que la base de Vite et du routeur
+
+// Proxy : retire la base avant de relayer vers Convex (`/analytics/api/auth/x` devient `/api/auth/x`)
+export const proxyAuth = createAuthProxy(convexSiteUrl, fetch, { basePath: BASE })
+
+// Entrée : redirige vers `/analytics/<next>` et `/analytics/<errorCallbackURL>`
+const entry = createHgdcEntry({ proxy: proxyAuth, errorCallbackURL: "/connexion?erreur=refus", appBasePath: BASE })
+
+// Route serveur montée à `/analytics/auth/hgdc`
+```
+
+- `safeNextPath(value, fallback, { basePath })` refuse aussi `/analytics/auth/hgdc` et `/analytics/api/auth` (boucle), en plus de la racine.
+- `hgdcRefreshPath(next, { basePath })` rend `/analytics/auth/hgdc?refresh=1&next=…` ; `useOrganizationRefresh(unknown, { basePath })` retire la base de l'adresse du navigateur avant d'appeler l'entrée.
+- `hgdcEntryUrl("https://app.hgdc.ch", "/o/acme", { basePath: "/analytics" })` : lien vers un produit servi sous un chemin. Le menu « Produits » (`@hgdc/ui/products`) lit la table `PRODUCT_ORIGINS` : une ligne `{ origin, basePath }` par produit migre ce produit seul.
+- `normalizeBasePath` valide la base (segments `[A-Za-z0-9._~-]`, pas de `//`, `..`, requête, espace, antislash) et lève sinon : une base vient de la configuration, jamais d'une requête.
+- Le proxy ne retire la base qu'une fois, sur une frontière de segment ; un chemin sans la base (les appels internes de l'entrée) passe tel quel.
+- Reste à la charge du produit : `redirect({ href })`, balises `<link>` et réponses HTTP qui sortent du routeur passent par la base ; préfixe de cookies distinct par produit (les produits partagent l'hôte et ses cookies). Le cookie `HGDC_ORG_SYNC_COOKIE`, le cadre caché et la règle de préchargement de `@hgdc/ui/product-switch` visent encore la racine de l'hôte : la relecture en arrière-plan n'est pas prête pour un produit sous un chemin.
+
 ## Proxy `/api/auth` (TanStack Start + Convex)
 
 À utiliser à la place du `handler` de `@convex-dev/better-auth` 0.12, qui rend un 500 sur tout refus 401 et transforme les redirections OAuth en JSON :
