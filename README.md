@@ -16,6 +16,7 @@ Le code commun de la H Collection (HGDC Host, Mail, Account…), publié sur npm
 | [`@hgdc/domains`](packages/domains)     | Domaines personnalisés : nom saisi, racine ou sous-domaine, preuve TXT, réponses DNS, enregistrements à afficher                  |
 | [`@hgdc/assistant`](packages/assistant) | Moteur de l’assistant IA : outils typés, boucle Claude en flux, tables et gardes Convex, crédits, clé scellée                     |
 | [`@hgdc/webhooks`](packages/webhooks)   | Webhooks signés (Standard Webhooks) : signature et vérification, secret `whsec_`, garde SSRF des adresses, calendrier de reprises |
+| [`@hgdc/status`](packages/status)       | Intégrer une page de HGDC Status dans un site : chargement du composant web `<hgdc-status>`, composant React `HgdcStatus`         |
 
 Le dépôt est public pour que chaque produit installe le kit sans jeton. Ce n'est pas du logiciel libre : tous droits réservés ([LICENSE](LICENSE)).
 
