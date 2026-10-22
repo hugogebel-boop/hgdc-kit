@@ -12,9 +12,11 @@ import {
   HGDC_ORG_SYNC_COOKIE_MAX_AGE,
   HGDC_SCOPES,
   hasSyncedMarker,
+  normalizeBasePath,
   parseHgdcProfile,
   safeNextPath,
   withSyncedMarker,
+  type BasePathOptions,
 } from "./index.ts"
 
 /** En-tête qui porte le `sec-fetch-mode` du navigateur à travers le proxy. */
@@ -46,14 +48,23 @@ export function restoreFetchMode(request: Request): Request {
  *   source ») et le client reçoit un 500 au lieu du refus. Ici il part en mémoire ;
  * - undici impose `sec-fetch-mode: cors` : le mode du navigateur voyage donc dans
  *   `x-hgdc-fetch-mode`.
+ *
+ * Produit servi sous un chemin (`options.basePath: "/analytics"`) : Convex sert better-auth à
+ * `/api/auth/*`, sans base. Le préfixe est retiré avant le relais (`/analytics/api/auth/x` part vers
+ * `/api/auth/x`), une seule fois, sur une frontière de segment. Un chemin sans la base (les appels
+ * internes de `createHgdcEntry`) passe tel quel.
  */
 export function createAuthProxy(
   convexSiteUrl: string,
   fetchImpl: typeof fetch = fetch,
+  options: BasePathOptions = {},
 ): (request: Request) => Promise<Response> {
   const target = new URL(convexSiteUrl)
+  const appBase = normalizeBasePath(options.basePath)
   return async (request) => {
     const url = new URL(request.url)
+    const upstreamPath =
+      appBase && url.pathname.startsWith(`${appBase}/`) ? url.pathname.slice(appBase.length) : url.pathname
     const headers = new Headers(request.headers)
     for (const name of ["transfer-encoding", "content-length", "connection"]) headers.delete(name)
     headers.set("accept-encoding", "application/json")
@@ -67,7 +78,7 @@ export function createAuthProxy(
     if (mode) headers.set(FETCH_MODE_HEADER, mode)
     else headers.delete(FETCH_MODE_HEADER)
     const hasBody = request.method !== "GET" && request.method !== "HEAD"
-    return await fetchImpl(`${target.origin}${url.pathname}${url.search}`, {
+    return await fetchImpl(`${target.origin}${upstreamPath}${url.search}`, {
       method: request.method,
       headers,
       redirect: "manual",
@@ -86,6 +97,12 @@ export type HgdcEntryOptions = {
   errorCallbackURL: string
   /** Chemin de better-auth, `/api/auth` par défaut. */
   basePath?: string
+  /**
+   * Base de chemin du produit servi sous un chemin (`/analytics`). `next` et `errorCallbackURL`
+   * restent des chemins du produit, sans la base ; l'entrée les y remet avant de rediriger. Absent :
+   * produit à la racine, comportement inchangé. À donner aussi à `createAuthProxy`.
+   */
+  appBasePath?: string
 }
 
 const STRIPPED_ON_INTERNAL_CALL = [
@@ -175,7 +192,10 @@ function authorizationUrl(body: unknown): string | null {
  * ```
  */
 export function createHgdcEntry(options: HgdcEntryOptions): (request: Request) => Promise<Response> {
-  const errorCallbackURL = safeNextPath(options.errorCallbackURL, "")
+  const appBase = normalizeBasePath(options.appBasePath)
+  const appPath = { basePath: appBase }
+  const errorPath = safeNextPath(options.errorCallbackURL, "", appPath)
+  const errorCallbackURL = errorPath && `${appBase}${errorPath}`
   if (!errorCallbackURL) throw new Error("createHgdcEntry : errorCallbackURL doit être un chemin du produit.")
   const basePath = (options.basePath ?? "/api/auth").replace(/\/+$/, "")
 
@@ -186,14 +206,14 @@ export function createHgdcEntry(options: HgdcEntryOptions): (request: Request) =
     if (frame === "done") return frameDone()
     const inFrame = frame === "1"
     const speculative = isSpeculative(request)
-    const next = safeNextPath(url.searchParams.get(HGDC_ENTRY_NEXT_PARAM))
+    const next = safeNextPath(url.searchParams.get(HGDC_ENTRY_NEXT_PARAM), "/", appPath)
     const refreshParam = url.searchParams.get(HGDC_ENTRY_REFRESH_PARAM)
     // Un `next` déjà marqué revient d'une resynchronisation : on n'en relance pas une autre.
     const refresh = inFrame || (refreshParam === "1" && !hasSyncedMarker(next))
     const background = !refresh && refreshParam === HGDC_ENTRY_REFRESH_BACKGROUND
     // Le cadre revient toujours sur la réponse vide, jamais sur une page reçue en paramètre.
-    const callbackURL = inFrame ? HGDC_FRAME_DONE_PATH : refresh ? withSyncedMarker(next) : next
-    const errorURL = inFrame ? HGDC_FRAME_DONE_PATH : errorCallbackURL
+    const callbackURL = `${appBase}${inFrame ? HGDC_FRAME_DONE_PATH : refresh ? withSyncedMarker(next) : next}`
+    const errorURL = inFrame ? `${appBase}${HGDC_FRAME_DONE_PATH}` : errorCallbackURL
     // Un préchargement ne démarre jamais de connexion : état OAuth, code d'Account et session
     // créés pour un survol sans clic. Il ne sert que si la session du produit est déjà ouverte.
     if (refresh && speculative) return notForSpeculation()
@@ -206,7 +226,7 @@ export function createHgdcEntry(options: HgdcEntryOptions): (request: Request) =
         )
         cookies.push(...setCookies(session))
         if (session.ok && hasSessionBody(await readJson(session)))
-          return redirectTo(next, background ? [...cookies, orgSyncCookie(url)] : cookies)
+          return redirectTo(`${appBase}${next}`, background ? [...cookies, orgSyncCookie(url)] : cookies)
       }
       if (speculative) return notForSpeculation()
 

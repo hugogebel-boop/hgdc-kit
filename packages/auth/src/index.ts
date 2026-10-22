@@ -66,6 +66,36 @@ export const HGDC_FRAME_DONE_PATH: string = `${HGDC_ENTRY_PATH}?${HGDC_ENTRY_FRA
 /** Adresse du cadre caché qui relit les organisations (`frame=1`). */
 export const HGDC_BACKGROUND_REFRESH_PATH: string = `${HGDC_ENTRY_PATH}?${HGDC_ENTRY_REFRESH_PARAM}=1&${HGDC_ENTRY_FRAME_PARAM}=1`
 
+/** Option commune : le produit est servi sous un chemin (`/analytics`), voir `normalizeBasePath`. */
+export type BasePathOptions = {
+  /** Base de chemin du produit, `/analytics` par exemple. Absent ou `/` : le produit est à la racine. */
+  basePath?: string | undefined
+}
+
+/**
+ * Base de chemin d'un produit servi sous `https://<hôte>/<produit>`, normalisée : `""` (racine),
+ * sinon `/segment` ou `/a/b`, sans barre finale. Lève sur tout ce qui n'est pas un chemin de
+ * segments simples (lettres, chiffres, `.` `_` `~` `-`) : requête, fragment, espace, antislash,
+ * `//`, `.` ou `..`, pourcentage. Une base se lit dans la configuration du produit, jamais dans
+ * une requête.
+ */
+export function normalizeBasePath(value: string | null | undefined): string {
+  if (value === undefined || value === null || value === "" || value === "/") return ""
+  const trimmed = value.endsWith("/") ? value.slice(0, -1) : value
+  const segments = trimmed.split("/")
+  const valid =
+    segments[0] === "" &&
+    segments.length > 1 &&
+    segments.slice(1).every((segment) => /^[A-Za-z0-9._~-]+$/.test(segment) && segment !== "." && segment !== "..")
+  if (!valid) throw new Error(`@hgdc/auth : basePath invalide (${JSON.stringify(value)}), attendu « /produit ».`)
+  return trimmed
+}
+
+/** `path` (qui commence par `/`) sous la base : `withBasePath("/analytics", "/o/acme")` rend `/analytics/o/acme`. */
+export function withBasePath(basePath: string | null | undefined, path: string): string {
+  return `${normalizeBasePath(basePath)}${path}`
+}
+
 const NEXT_MAX_LENGTH = 2048
 const NEXT_BASE = "https://next.invalid"
 
@@ -73,8 +103,13 @@ const NEXT_BASE = "https://next.invalid"
  * Page d'arrivée sûre : un chemin du produit lui-même, jamais une autre origine. Refuse ce qu'un
  * navigateur lirait comme une adresse externe (`//hôte`, `/\hôte`, schéma), les caractères de
  * contrôle, et l'entrée ou `/api/auth` (boucle). Rend `fallback` dans tous ces cas.
+ *
+ * `options.basePath` (produit servi sous `/analytics`) : la valeur reste un chemin du produit, sans
+ * la base ; l'entrée et `/api/auth` sont aussi refusés avec la base (`/analytics/auth/hgdc`,
+ * `/analytics/api/auth`).
  */
-export function safeNextPath(value: string | null | undefined, fallback = "/"): string {
+export function safeNextPath(value: string | null | undefined, fallback = "/", options: BasePathOptions = {}): string {
+  const base = normalizeBasePath(options.basePath)
   if (typeof value !== "string" || value.length === 0 || value.length > NEXT_MAX_LENGTH) return fallback
   if (!value.startsWith("/") || value.startsWith("//")) return fallback
   // Les navigateurs lisent `\` comme `/` : `/\evil.ch` serait une adresse externe.
@@ -88,7 +123,13 @@ export function safeNextPath(value: string | null | undefined, fallback = "/"): 
   }
   if (url.origin !== NEXT_BASE) return fallback
   const path = url.pathname.replace(/\/+$/, "") || "/"
-  if (path === HGDC_ENTRY_PATH || path === "/api/auth" || path.startsWith("/api/auth/")) return fallback
+  for (const prefix of base ? ["", base] : [""])
+    if (
+      path === `${prefix}${HGDC_ENTRY_PATH}` ||
+      path === `${prefix}/api/auth` ||
+      path.startsWith(`${prefix}/api/auth/`)
+    )
+      return fallback
   return `${url.pathname}${url.search}${url.hash}`
 }
 
@@ -97,14 +138,19 @@ export function safeNextPath(value: string | null | undefined, fallback = "/"): 
  * Sans `next` (ou `next` refusé), le produit ouvre sa page d'accueil connectée. `refresh: true`
  * relit les organisations avant d'arriver (`refresh=1`) ; `refresh: "background"` arrive tout de
  * suite si la session du produit est ouverte et relit en arrière-plan (ADR 0016).
+ *
+ * Produit servi sous un chemin : `hgdcEntryUrl("https://app.hgdc.ch", "/o/acme", { basePath: "/analytics" })`
+ * rend `https://app.hgdc.ch/analytics/auth/hgdc?next=/o/acme`. `next` reste un chemin du produit,
+ * sans la base.
  */
 export function hgdcEntryUrl(
   productOrigin: string,
   next?: string,
-  options: { refresh?: boolean | typeof HGDC_ENTRY_REFRESH_BACKGROUND } = {},
+  options: { refresh?: boolean | typeof HGDC_ENTRY_REFRESH_BACKGROUND } & BasePathOptions = {},
 ): string {
-  const url = new URL(HGDC_ENTRY_PATH, new URL(productOrigin).origin)
-  const path = next === undefined ? "/" : safeNextPath(next)
+  const base = normalizeBasePath(options.basePath)
+  const url = new URL(`${base}${HGDC_ENTRY_PATH}`, new URL(productOrigin).origin)
+  const path = next === undefined ? "/" : safeNextPath(next, "/", { basePath: base })
   if (options.refresh)
     url.searchParams.set(
       HGDC_ENTRY_REFRESH_PARAM,
@@ -118,13 +164,17 @@ export function hgdcEntryUrl(
  * Chemin relatif qui relit les organisations puis revient sur `next` :
  * `/auth/hgdc?refresh=1&next=/o/acme`. Pour une page d'organisation inconnue du produit, avant
  * d'afficher « introuvable », si `hasSyncedMarker` est faux.
+ *
+ * Produit servi sous un chemin (`basePath`) : `/analytics/auth/hgdc?refresh=1&next=/o/acme`. `next`
+ * est le chemin du routeur, sans la base.
  */
-export function hgdcRefreshPath(next: string): string {
+export function hgdcRefreshPath(next: string, options: BasePathOptions = {}): string {
+  const base = normalizeBasePath(options.basePath)
   const params = new URLSearchParams({
     [HGDC_ENTRY_REFRESH_PARAM]: "1",
-    [HGDC_ENTRY_NEXT_PARAM]: safeNextPath(withoutSyncedMarker(next)),
+    [HGDC_ENTRY_NEXT_PARAM]: safeNextPath(withoutSyncedMarker(next), "/", { basePath: base }),
   })
-  return `${HGDC_ENTRY_PATH}?${params.toString()}`
+  return `${base}${HGDC_ENTRY_PATH}?${params.toString()}`
 }
 
 function searchParamsOf(search: string | URLSearchParams): URLSearchParams {
