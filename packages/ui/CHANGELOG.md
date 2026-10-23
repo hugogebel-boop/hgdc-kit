@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.37.0
+
+### Minor Changes
+
+- b004e90: La console Host est servie sous `https://app.hgdc.ch/host` : `PRODUCT_ORIGINS` la déclare.
+
 ## 0.36.0
 
 ### Minor Changes

@@ -1,5 +1,11 @@
 # @hgdc/auth
 
+## 0.17.0
+
+### Minor Changes
+
+- 48245f0: `createHgdcEntry` : option `appOrigin` (origine publique, `https://app.hgdc.ch`), envoyée comme `Origin` des appels internes à better-auth. Derrière un relais, l'entrée refusait la connexion dès qu'un cookie périmé était présent.
+
 ## 0.16.0
 
 ### Minor Changes
