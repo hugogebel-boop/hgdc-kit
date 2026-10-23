@@ -50,8 +50,14 @@ const BASE = "/analytics" // même valeur que la base de Vite et du routeur
 // Proxy : retire la base avant de relayer vers Convex (`/analytics/api/auth/x` devient `/api/auth/x`)
 export const proxyAuth = createAuthProxy(convexSiteUrl, fetch, { basePath: BASE })
 
-// Entrée : redirige vers `/analytics/<next>` et `/analytics/<errorCallbackURL>`
-const entry = createHgdcEntry({ proxy: proxyAuth, errorCallbackURL: "/connexion?erreur=refus", appBasePath: BASE })
+// Entrée : redirige vers `/analytics/<next>` et `/analytics/<errorCallbackURL>`. `appOrigin` : derrière un
+// relais, la fonction voit l’hôte relayé ; sans elle, better-auth refuse l’entrée dès qu’un cookie est présent.
+const entry = createHgdcEntry({
+  proxy: proxyAuth,
+  errorCallbackURL: "/connexion?erreur=refus",
+  appBasePath: BASE,
+  appOrigin: "https://app.hgdc.ch",
+})
 
 // Route serveur montée à `/analytics/auth/hgdc`
 ```

@@ -103,6 +103,13 @@ export type HgdcEntryOptions = {
    * produit à la racine, comportement inchangé. À donner aussi à `createAuthProxy`.
    */
   appBasePath?: string
+  /**
+   * Origine publique du produit (`https://app.hgdc.ch`), envoyée comme `Origin` des appels internes
+   * à better-auth. Derrière un relais, l'hôte vu par la fonction est l'origine relayée
+   * (`analytics.hgdc.cloud`), absente des `trustedOrigins` : sans elle, better-auth refuse la
+   * connexion dès qu'un cookie est présent. Absent : l'origine de la requête.
+   */
+  appOrigin?: string
 }
 
 const STRIPPED_ON_INTERNAL_CALL = [
@@ -198,9 +205,11 @@ export function createHgdcEntry(options: HgdcEntryOptions): (request: Request) =
   const errorCallbackURL = errorPath && `${appBase}${errorPath}`
   if (!errorCallbackURL) throw new Error("createHgdcEntry : errorCallbackURL doit être un chemin du produit.")
   const basePath = (options.basePath ?? "/api/auth").replace(/\/+$/, "")
+  const appOrigin = options.appOrigin ? new URL(options.appOrigin).origin : null
 
   return async (request) => {
     const url = new URL(request.url)
+    const origin = appOrigin ?? url.origin
     const frame = url.searchParams.get(HGDC_ENTRY_FRAME_PARAM)
     // Fin d'une relecture dans le cadre caché : rien à lire, rien à appeler.
     if (frame === "done") return frameDone()
@@ -222,7 +231,7 @@ export function createHgdcEntry(options: HgdcEntryOptions): (request: Request) =
       if (!refresh && request.headers.has("cookie")) {
         // Session vérifiée par better-auth (base du produit), pas seulement la présence du cookie.
         const session = await options.proxy(
-          new Request(`${url.origin}${basePath}/get-session`, { headers: internalHeaders(request, url.origin) }),
+          new Request(`${url.origin}${basePath}/get-session`, { headers: internalHeaders(request, origin) }),
         )
         cookies.push(...setCookies(session))
         if (session.ok && hasSessionBody(await readJson(session)))
@@ -230,7 +239,7 @@ export function createHgdcEntry(options: HgdcEntryOptions): (request: Request) =
       }
       if (speculative) return notForSpeculation()
 
-      const headers = internalHeaders(request, url.origin)
+      const headers = internalHeaders(request, origin)
       headers.set("content-type", "application/json")
       const signIn = await options.proxy(
         new Request(`${url.origin}${basePath}/sign-in/oauth2`, {

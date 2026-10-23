@@ -285,3 +285,36 @@ describe("createHgdcEntry avec appBasePath", () => {
     }
   })
 })
+
+describe("createHgdcEntry avec appOrigin", () => {
+  it("envoie l'origine publique aux appels internes, pas l'hôte relayé", async () => {
+    const origins: (string | null)[] = []
+    const proxy = async (request: Request) => {
+      origins.push(request.headers.get("origin"))
+      const path = new URL(request.url).pathname
+      if (path === "/api/auth/get-session") return Response.json(null)
+      return Response.json({ url: AUTHORIZE, redirect: true })
+    }
+    const entry = createHgdcEntry({
+      proxy,
+      errorCallbackURL: "/connexion",
+      appBasePath: BASE,
+      appOrigin: "https://app.hgdc.ch",
+    })
+    const relayed = new Request(`https://analytics.hgdc.cloud${BASE}/auth/hgdc?next=/`, {
+      headers: { cookie: "p.session_token=périmé", origin: "https://evil.example" },
+    })
+    expect((await entry(relayed)).headers.get("location")).toBe(AUTHORIZE)
+    expect(origins).toEqual(["https://app.hgdc.ch", "https://app.hgdc.ch"])
+  })
+
+  it("sans appOrigin : l'origine de la requête, comme avant", async () => {
+    const origins: (string | null)[] = []
+    const proxy = async (request: Request) => {
+      origins.push(request.headers.get("origin"))
+      return Response.json({ url: AUTHORIZE, redirect: true })
+    }
+    await createHgdcEntry({ proxy, errorCallbackURL: "/connexion" })(new Request("https://mail.hgdc.ch/auth/hgdc"))
+    expect(origins).toEqual(["https://mail.hgdc.ch"])
+  })
+})
