@@ -161,8 +161,10 @@ describe("Phase calée sur l'horloge", () => {
   it("rendu serveur : le H du document et son script de calage, en ligne, avant l'hydratation", () => {
     const html = renderToString(<FamilyLoaderHost />)
     expect(html).toMatch(
-      /<div data-slot="family-loader-root" aria-hidden="true"><div data-frame="true"><\/div><div data-stage="true">/,
+      /^<div data-slot="family-loader-root" aria-hidden="true"><div data-frame="true"><div data-slot="shell-frame"/,
     )
+    // Le cadre de la coque (ADR 0020), puis la scène du H.
+    expect(html).toMatch(/<\/div><\/div><\/div><div data-stage="true"><span data-slot="family-loader"/)
     expect(html).toContain('data-slot="family-loader"')
     expect(html).toMatch(/<\/div><script>\(function\(e\)\{/)
     expect(html).toContain("previousElementSibling")
@@ -200,5 +202,43 @@ describe("Scène du chargement", () => {
     expect(rule).toContain("opacity 120ms var(--ease-out) 80ms")
     const layer = css.match(/\[data-slot="app-shell-loading"\] \{([^}]*)\}/)?.[1] ?? ""
     expect(layer).toContain("opacity 120ms var(--ease-out) 80ms")
+  })
+})
+
+describe("Cadre de la coque, hors de la coque (ADR 0020)", () => {
+  it("dès le rendu serveur : la barre des produits complète, la marque de chaque produit, la barre du haut", () => {
+    const html = renderToString(<FamilyLoaderHost />)
+    const rail = html.slice(
+      html.indexOf('data-slot="shell-frame-rail"'),
+      html.indexOf('data-slot="shell-frame-sidebar"'),
+    )
+    expect(rail).toContain('data-slot="org-placeholder"')
+    // Account, puis les produits ouverts du catalogue, dans l'ordre de la barre.
+    expect([...rail.matchAll(/data-product="(\w+)"/g)].map((m) => m[1])).toEqual([
+      "account",
+      "host",
+      "mail",
+      "portal",
+      "status",
+      "analytics",
+      "docs",
+    ])
+    const sidebar = html.slice(html.indexOf('data-slot="shell-frame-sidebar"'))
+    for (const name of ["Account", "Host", "Mail", "Portal", "Status", "Analytics", "Docs"])
+      expect(sidebar).toContain(`>${name}<`)
+    expect(html).toContain('data-slot="shell-frame-nav"')
+    expect(html).toContain('data-slot="shell-frame-header"')
+  })
+
+  it("le produit de l'adresse marqué par le CSS, l'organisation retenue dessinée comme OrgMark", () => {
+    expect(minified).toContain(":root[data-hgdc-product=mail] [data-slot=shell-frame-rail] [data-product=mail]")
+    expect(minified).toMatch(
+      /:root\[data-hgdc-org\] \[data-slot=org-placeholder-mark\]:before\{content:var\(--hgdc-org-initials,""\)\}/,
+    )
+  })
+
+  it("les noms de transition du cadre et du H compilent (imbrication résolue)", () => {
+    expect(minified).toContain("view-transition-name:hgdc-loader")
+    expect(minified).not.toMatch(/&\s*\[data-slot/)
   })
 })

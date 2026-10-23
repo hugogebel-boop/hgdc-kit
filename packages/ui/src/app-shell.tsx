@@ -39,8 +39,9 @@ import {
 import { ProductBadge } from "./product-badge.tsx"
 import { ProductRail } from "./product-rail.tsx"
 import { useProductSwitch } from "./product-switch.ts"
-import { HGDC_ACCOUNT, HGDC_PRODUCTS } from "./products.ts"
 import { ProductRailShownContext, ShellLeaveContext, StatusPageContext } from "./shell-placement.ts"
+import { familyProductName, SIDEBAR_BRAND, SIDEBAR_BRAND_NAME, SIDEBAR_HEAD } from "./shell-frame.tsx"
+import { rememberShellNavHeight, shellBootScript } from "./shell-memory.ts"
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip.tsx"
 import { cn } from "./cn.ts"
 import { ServiceStatus, statusPageUrlFor } from "./service-status.tsx"
@@ -52,10 +53,12 @@ const RAIL_KEY = "sidebar"
 const RAIL_EVENT = "sidebarchange"
 
 /**
- * À poser dans le `<head>`, avec `themeInitScript` : il remet le rail avant la première
- * peinture, et la variante CSS `rail:` le lit, donc rien ne saute au chargement.
+ * À poser dans le `<head>`, avec `themeInitScript` : avant la première peinture, il remet le
+ * rail (la variante CSS `rail:` le lit, rien ne saute au chargement) et la mémoire de la coque
+ * partagée sous la même origine (`shell-memory` : produit de l'adresse, dernière organisation,
+ * hauteur de la navigation), que le cadre du chargeur et `OrgPlaceholder` lisent (ADR 0020).
  */
-export const sidebarInitScript: string = `try{if(localStorage.getItem(${JSON.stringify(RAIL_KEY)})==="rail")document.documentElement.dataset.sidebar="rail"}catch(e){}`
+export const sidebarInitScript: string = shellBootScript()
 
 function subscribeRail(onChange: () => void): () => void {
   window.addEventListener(RAIL_EVENT, onChange)
@@ -753,11 +756,6 @@ function ShortcutHint({ label }: { label: string }): React.JSX.Element {
   )
 }
 
-function productName(product: FamilyProduct): string {
-  if (product === HGDC_ACCOUNT.badge) return HGDC_ACCOUNT.name
-  return HGDC_PRODUCTS.find((item) => item.badge === product)?.name ?? `HGDC ${product}`
-}
-
 /**
  * Haut de la barre latérale. Dépliée : la marque du produit, et le bouton « Réduire » à droite.
  * En rail : la marque seule, qui devient le bouton « Déplier » au survol de la barre ou au focus,
@@ -766,10 +764,10 @@ function productName(product: FamilyProduct): string {
  */
 function SidebarHead({ product }: { product: FamilyProduct }): React.JSX.Element {
   return (
-    <div className="mt-2 flex h-14 shrink-0 items-center gap-1 px-3">
-      <div data-slot="sidebar-brand" className="flex min-w-0 flex-1 items-center gap-2.5 pl-2.25 rail:hidden">
+    <div className={SIDEBAR_HEAD}>
+      <div data-slot="sidebar-brand" className={cn(SIDEBAR_BRAND, "rail:hidden")}>
         <ProductBadge product={product} className="size-6" />
-        <span className="truncate font-heading text-[0.9375rem] font-semibold">{productName(product)}</span>
+        <span className={SIDEBAR_BRAND_NAME}>{familyProductName(product)}</span>
       </div>
       <Tooltip>
         <TooltipTrigger
@@ -905,7 +903,11 @@ export function AppShell({
 }: {
   /** Le produit affiché (`"host"`) : sa marque en haut de la barre, « vous êtes ici » dans la barre des produits. */
   product: FamilyProduct
-  /** `OrgSwitcher` : en haut de la barre des produits, en haut du tiroir sur téléphone. */
+  /**
+   * `OrgSwitcher` : en haut de la barre des produits, en haut du tiroir sur téléphone. Absent
+   * pendant que les données du produit arrivent : la barre lui garde sa place, avec la marque de
+   * la dernière organisation affichée (`OrgPlaceholder`, ADR 0020). `null` : aucune organisation.
+   */
   organization?: ReactNode
   /**
    * `false` : pas de barre des produits (un écran hors de la famille). L'organisation passe alors
@@ -1003,6 +1005,7 @@ export function AppShell({
       if (!event.persisted) return
       window.clearTimeout(leaveTimer.current)
       setLeaving(false)
+      delete document.documentElement.dataset.hgdcSwitching
     }
     window.addEventListener("pageshow", onPageShow)
     return () => {
@@ -1017,6 +1020,20 @@ export function AppShell({
   const hydrated = useHydrated()
   const hasRoot = useContext(FamilyLoaderRootContext)
   const contentRef = useRef<HTMLDivElement>(null)
+  const sidebarRef = useRef<HTMLElement>(null)
+  // Mémoire de la coque (ADR 0020) : le produit affiché, pour le cadre d'un chargement qui suivrait
+  // hors de la coque dans ce document, et la hauteur de sa navigation, pour le squelette de la
+  // barre latérale à la prochaine arrivée sur ce produit.
+  useIsomorphicLayoutEffect(() => {
+    document.documentElement.dataset.hgdcProduct = product
+  }, [product])
+  const navHeight = useRef(0)
+  useEffect(() => {
+    const list = sidebarRef.current?.querySelector(":scope > nav > ul")
+    if (!(list instanceof HTMLElement) || list.offsetHeight === navHeight.current) return
+    navHeight.current = list.offsetHeight
+    rememberShellNavHeight(product, list.offsetHeight)
+  })
   useEffect(() => {
     // Sur ordinateur, la zone de contenu défile seule : le calque couvre sa partie visible, en haut.
     if (loading && contentRef.current) contentRef.current.scrollTop = 0
@@ -1076,6 +1093,7 @@ export function AppShell({
                 </div>
               ) : null}
               <aside
+                ref={sidebarRef}
                 data-slot="app-shell-sidebar"
                 aria-label="Barre latérale"
                 inert={pageBlocked || undefined}
@@ -1113,7 +1131,7 @@ export function AppShell({
                     {/* Sur téléphone, la marque du produit est toujours là : pastille et nom. */}
                     <div data-slot="app-shell-brand" className="flex shrink-0 items-center gap-2 pr-1 lg:hidden">
                       <ProductBadge product={product} className="size-6" />
-                      <span className="font-heading text-[0.9375rem] font-semibold">{productName(product)}</span>
+                      <span className="font-heading text-[0.9375rem] font-semibold">{familyProductName(product)}</span>
                     </div>
                     <div className={cn("flex min-w-0 items-center gap-2", header ? "flex-[1_1_7rem]" : "flex-1")}>
                       {header}

@@ -128,18 +128,40 @@ describe("transitions de vue entre documents (ADR 0020)", () => {
     expect(css.match(/@view-transition/g)).toHaveLength(1)
   })
 
-  it("un nom stable et unique pour la barre des produits, la barre latérale et la barre du haut", () => {
-    const names = [...css.matchAll(/\[data-slot="([\w-]+)"\] \{\s*view-transition-name: ([\w-]+);/g)].map((m) => [
-      m[1],
-      m[2],
-    ])
+  it("un nom stable pour la barre des produits, la barre latérale, la barre du haut et le H", () => {
+    const names = [
+      ...css.matchAll(/\[data-slot="([\w-]+)"\](?: > \[data-stage\])? \{\s*view-transition-name: ([\w-]+);/g),
+    ].map((m) => [m[1], m[2]])
     expect(names).toEqual([
       ["product-rail", "hgdc-product-rail"],
       ["app-shell-sidebar", "hgdc-sidebar"],
       ["app-shell-header", "hgdc-header"],
+      // Le cadre du chargeur, hors de la coque : les mêmes noms, seulement quand il est à l'écran.
+      ["shell-frame-rail", "hgdc-product-rail"],
+      ["shell-frame-sidebar", "hgdc-sidebar"],
+      ["shell-frame-header", "hgdc-header"],
+      ["family-loader-root", "hgdc-loader"],
     ])
-    const shell = readFileSync(new URL("app-shell.tsx", import.meta.url), "utf8")
-    const rail = readFileSync(new URL("product-rail.tsx", import.meta.url), "utf8")
-    for (const [slot] of names) expect(shell + rail).toContain(`data-slot="${slot}"`)
+    const sources = ["app-shell.tsx", "product-rail.tsx", "shell-frame.tsx", "family-loader.tsx"]
+      .map((file) => readFileSync(new URL(file, import.meta.url), "utf8"))
+      .join("")
+    for (const [slot] of names) expect(sources).toContain(`data-slot="${slot}"`)
+  })
+
+  it("barre des produits et H : ni fondu ni mouvement des deux côtés, un fondu court d'un seul côté", () => {
+    for (const name of ["hgdc-product-rail", "hgdc-loader"]) {
+      const rule = (selector: string) => {
+        const start = css.indexOf(selector)
+        expect(start, selector).toBeGreaterThan(-1)
+        return css.slice(css.indexOf("{", start), css.indexOf("}", start))
+      }
+      expect(rule(`::view-transition-group(${name})`)).toContain("animation: none;")
+      expect(rule(`::view-transition-new(${name})`)).toContain("animation: none;")
+      const old = rule(`::view-transition-old(${name})`)
+      expect(old).toContain("animation: none;")
+      expect(old).toContain("opacity: 0;")
+      expect(rule(`::view-transition-old(${name}):only-child`)).toContain("hgdc-view-out")
+      expect(rule(`::view-transition-new(${name}):only-child`)).toContain("hgdc-view-in")
+    }
   })
 })

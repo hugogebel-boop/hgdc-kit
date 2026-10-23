@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useLayoutEffect, useRef } from "r
 
 import { cn } from "./cn.ts"
 import { useBackgroundOrganizationRefresh } from "./product-switch.ts"
+import { ShellFrame } from "./shell-frame.tsx"
 
 const SIZES = { sm: 24, md: 40, lg: 64 } as const
 
@@ -143,7 +144,9 @@ export function FamilyLoaderHost(): React.JSX.Element {
   return (
     <>
       <div ref={ref} data-slot="family-loader-root" aria-hidden>
-        <div data-frame />
+        <div data-frame>
+          <ShellFrame />
+        </div>
         <div data-stage>
           <span
             data-slot="family-loader"

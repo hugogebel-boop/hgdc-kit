@@ -3,6 +3,7 @@ import Tick02Icon from "@hugeicons/core-free-icons/Tick02Icon"
 import UnfoldMoreIcon from "@hugeicons/core-free-icons/UnfoldMoreIcon"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Menu as MenuPrimitive } from "@base-ui/react/menu"
+import { useEffect } from "react"
 
 import { Badge } from "./badge.tsx"
 import {
@@ -15,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "./dropdown-menu.tsx"
 import { initials } from "./initials.ts"
+import { rememberShellOrganization } from "./shell-memory.ts"
 import { useShellPlacement } from "./shell-placement.ts"
 import { cn } from "./cn.ts"
 
@@ -108,6 +110,12 @@ export function OrgSwitcher({
 }): React.JSX.Element | null {
   const placement = useShellPlacement()
   const active = organizations.find((org) => org.id === activeId)
+  // Retenue pour la première image du prochain produit ouvert sous la même origine (ADR 0020).
+  const activeName = active?.name
+  const activeLogo = active?.logo
+  useEffect(() => {
+    if (activeName !== undefined) rememberShellOrganization({ name: activeName, logo: activeLogo })
+  }, [activeName, activeLogo])
   if (!active) return null
   // En haut de la barre des produits : la marque seule dans 40 px, le nom quand la barre s'élargit.
   const inRail = placement === "product-rail"

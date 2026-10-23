@@ -22,6 +22,7 @@ import { MENU_LINK_ITEM } from "./org-switcher.tsx"
 import type { FamilyProduct } from "./family-svg.ts"
 import { ProductBadge } from "./product-badge.tsx"
 import { productMenuEntries } from "./products.ts"
+import { forgetShellOrganization } from "./shell-memory.ts"
 import { useLeaveOnClick, useProductRailShown } from "./shell-placement.ts"
 import { ThemeSwitch } from "./theme-switch.tsx"
 
@@ -200,7 +201,13 @@ export function AccountMenu({
           </>
         ) : null}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onSignOut}>
+        <DropdownMenuItem
+          onClick={() => {
+            // La marque de l'organisation retenue pour la coque ne survit pas à la session.
+            forgetShellOrganization()
+            onSignOut()
+          }}
+        >
           <HugeiconsIcon icon={Logout01Icon} aria-hidden />
           Se déconnecter
         </DropdownMenuItem>

@@ -22,6 +22,7 @@ import { FamilyLoaderRoot } from "./family-loader.tsx"
 import { PagePending, routerPendingDefaults, shellNavigation } from "./page-pending.tsx"
 import { PRODUCT_RAIL_OPEN_DELAY } from "./product-rail.tsx"
 import { PRODUCT_ENTRY_PATH } from "./products.ts"
+import { markProductSwitch, SHELL_ORG_KEY, SHELL_SWITCH_KEY } from "./shell-memory.ts"
 import { ThemeProvider } from "./theme.tsx"
 
 afterEach(cleanup)
@@ -34,6 +35,10 @@ beforeEach(() => {
 })
 afterEach(() => {
   vi.unstubAllGlobals()
+  // Mémoire de la coque (ADR 0020) : un test ne reprend pas le passage ou l'organisation d'un autre.
+  sessionStorage.clear()
+  localStorage.clear()
+  delete document.documentElement.dataset.hgdcSwitching
 })
 
 describe("matchCommand", () => {
@@ -391,6 +396,69 @@ describe("Barre des produits", () => {
     fireEvent.click(mail)
     window.removeEventListener("click", stay)
     expect(rail.dataset.expanded).toBeUndefined()
+    // Repliée sans transition, et le passage noté pour la page d'arrivée (ADR 0020).
+    expect(document.documentElement.dataset.hgdcSwitching).toBe("")
+    expect(sessionStorage.getItem(SHELL_SWITCH_KEY)).not.toBeNull()
+  })
+
+  it("arrivée depuis la barre, la souris restée dessus : ne s'élargit qu'après en être sortie", () => {
+    markProductSwitch()
+    vi.useFakeTimers()
+    render(
+      <AppShell product="mail" nav={null}>
+        Page
+      </AppShell>,
+    )
+    const rail = screen.getByRole("navigation", { name: "Produits" })
+    fireEvent.pointerEnter(rail, { pointerType: "mouse" })
+    act(() => {
+      vi.advanceTimersByTime(PRODUCT_RAIL_OPEN_DELAY * 2)
+    })
+    expect(rail.dataset.expanded).toBeUndefined()
+    fireEvent.pointerLeave(rail, { pointerType: "mouse" })
+    fireEvent.pointerEnter(rail, { pointerType: "mouse" })
+    act(() => {
+      vi.advanceTimersByTime(PRODUCT_RAIL_OPEN_DELAY)
+    })
+    expect(rail.dataset.expanded).toBe("")
+  })
+
+  it("organisation pas encore là : sa place tenue (marque retenue ou squelette), les pastilles ne bougent pas", () => {
+    const { unmount } = render(
+      <AppShell product="mail" nav={null}>
+        Page
+      </AppShell>,
+    )
+    const rail = screen.getByRole("navigation", { name: "Produits" })
+    expect(rail.firstElementChild?.getAttribute("data-slot")).toBe("org-placeholder")
+    expect(rail.querySelector("[data-slot=org-placeholder-mark]")?.className).toContain("size-8")
+    expect(rail.children[1]?.className).toContain("h-px")
+    unmount()
+    // `null` : pas d'organisation du tout, rien en haut.
+    render(
+      <AppShell product="mail" organization={null} nav={null}>
+        Page
+      </AppShell>,
+    )
+    const bare = screen.getByRole("navigation", { name: "Produits" })
+    expect(bare.firstElementChild?.tagName).toBe("UL")
+  })
+
+  it("l'organisation affichée est retenue pour la première image du produit suivant", () => {
+    render(
+      <AppShell
+        product="host"
+        organization={
+          <OrgSwitcher organizations={[{ id: "a", name: "Atelier Gebel" }]} activeId="a" onSelect={() => {}} />
+        }
+        nav={null}
+      >
+        Page
+      </AppShell>,
+    )
+    expect(JSON.parse(localStorage.getItem(SHELL_ORG_KEY) ?? "null")).toEqual({ initials: "AG" })
+    expect(document.documentElement.dataset.hgdcOrg).toBe("")
+    expect(document.documentElement.dataset.hgdcProduct).toBe("host")
   })
 
   it("reste élargie tant qu'un menu ouvert depuis la barre est ouvert, se replie à sa fermeture", async () => {
