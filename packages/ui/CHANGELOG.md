@@ -1,5 +1,12 @@
 # @hgdc/ui
 
+## 0.36.0
+
+### Minor Changes
+
+- d8351d0: Analytics est servi sous `https://app.hgdc.ch/analytics` : `PRODUCT_ORIGINS` le déclare, les menus et la barre ouvrent la nouvelle adresse.
+- 205ae24: Mail est servi sous `https://app.hgdc.ch/mail` : `PRODUCT_ORIGINS` le déclare.
+
 ## 0.35.0
 
 ### Minor Changes
