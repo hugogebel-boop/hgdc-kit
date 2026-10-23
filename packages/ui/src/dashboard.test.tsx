@@ -49,7 +49,7 @@ describe("catalogue des produits", () => {
       Mail: "https://mail.hgdc.ch/auth/hgdc?refresh=background&next=/",
       Portal: "https://portal.hgdc.ch/auth/hgdc?refresh=background&next=/",
       Status: "https://status.hgdc.ch/auth/hgdc?refresh=background&next=/",
-      Analytics: "https://analytics.hgdc.ch/auth/hgdc?refresh=background&next=/",
+      Analytics: "https://app.hgdc.ch/analytics/auth/hgdc?refresh=background&next=/",
       Docs: "https://docs.hgdc.ch/auth/hgdc?refresh=background&next=/",
     })
     expect(HGDC_ACCOUNT.entryHref).toBe(HGDC_ACCOUNT.href)
