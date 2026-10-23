@@ -5,7 +5,15 @@ import { useState } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { AccountMenu } from "./account-menu.tsx"
-import { AppShell, SidebarNav, SidebarNavBack, SidebarNavGroup, SidebarNavItem, toggleSidebar } from "./app-shell.tsx"
+import {
+  AppShell,
+  PRODUCT_LEAVE_DELAY_MS,
+  SidebarNav,
+  SidebarNavBack,
+  SidebarNavGroup,
+  SidebarNavItem,
+  toggleSidebar,
+} from "./app-shell.tsx"
 import { Avatar, AvatarFallback } from "./avatar.tsx"
 import { avatarTone } from "./initials.ts"
 import { CommandMenu, matchCommand } from "./command-menu.tsx"
@@ -170,14 +178,25 @@ describe("AppShell", () => {
       fireEvent.click(button)
       expect(button.getAttribute("aria-expanded")).toBe("true")
       expect(list?.parentElement?.className).toContain("grid-rows-[1fr]")
-      expect(localStorage.getItem("sidebar-group:Réglages")).toBe("open")
+      expect(localStorage.getItem("sidebar-group:status:Réglages")).toBe("open")
       fireEvent.click(button)
       expect(button.getAttribute("aria-expanded")).toBe("false")
-      expect(localStorage.getItem("sidebar-group:Réglages")).toBe("closed")
+      expect(localStorage.getItem("sidebar-group:status:Réglages")).toBe("closed")
+    })
+
+    it("la clé est propre au produit : un groupe du même nom ailleurs ne la partage pas", () => {
+      // Sous app.hgdc.ch, localStorage est commun à tous les produits.
+      localStorage.setItem("sidebar-group:mail:Réglages", "open")
+      render(
+        <AppShell product="status" nav={pageNav()}>
+          Page
+        </AppShell>,
+      )
+      expect(disclosure().getAttribute("aria-expanded")).toBe("false")
     })
 
     it("reprend l'état mémorisé", () => {
-      localStorage.setItem("sidebar-group:Réglages", "open")
+      localStorage.setItem("sidebar-group:status:Réglages", "open")
       render(
         <AppShell product="status" nav={pageNav()}>
           Page
@@ -187,7 +206,7 @@ describe("AppShell", () => {
     })
 
     it("s'ouvre quand une rubrique est la page ouverte, même mémorisé fermé", () => {
-      localStorage.setItem("sidebar-group:Réglages", "closed")
+      localStorage.setItem("sidebar-group:status:Réglages", "closed")
       render(
         <AppShell product="status" nav={pageNav({ current: true })}>
           Page
@@ -347,6 +366,30 @@ describe("Barre des produits", () => {
     act(() => {
       vi.advanceTimersByTime(PRODUCT_RAIL_OPEN_DELAY * 2)
     })
+    expect(rail.dataset.expanded).toBeUndefined()
+  })
+
+  it("se replie au clic sur un produit, la souris restant dessus (la page d'arrivée la montre repliée)", () => {
+    vi.useFakeTimers()
+    render(
+      <AppShell product="docs" nav={null}>
+        Page
+      </AppShell>,
+    )
+    const rail = screen.getByRole("navigation", { name: "Produits" })
+    fireEvent.pointerEnter(rail, { pointerType: "mouse" })
+    act(() => {
+      vi.advanceTimersByTime(PRODUCT_RAIL_OPEN_DELAY)
+    })
+    expect(rail.dataset.expanded).toBe("")
+    const mail = within(rail).getByRole("link", { name: /Mail/ })
+    // Ctrl+clic (nouvel onglet) : la barre reste ouverte.
+    fireEvent.click(mail, { ctrlKey: true })
+    expect(rail.dataset.expanded).toBe("")
+    const stay = (event: MouseEvent) => event.preventDefault()
+    window.addEventListener("click", stay)
+    fireEvent.click(mail)
+    window.removeEventListener("click", stay)
     expect(rail.dataset.expanded).toBeUndefined()
   })
 
@@ -912,7 +955,7 @@ describe("Chargement d'une page", () => {
     expect(await screen.findByText("Nouvelle page")).toBeDefined()
   })
 
-  it("clic sur un autre produit dans la barre : le H couvre aussitôt la zone de contenu", () => {
+  it("clic sur un autre produit dans la barre : le H couvre la zone de contenu après un court délai", async () => {
     render(
       <AppShell product="host" nav={null}>
         Page
@@ -928,6 +971,9 @@ describe("Chargement d'une page", () => {
     window.addEventListener("click", stay)
     fireEvent.click(mail)
     window.removeEventListener("click", stay)
+    // Une page prérendue s'affiche avant : pas de H. Sinon il couvre le contenu.
+    expect(loading()).toBeUndefined()
+    await act(() => new Promise((resolve) => setTimeout(resolve, PRODUCT_LEAVE_DELAY_MS + 20)))
     expect(loading()).toBe("")
   })
 })

@@ -63,6 +63,17 @@ Primitives déjà là : `avatar` `badge` `button` `dialog` `drawer` `dropdown-me
 
 Le menu « Produits » et la palette (`badge` d'une commande) montrent la pastille de chaque produit.
 
+### D'un produit à l'autre sous `app.hgdc.ch` (ADR 0020)
+
+Entre deux produits servis sous la même origine, la coque fait comme une seule app : transition de vue entre documents (la barre des produits, la barre latérale et la barre du haut restent en place, le contenu passe en fondu de 150 ms, rien en mouvement réduit), lien relatif marqué `data-hgdc-prerender` et prérendu au survol (`PRODUCT_SPECULATION_RULES` de `@hgdc/ui/product-switch`). Le H couvre le contenu 100 ms après le clic (`PRODUCT_LEAVE_DELAY_MS`) : jamais pour une page prérendue. Chrome et Edge : tout ; Safari 18.2+ : la transition, sans prérendu ; Firefox : navigation ordinaire.
+
+Ce que chaque produit fait :
+
+- Monter `@hgdc/ui` et `@hgdc/auth` : `styles.css` déclare `@view-transition`, `AppShell` pose les noms et les règles. Rien d'autre à écrire.
+- CSP : aucun produit ne pose `script-src` aujourd'hui. Celui qui en pose un ajoute `'inline-speculation-rules'` (règles en ligne insérées par la coque) ; sans cela, Chrome les ignore et rien ne casse.
+- Une page qui compte une visite ou lance un effet au chargement attend l'affichage : `document.prerendering` faux, sinon `prerenderingchange`. La relecture des organisations le fait déjà.
+- `localStorage` est commun à tous les produits de l'origine : `theme` et `sidebar` sont communs, c'est voulu ; les groupes repliables sont propres au produit (`sidebar-group:<produit>:<titre>`). Une clé du produit commence par son mot (`mail:last-org`).
+
 ### Mise en page (ADR 0012)
 
 Une seule règle dans les sept produits, posée par la coque :

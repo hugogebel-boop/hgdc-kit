@@ -186,6 +186,20 @@ export function productMenuEntries(
   }))
 }
 
+/**
+ * Chemin de `href` s'il est servi sous `pageOrigin` (`/mail/auth/hgdc?…` depuis
+ * `https://app.hgdc.ch`), sinon `null`. Sans origine connue (rendu serveur), `null`.
+ */
+export function sameOriginPath(href: string, pageOrigin: string | undefined): string | null {
+  if (!pageOrigin) return null
+  try {
+    const url = new URL(href)
+    return url.origin === pageOrigin ? `${url.pathname}${url.search}${url.hash}` : null
+  } catch {
+    return null
+  }
+}
+
 /** Une entrée de la barre des produits d'`AppShell`. */
 export type ProductRailEntry = {
   name: string
@@ -195,30 +209,48 @@ export type ProductRailEntry = {
   current?: boolean
   /** Texte discret sous le nom : « Préversion ». */
   hint?: string
+  /**
+   * Produit servi sous la même origine que la page : lien relatif, prérendu au survol
+   * (`PRODUCT_PRERENDER_ATTRIBUTE` de `@hgdc/ui/product-switch`) et transition de vue.
+   */
+  sameOrigin?: boolean
 }
 
 /**
  * Les entrées de la barre des produits : les produits ouverts du catalogue et Account, affiché en
  * tête (le compte commun, pas un produit). Chaque produit pointe vers son entrée
  * `/auth/hgdc?refresh=background&next=/` (ADR 0010, 0013, 0016), Account vers sa racine (`accountHref` en
- * développement). Le produit courant pointe vers `/`, sans détour par l'entrée.
+ * développement). Le produit courant pointe vers sa racine, sans détour par l'entrée.
+ *
+ * `pageOrigin` (`location.origin`, absent au rendu serveur) : un produit servi sous cette origine
+ * (`PRODUCT_ORIGINS`, `app.hgdc.ch/<produit>`) reçoit un lien relatif et `sameOrigin` (ADR 0020),
+ * et le produit courant sa base (`/mail/`) plutôt que `/`.
  */
 export function productRailEntries(
   options: {
     current?: string | undefined
     accountHref?: string | undefined
     catalog?: ReadonlyArray<HgdcCatalogProduct> | undefined
+    pageOrigin?: string | undefined
   } = {},
 ): { products: Array<ProductRailEntry>; account: ProductRailEntry } {
   const current = options.current?.toLowerCase()
-  const entry = (item: HgdcCatalogProduct, href: string): ProductRailEntry => ({
-    name: item.name,
-    badge: item.badge,
-    ...(item.badge === current ? { href: "/", current: true } : { href }),
-    ...(item.stage === "preview" ? { hint: PRODUCT_STAGE_LABEL.preview } : {}),
-  })
+  const { pageOrigin } = options
+  const entry = (item: HgdcCatalogProduct, href: string, product: boolean): ProductRailEntry => {
+    const base = {
+      name: item.name,
+      badge: item.badge,
+      ...(item.stage === "preview" ? { hint: PRODUCT_STAGE_LABEL.preview } : {}),
+    }
+    if (item.badge === current) {
+      const app = productOrigin(item.badge)
+      return { ...base, href: pageOrigin === app.origin ? `${app.basePath}/` : "/", current: true }
+    }
+    const path = product ? sameOriginPath(href, pageOrigin) : null
+    return path === null ? { ...base, href } : { ...base, href: path, sameOrigin: true }
+  }
   return {
-    products: (options.catalog ?? HGDC_PRODUCTS).filter(isProductOpen).map((item) => entry(item, item.entryHref)),
-    account: entry(HGDC_ACCOUNT, options.accountHref ?? HGDC_ACCOUNT.entryHref),
+    products: (options.catalog ?? HGDC_PRODUCTS).filter(isProductOpen).map((item) => entry(item, item.entryHref, true)),
+    account: entry(HGDC_ACCOUNT, options.accountHref ?? HGDC_ACCOUNT.entryHref, false),
   }
 }

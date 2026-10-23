@@ -92,6 +92,8 @@ Donc pas de préchargement de l'entrée actuelle. Il redevient possible, et sûr
 
 ## Ce qu'un domaine unique apporterait en plus
 
+> Repris par l'ADR 0020 depuis que les produits sont servis sous `app.hgdc.ch/<produit>` : transitions de vue entre documents et prérendu au survol.
+
 Un seul domaine (par exemple `app.hgdc.ch/<org>/<produit>`) rendrait possibles les View Transitions entre documents (`@view-transition { navigation: auto }`), qui exigent la même origine : le H pourrait littéralement rester à l'écran pendant la navigation, et le prérendu au survol se ferait sans en-tête d'acceptation. Un seul cookie de session supprimerait aussi la chaîne OAuth entre produits (0,45 s au lieu de 2 à 3 s, voire moins).
 
 Ce que ça coûterait :

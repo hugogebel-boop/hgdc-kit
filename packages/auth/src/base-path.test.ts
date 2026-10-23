@@ -223,6 +223,17 @@ describe("createHgdcEntry avec appBasePath", () => {
     expect(response.headers.get("location")).toBe("/analytics/dashboard")
   })
 
+  it("refresh=background : cookie de relecture limité à la base et portant la base", async () => {
+    const { proxy } = setup({ session: true })
+    const entry = createHgdcEntry({ proxy, errorCallbackURL: "/connexion", appBasePath: BASE })
+    const response = await entry(visit("/auth/hgdc?refresh=background&next=/", true))
+    expect(response.headers.get("location")).toBe("/analytics/")
+    // Sous une origine partagée, un autre produit ne le voit pas et ne le consomme pas.
+    expect(response.headers.getSetCookie()).toEqual([
+      "hgdc-org-sync=/analytics; Path=/analytics; Max-Age=60; SameSite=Lax; Secure",
+    ])
+  })
+
   it("refresh=1 : retour sous la base avec le marqueur ; cadre : réponse vide sous la base", async () => {
     const { calls, proxy } = setup()
     const entry = createHgdcEntry({ proxy, errorCallbackURL: "/connexion", appBasePath: BASE })
