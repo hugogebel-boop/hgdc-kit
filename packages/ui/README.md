@@ -65,11 +65,21 @@ Le menu « Produits » et la palette (`badge` d'une commande) montrent la pastil
 
 ### D'un produit à l'autre sous `app.hgdc.ch` (ADR 0020)
 
-Entre deux produits servis sous la même origine, la coque fait comme une seule app : transition de vue entre documents (la barre des produits, la barre latérale et la barre du haut restent en place, le contenu passe en fondu de 150 ms, rien en mouvement réduit), lien relatif marqué `data-hgdc-prerender` et prérendu au survol (`PRODUCT_SPECULATION_RULES` de `@hgdc/ui/product-switch`). Le H couvre le contenu 100 ms après le clic (`PRODUCT_LEAVE_DELAY_MS`) : jamais pour une page prérendue. Chrome et Edge : tout ; Safari 18.2+ : la transition, sans prérendu ; Firefox : navigation ordinaire.
+Entre deux produits servis sous la même origine, la coque fait comme une seule app : transition de vue entre documents, lien relatif marqué `data-hgdc-prerender` et prérendu au survol (`PRODUCT_SPECULATION_RULES` de `@hgdc/ui/product-switch`). Le H couvre le contenu 100 ms après le clic (`PRODUCT_LEAVE_DELAY_MS`) : jamais pour une page prérendue. Chrome et Edge : tout ; Safari 18.2+ : la transition, sans prérendu ; Firefox : navigation ordinaire.
+
+Pendant le passage (0.39) :
+
+- **Barre des produits** : immobile, sans fondu, seul l'indicateur du produit change. La page d'arrivée la peint identique dès sa première image, même quand ses données ne sont pas là : `OrgPlaceholder` tient la place de l'organisation (`organization` absent) avec la marque de la dernière organisation affichée sous l'origine (initiales ou logo, retenus par `OrgSwitcher`, oubliés à la déconnexion par `AccountMenu`), sinon un squelette de la même taille. Le clic la replie sans transition et la page d'arrivée ne l'élargit pas sous la souris restée dessus.
+- **Barre latérale** : la marque du produit et sa navigation passent en fondu de 200 ms. Une page qui attend hors de la coque (`PagePending` sous `FamilyLoaderRoot`) dessine la coque entière : barre des produits, marque du produit de l'adresse, navigation en squelette à la hauteur retenue pour ce produit, barre du haut.
+- **H** : un seul nom de transition (`hgdc-loader`), sans fondu, calé sur l'horloge : celui de l'arrivée reprend à la même phase.
+- **Contenu** : fondu de 150 ms.
+
+`sidebarInitScript` (dans le `<head>`, déjà posé par tous les produits) applique cette mémoire sur `<html>` avant la première peinture : `data-hgdc-product`, `data-hgdc-org`, `--hgdc-org-initials`, `--hgdc-org-logo` (adresse `https:` seulement), `--hgdc-nav-height`. Elle vit dans `localStorage` (`hgdc-shell:org`, `hgdc-shell:nav:<produit>`) et `sessionStorage` (`hgdc-shell:switch`) ; rien d'autre que des initiales, un logo et une hauteur.
 
 Ce que chaque produit fait :
 
 - Monter `@hgdc/ui` et `@hgdc/auth` : `styles.css` déclare `@view-transition`, `AppShell` pose les noms et les règles. Rien d'autre à écrire.
+- Pendant le chargement de ses données, rendre `AppShell` sans `organization` (pas `organization={null}`) : la place reste tenue.
 - CSP : aucun produit ne pose `script-src` aujourd'hui. Celui qui en pose un ajoute `'inline-speculation-rules'` (règles en ligne insérées par la coque) ; sans cela, Chrome les ignore et rien ne casse.
 - Une page qui compte une visite ou lance un effet au chargement attend l'affichage : `document.prerendering` faux, sinon `prerenderingchange`. La relecture des organisations le fait déjà.
 - `localStorage` est commun à tous les produits de l'origine : `theme` et `sidebar` sont communs, c'est voulu ; les groupes repliables sont propres au produit (`sidebar-group:<produit>:<titre>`). Une clé du produit commence par son mot (`mail:last-org`).

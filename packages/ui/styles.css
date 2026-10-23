@@ -838,19 +838,57 @@
 :root:not(:has([data-slot="app-shell"])) [data-slot="family-loader-root"] > [data-frame] {
   display: block;
 }
+/* Sur ordinateur, le cadre est la coque elle-même (`ShellFrame`) : barre des produits complète,
+   marque du produit, navigation en squelette, carte du contenu (ADR 0020). */
 @media (width >= 64rem) {
   [data-slot="family-loader-root"] > [data-frame] {
-    background:
-      linear-gradient(var(--shell-rail), var(--shell-rail)) left / var(--hgdc-rail-w) 100% no-repeat,
-      var(--shell);
+    background: var(--shell);
   }
-  [data-slot="family-loader-root"] > [data-frame]::after {
-    content: "";
-    position: absolute;
-    inset: 0.5rem 0.5rem 0.5rem var(--hgdc-content-left);
-    border-radius: var(--radius-xl);
-    background: var(--background);
-  }
+}
+/* La marque du produit de l'adresse (`<html data-hgdc-product>`, `sidebarInitScript`), seule ; le
+   produit courant marqué dans la barre, comme `aria-current` dans la coque. */
+[data-slot="shell-frame"] [data-product] {
+  display: none;
+}
+[data-slot="shell-frame-rail"] [data-product] {
+  display: flex;
+}
+:root[data-hgdc-product="account"] [data-slot="shell-frame"] [data-product="account"],
+:root[data-hgdc-product="host"] [data-slot="shell-frame"] [data-product="host"],
+:root[data-hgdc-product="mail"] [data-slot="shell-frame"] [data-product="mail"],
+:root[data-hgdc-product="portal"] [data-slot="shell-frame"] [data-product="portal"],
+:root[data-hgdc-product="status"] [data-slot="shell-frame"] [data-product="status"],
+:root[data-hgdc-product="analytics"] [data-slot="shell-frame"] [data-product="analytics"],
+:root[data-hgdc-product="docs"] [data-slot="shell-frame"] [data-product="docs"] {
+  display: contents;
+}
+:root[data-hgdc-product="account"] [data-slot="shell-frame-rail"] [data-product="account"],
+:root[data-hgdc-product="host"] [data-slot="shell-frame-rail"] [data-product="host"],
+:root[data-hgdc-product="mail"] [data-slot="shell-frame-rail"] [data-product="mail"],
+:root[data-hgdc-product="portal"] [data-slot="shell-frame-rail"] [data-product="portal"],
+:root[data-hgdc-product="status"] [data-slot="shell-frame-rail"] [data-product="status"],
+:root[data-hgdc-product="analytics"] [data-slot="shell-frame-rail"] [data-product="analytics"],
+:root[data-hgdc-product="docs"] [data-slot="shell-frame-rail"] [data-product="docs"] {
+  display: flex;
+  background: var(--shell-active);
+  color: var(--shell-foreground);
+}
+/* Navigation en squelette, à la hauteur retenue pour ce produit (`--hgdc-nav-height`). */
+[data-slot="shell-frame-nav"] {
+  max-height: var(--hgdc-nav-height, 7.5rem);
+}
+
+/* La place de l'organisation (`OrgPlaceholder`) : la marque retenue (`<html data-hgdc-org>`,
+   initiales ou logo), comme `OrgMark` ; sinon un carré de squelette de la même taille. */
+[data-slot="org-placeholder-mark"] {
+  background: var(--shell-hover);
+}
+:root[data-hgdc-org] [data-slot="org-placeholder-mark"] {
+  background: var(--hgdc-org-logo, var(--foreground)) center / cover no-repeat;
+  color: var(--background);
+}
+:root[data-hgdc-org] [data-slot="org-placeholder-mark"]::before {
+  content: var(--hgdc-org-initials, "");
 }
 
 /* Calque de la zone de contenu (`AppShell`) : opaque, au-dessus de l'ancienne page, sous le H du
@@ -893,20 +931,79 @@
 [data-slot="app-shell-header"] {
   view-transition-name: hgdc-header;
 }
+/* Le cadre du chargeur (hors de la coque) et le H lui-même portent les mêmes noms, seulement quand
+   ils sont à l'écran : mêmes conditions que l'affichage du chargeur, plus haut. */
+:root:has([data-slot="page-pending"]):not(:has([data-slot="app-shell"])) {
+  & [data-slot="shell-frame-rail"] {
+    view-transition-name: hgdc-product-rail;
+  }
+  & [data-slot="shell-frame-sidebar"] {
+    view-transition-name: hgdc-sidebar;
+  }
+  & [data-slot="shell-frame-header"] {
+    view-transition-name: hgdc-header;
+  }
+}
+:root:has([data-slot="page-pending"]):not(:has([data-slot="app-shell"])),
+:root:has([data-slot="app-shell"][data-loading]),
+:root:has([data-slot="app-shell"]:not([data-hydrated]) [data-slot="page-pending"]) {
+  & [data-slot="family-loader-root"] > [data-stage] {
+    view-transition-name: hgdc-loader;
+  }
+}
+/* Un clic dans la barre des produits : la barre se replie et la barre latérale revient d'un coup,
+   pour que l'image de départ soit déjà celle de l'arrivée (`ProductRail`). */
+:root[data-hgdc-switching] [data-slot="product-rail"],
+:root[data-hgdc-switching] [data-slot="app-shell-sidebar"] {
+  transition: none;
+}
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation-duration: var(--duration-fast);
   animation-timing-function: var(--ease-out);
 }
-::view-transition-group(hgdc-product-rail),
+/* Barre latérale et barre du haut : à la même place des deux côtés, leur contenu (un autre
+   produit) passe en fondu en place. */
 ::view-transition-group(hgdc-sidebar),
 ::view-transition-group(hgdc-header),
-::view-transition-old(hgdc-product-rail),
-::view-transition-new(hgdc-product-rail),
 ::view-transition-old(hgdc-sidebar),
 ::view-transition-new(hgdc-sidebar),
 ::view-transition-old(hgdc-header),
 ::view-transition-new(hgdc-header) {
   animation-duration: var(--duration-base);
   animation-timing-function: var(--ease-ios);
+}
+/* Barre des produits et H : identiques des deux côtés (la barre ne change que d'indicateur, le H
+   est à la même phase, calé sur l'horloge). Ni fondu ni mouvement : l'ancienne image est masquée,
+   la nouvelle, vivante, s'affiche telle quelle. Présents d'un seul côté (une page sans coque,
+   une page prête sans H), ils apparaissent ou s'effacent en fondu court. */
+::view-transition-group(hgdc-product-rail),
+::view-transition-group(hgdc-loader),
+::view-transition-new(hgdc-product-rail),
+::view-transition-new(hgdc-loader) {
+  animation: none;
+}
+::view-transition-old(hgdc-product-rail),
+::view-transition-old(hgdc-loader) {
+  animation: none;
+  opacity: 0;
+}
+::view-transition-old(hgdc-product-rail):only-child,
+::view-transition-old(hgdc-loader):only-child {
+  opacity: 1;
+  animation: hgdc-view-out var(--duration-fast) var(--ease-out) both;
+}
+::view-transition-new(hgdc-product-rail):only-child,
+::view-transition-new(hgdc-loader):only-child {
+  animation: hgdc-view-in var(--duration-fast) var(--ease-out) both;
+}
+@keyframes hgdc-view-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes hgdc-view-in {
+  from {
+    opacity: 0;
+  }
 }

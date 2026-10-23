@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, typ
 import { ProductBadge } from "./product-badge.tsx"
 import { PRODUCT_PRERENDER_ATTRIBUTE } from "./product-switch.ts"
 import { productRailEntries, type HgdcCatalogProduct, type ProductRailEntry } from "./products.ts"
+import { markProductSwitch, takeProductSwitch } from "./shell-memory.ts"
 import { ShellPlacementContext, useLeaveOnClick } from "./shell-placement.ts"
 import { cn } from "./cn.ts"
 
@@ -22,6 +23,28 @@ function usePageOrigin(): string | undefined {
 /** Délai d'intention avant d'élargir la barre au survol : un passage de souris ne l'ouvre pas. */
 export const PRODUCT_RAIL_OPEN_DELAY = 150
 
+/** Boîte d'une entrée de la barre : la même pour un lien et pour sa place dans le cadre de chargement. */
+const PRODUCT_ITEM = "flex h-10 items-center gap-3 rounded-xl px-2 text-shell-muted coarse:h-11"
+
+/** Colonne de la barre (56 px) et son contenu : les mêmes pour la barre et pour le cadre de chargement. */
+const RAIL_COLUMN = "hidden w-14 shrink-0 overflow-hidden lg:block"
+const RAIL_INNER =
+  "group/rail flex h-full w-full flex-col gap-2 overflow-hidden bg-shell-rail px-2 py-3 text-shell-foreground"
+const RAIL_LIST = "grid min-h-0 gap-1 overflow-x-hidden overflow-y-auto"
+
+function ProductLabel({ entry }: { entry: ProductRailEntry }): React.JSX.Element {
+  return (
+    <>
+      <ProductBadge product={entry.badge} className="size-6" />
+      <span className="min-w-0 flex-1 truncate opacity-0 transition-opacity duration-(--duration-fast) ease-out group-data-expanded/rail:opacity-100 motion-reduce:transition-none">
+        <span className="font-heading text-sm font-medium">{entry.name}</span>
+        {entry.hint ? <span className="sr-only">, </span> : null}
+        {entry.hint ? <span className="ml-1.5 text-xs text-shell-muted">{entry.hint}</span> : null}
+      </span>
+    </>
+  )
+}
+
 function ProductLink({ entry }: { entry: ProductRailEntry }): React.JSX.Element {
   // Chaque produit s'ouvre en document complet : la coque montre le H dès le clic.
   const leaveOnClick = useLeaveOnClick()
@@ -33,19 +56,63 @@ function ProductLink({ entry }: { entry: ProductRailEntry }): React.JSX.Element 
         {...(entry.sameOrigin ? { [PRODUCT_PRERENDER_ATTRIBUTE]: "" } : {})}
         aria-current={entry.current ? "page" : undefined}
         className={cn(
-          "flex h-10 items-center gap-3 rounded-xl px-2 text-shell-muted coarse:h-11 outline-none transition-colors duration-(--duration-fast) ease-out",
+          PRODUCT_ITEM,
+          "outline-none transition-colors duration-(--duration-fast) ease-out",
           "hover:bg-shell-hover hover:text-shell-foreground focus-visible:ring-2 focus-visible:ring-ring/50",
           "aria-[current=page]:bg-shell-active aria-[current=page]:text-shell-foreground",
         )}
       >
-        <ProductBadge product={entry.badge} className="size-6" />
-        <span className="min-w-0 flex-1 truncate opacity-0 transition-opacity duration-(--duration-fast) ease-out group-data-expanded/rail:opacity-100 motion-reduce:transition-none">
-          <span className="font-heading text-sm font-medium">{entry.name}</span>
-          {entry.hint ? <span className="sr-only">, </span> : null}
-          {entry.hint ? <span className="ml-1.5 text-xs text-shell-muted">{entry.hint}</span> : null}
-        </span>
+        <ProductLabel entry={entry} />
       </a>
     </li>
+  )
+}
+
+/**
+ * La place de l'organisation tant que le produit ne l'a pas (ses données arrivent) : la marque de
+ * la dernière organisation affichée sous cette origine, au pixel près de celle d'`OrgSwitcher`
+ * (initiales ou logo, posés sur `<html>` par `sidebarInitScript` avant la première peinture),
+ * sinon un carré de squelette de la même taille. Rien ne bouge quand la vraie arrive.
+ */
+export function OrgPlaceholder(): React.JSX.Element {
+  return (
+    <div data-slot="org-placeholder" aria-hidden className="flex h-10 w-full shrink-0 items-center px-1 coarse:h-11">
+      <span
+        data-slot="org-placeholder-mark"
+        className="grid size-8 shrink-0 place-items-center rounded-lg text-xs font-semibold uppercase"
+      />
+    </div>
+  )
+}
+
+function RailDivider(): React.JSX.Element {
+  return <div aria-hidden className="mx-2 h-px shrink-0 bg-foreground/8" />
+}
+
+/**
+ * La barre des produits du cadre de chargement (`FamilyLoaderRoot`, hors de la coque) : la même
+ * colonne que `ProductRail` repliée, `OrgPlaceholder` en haut, les mêmes pastilles, sans liens. Le
+ * produit courant est marqué par le CSS (`<html data-hgdc-product>`, posé par
+ * `sidebarInitScript`) : au rendu serveur, le kit ne connaît pas l'adresse.
+ */
+export function ProductRailFrame(): React.JSX.Element {
+  const { products, account } = productRailEntries()
+  return (
+    <div data-slot="shell-frame-rail" className={RAIL_COLUMN}>
+      <div className={RAIL_INNER}>
+        <OrgPlaceholder />
+        <RailDivider />
+        <ul className={RAIL_LIST}>
+          {[account, ...products].map((entry) => (
+            <li key={entry.badge}>
+              <span data-product={entry.badge} className={PRODUCT_ITEM}>
+                <ProductLabel entry={entry} />
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   )
 }
 
@@ -67,7 +134,10 @@ export function ProductRail({
 }: {
   /** Le mot du produit affiché (« host ») : marqué en teinte. */
   current?: string | undefined
-  /** `OrgSwitcher`, rendu compact. */
+  /**
+   * `OrgSwitcher`, rendu compact. Absent (`undefined` : les données du produit arrivent), sa
+   * place est tenue par `OrgPlaceholder`. `null` : pas d'organisation, rien en haut.
+   */
   organization?: ReactNode
   /** Adresse d'Account (un Account local en développement). */
   accountHref?: string | undefined
@@ -97,16 +167,20 @@ export function ProductRail({
     const rail = ref.current
     if (!rail) return
     let timer: number | undefined
+    // Arrivée depuis la barre d'un autre produit, la souris restée dessus : la barre ne s'élargit
+    // pas sous elle, il faut d'abord en sortir (ADR 0020).
+    let arrivedUnderPointer = takeProductSwitch()
     const cancel = () => {
       window.clearTimeout(timer)
       timer = undefined
     }
     const onEnter = (event: PointerEvent) => {
-      if (event.pointerType !== "mouse") return
+      if (event.pointerType !== "mouse" || arrivedUnderPointer) return
       cancel()
       timer = window.setTimeout(() => setHovered(true), PRODUCT_RAIL_OPEN_DELAY)
     }
     const onLeave = () => {
+      arrivedUnderPointer = false
       cancel()
       setHovered(false)
     }
@@ -130,6 +204,10 @@ export function ProductRail({
     const onClick = (event: MouseEvent) => {
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
       if (!(event.target instanceof Element) || !event.target.closest("a[href]")) return
+      // Repliée d'un coup, sans transition (`data-hgdc-switching`) : l'image de départ de la
+      // transition de vue montre déjà la barre telle que la page d'arrivée la peint.
+      document.documentElement.dataset.hgdcSwitching = ""
+      markProductSwitch()
       cancel()
       setHovered(false)
       setFocused(false)
@@ -173,27 +251,27 @@ export function ProductRail({
       data-slot="product-rail"
       data-expanded={expanded ? "" : undefined}
       className={cn(
-        "hidden w-14 shrink-0 overflow-hidden lg:block",
+        RAIL_COLUMN,
         // Même durée et même courbe que la barre latérale qui se plie : la somme des deux largeurs
         // reste constante (56 + 256 = 248 + 64), la page ne bouge pas.
         "transition-[width] duration-(--duration-base) ease-ios motion-reduce:transition-none",
         "data-expanded:w-62 folded:data-expanded:w-55",
       )}
     >
-      <nav
-        ref={ref}
-        aria-label="Produits"
-        data-expanded={expanded ? "" : undefined}
-        className="group/rail flex h-full w-full flex-col gap-2 overflow-hidden bg-shell-rail px-2 py-3 text-shell-foreground"
-      >
-        {organization ? (
+      <nav ref={ref} aria-label="Produits" data-expanded={expanded ? "" : undefined} className={RAIL_INNER}>
+        {organization === undefined ? (
+          <>
+            <OrgPlaceholder />
+            <RailDivider />
+          </>
+        ) : organization ? (
           <>
             <ShellPlacementContext value="product-rail">{organization}</ShellPlacementContext>
-            <div aria-hidden className="mx-2 h-px shrink-0 bg-foreground/8" />
+            <RailDivider />
           </>
         ) : null}
         {/* Account en tête, sous l'organisation : en bas, personne ne le voyait. */}
-        <ul className="grid min-h-0 gap-1 overflow-x-hidden overflow-y-auto">
+        <ul className={RAIL_LIST}>
           <ProductLink entry={account} />
           {products.map((entry) => (
             <ProductLink key={entry.badge} entry={entry} />
