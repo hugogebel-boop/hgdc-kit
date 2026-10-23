@@ -45,8 +45,9 @@ export const HGDC_ENTRY_REFRESH_BACKGROUND = "background"
 
 /**
  * Cookie du produit posé par l'entrée `refresh=background` : « relire les organisations ». Lu et
- * effacé par la page d'arrivée (`@hgdc/ui/app-shell`). Lisible en JavaScript, il ne porte rien
- * d'autre que `1` : le forger ne fait que lancer une relecture par Account.
+ * effacé par la page d'arrivée (`@hgdc/ui/app-shell`). Lisible en JavaScript, il ne porte que `1`
+ * ou, pour un produit servi sous un chemin, ce chemin (`/analytics`, cookie limité à ce chemin) :
+ * le forger ne fait que lancer une relecture par Account.
  */
 export const HGDC_ORG_SYNC_COOKIE = "hgdc-org-sync"
 

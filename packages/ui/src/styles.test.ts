@@ -119,3 +119,27 @@ describe("avatars à initiales (WCAG 1.4.3)", () => {
       }
     })
 })
+
+describe("transitions de vue entre documents (ADR 0020)", () => {
+  it("activées seulement sans mouvement réduit", () => {
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion: no-preference\) \{\s*@view-transition \{\s*navigation: auto;\s*\}\s*\}/,
+    )
+    expect(css.match(/@view-transition/g)).toHaveLength(1)
+  })
+
+  it("un nom stable et unique pour la barre des produits, la barre latérale et la barre du haut", () => {
+    const names = [...css.matchAll(/\[data-slot="([\w-]+)"\] \{\s*view-transition-name: ([\w-]+);/g)].map((m) => [
+      m[1],
+      m[2],
+    ])
+    expect(names).toEqual([
+      ["product-rail", "hgdc-product-rail"],
+      ["app-shell-sidebar", "hgdc-sidebar"],
+      ["app-shell-header", "hgdc-header"],
+    ])
+    const shell = readFileSync(new URL("app-shell.tsx", import.meta.url), "utf8")
+    const rail = readFileSync(new URL("product-rail.tsx", import.meta.url), "utf8")
+    for (const [slot] of names) expect(shell + rail).toContain(`data-slot="${slot}"`)
+  })
+})

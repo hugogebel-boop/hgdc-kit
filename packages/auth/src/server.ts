@@ -235,7 +235,7 @@ export function createHgdcEntry(options: HgdcEntryOptions): (request: Request) =
         )
         cookies.push(...setCookies(session))
         if (session.ok && hasSessionBody(await readJson(session)))
-          return redirectTo(`${appBase}${next}`, background ? [...cookies, orgSyncCookie(url)] : cookies)
+          return redirectTo(`${appBase}${next}`, background ? [...cookies, orgSyncCookie(url, appBase)] : cookies)
       }
       if (speculative) return notForSpeculation()
 
@@ -279,9 +279,14 @@ function frameDone(): Response {
   })
 }
 
-function orgSyncCookie(url: URL): string {
+/**
+ * Limité au chemin du produit (`/analytics`) et portant ce chemin : sous une origine partagée
+ * (`app.hgdc.ch/<produit>`), seul le produit d’arrivée le voit, et sa page sait où ouvrir le cadre.
+ */
+function orgSyncCookie(url: URL, appBase: string): string {
   const secure = url.protocol === "https:" ? "; Secure" : ""
-  return `${HGDC_ORG_SYNC_COOKIE}=1; Path=/; Max-Age=${HGDC_ORG_SYNC_COOKIE_MAX_AGE}; SameSite=Lax${secure}`
+  const value = appBase || "1"
+  return `${HGDC_ORG_SYNC_COOKIE}=${value}; Path=${appBase || "/"}; Max-Age=${HGDC_ORG_SYNC_COOKIE_MAX_AGE}; SameSite=Lax${secure}`
 }
 
 export type HgdcProviderOptions = {

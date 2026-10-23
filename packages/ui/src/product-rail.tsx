@@ -1,11 +1,23 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react"
 
 import { ProductBadge } from "./product-badge.tsx"
+import { PRODUCT_PRERENDER_ATTRIBUTE } from "./product-switch.ts"
 import { productRailEntries, type HgdcCatalogProduct, type ProductRailEntry } from "./products.ts"
 import { ShellPlacementContext, useLeaveOnClick } from "./shell-placement.ts"
 import { cn } from "./cn.ts"
 
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect
+
+const noSubscription = () => () => {}
+
+/** `location.origin` après l'hydratation, `undefined` au rendu serveur (liens absolus d'abord). */
+function usePageOrigin(): string | undefined {
+  return useSyncExternalStore(
+    noSubscription,
+    () => window.location.origin,
+    () => undefined,
+  )
+}
 
 /** Délai d'intention avant d'élargir la barre au survol : un passage de souris ne l'ouvre pas. */
 export const PRODUCT_RAIL_OPEN_DELAY = 150
@@ -18,6 +30,7 @@ function ProductLink({ entry }: { entry: ProductRailEntry }): React.JSX.Element 
       <a
         href={entry.href}
         onClick={leaveOnClick}
+        {...(entry.sameOrigin ? { [PRODUCT_PRERENDER_ATTRIBUTE]: "" } : {})}
         aria-current={entry.current ? "page" : undefined}
         className={cn(
           "flex h-10 items-center gap-3 rounded-xl px-2 text-shell-muted coarse:h-11 outline-none transition-colors duration-(--duration-fast) ease-out",
@@ -75,7 +88,8 @@ export function ProductRail({
     onExpandedChange?.(expanded)
   }, [expanded, onExpandedChange])
   const ref = useRef<HTMLElement>(null)
-  const { products, account } = productRailEntries({ current, accountHref, catalog })
+  const pageOrigin = usePageOrigin()
+  const { products, account } = productRailEntries({ current, accountHref, catalog, pageOrigin })
 
   // Écouteurs natifs : la barre est un repère `nav`, pas un contrôle ; c'est son survol, le focus
   // de ses liens et les menus qu'elle ouvre qui l'élargissent.
@@ -111,6 +125,15 @@ export function ProductRail({
     const onFocusOut = (event: FocusEvent) => {
       if (!(event.relatedTarget instanceof Node) || !rail.contains(event.relatedTarget)) setFocused(false)
     }
+    // Un produit choisi : la barre se replie comme un menu qui se ferme, pendant que l'autre produit
+    // s'ouvre. La page d'arrivée la montre repliée : rien ne bouge au passage (ADR 0020).
+    const onClick = (event: MouseEvent) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      if (!(event.target instanceof Element) || !event.target.closest("a[href]")) return
+      cancel()
+      setHovered(false)
+      setFocused(false)
+    }
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return
       cancel()
@@ -130,6 +153,7 @@ export function ProductRail({
     rail.addEventListener("focusin", onFocusIn)
     rail.addEventListener("focusout", onFocusOut)
     rail.addEventListener("keydown", onKey)
+    rail.addEventListener("click", onClick)
     return () => {
       cancel()
       observer.disconnect()
@@ -140,6 +164,7 @@ export function ProductRail({
       rail.removeEventListener("focusin", onFocusIn)
       rail.removeEventListener("focusout", onFocusOut)
       rail.removeEventListener("keydown", onKey)
+      rail.removeEventListener("click", onClick)
     }
   }, [])
 

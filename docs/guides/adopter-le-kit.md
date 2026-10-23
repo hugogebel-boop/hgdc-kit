@@ -166,6 +166,8 @@ Le thème : `ThemeProvider` autour de l'application, et `themeInitScript` dans u
 
 La coque des consoles (0.3) : `AppShell` avec `OrgSwitcher` en haut, `SidebarNav` au milieu, `AccountMenu` en bas, et `CommandMenu` une fois dans la page (`Ctrl+K`). Poser aussi `sidebarInitScript` dans le `<head>`, à côté de `themeInitScript`, et `TooltipProvider` autour de l'application. Le kit ne connaît pas le routeur : chaque lien passe par `render={<Link to="…" />}`, et TanStack Router marque l'entrée active (`data-status="active"`) sans rien de plus. La variante `rail:` vient du kit : retirer la déclaration locale et `lib/sidebar.ts`.
 
+Depuis 0.38, sous `app.hgdc.ch/<produit>`, passer d'un produit à l'autre se fait par une transition de vue et un prérendu au survol, sans rien à écrire dans le produit (ADR 0020). Une CSP qui pose `script-src` y ajoute `'inline-speculation-rules'` ; un effet au chargement (compter une visite) attend que `document.prerendering` soit faux ; une clé `localStorage` du produit commence par son mot (`mail:…`), l'origine étant partagée. Détail : README de `@hgdc/ui`, « D'un produit à l'autre ».
+
 Depuis 0.29, le bas de la barre est à la coque : `links` (Documentation, Réglages, État du service, dans cet ordre) puis `account`. `sidebarFooter` reste rendu tel quel quand `account` manque, mais il est déprécié : y retirer les liens Docs, Réglages et Assistant. L'assistant passe par `assistant` : son bouton se pose à côté de la recherche, son panneau dans une colonne à droite ; le produit ne passe que le corps (conversation et saisie), la coque pose le titre, la fermeture et le retour à la page.
 
 ```tsx

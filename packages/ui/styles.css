@@ -870,3 +870,43 @@
     opacity 150ms var(--ease-out),
     visibility 0s;
 }
+
+/* Passage d'un produit à l'autre sous la même origine (`app.hgdc.ch/<produit>`, ADR 0020) : une
+   transition de vue entre documents. La barre des produits, la barre latérale et la barre du haut
+   gardent leur place (même nom des deux côtés : elles ne bougent pas, leur contenu passe en
+   fondu) ; le reste de la page passe en fondu court. Le navigateur garde l'ancienne page à l'écran
+   jusqu'à ce que la nouvelle soit prête : pas de page blanche. Chrome, Edge et Safari 18.2+ ;
+   ailleurs, une navigation ordinaire. Entre deux origines (un produit encore sur son sous-domaine)
+   ou derrière une redirection vers Account, le navigateur n'en fait pas. Mouvement réduit : aucune
+   transition. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}
+[data-slot="product-rail"] {
+  view-transition-name: hgdc-product-rail;
+}
+[data-slot="app-shell-sidebar"] {
+  view-transition-name: hgdc-sidebar;
+}
+[data-slot="app-shell-header"] {
+  view-transition-name: hgdc-header;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--duration-fast);
+  animation-timing-function: var(--ease-out);
+}
+::view-transition-group(hgdc-product-rail),
+::view-transition-group(hgdc-sidebar),
+::view-transition-group(hgdc-header),
+::view-transition-old(hgdc-product-rail),
+::view-transition-new(hgdc-product-rail),
+::view-transition-old(hgdc-sidebar),
+::view-transition-new(hgdc-sidebar),
+::view-transition-old(hgdc-header),
+::view-transition-new(hgdc-header) {
+  animation-duration: var(--duration-base);
+  animation-timing-function: var(--ease-ios);
+}

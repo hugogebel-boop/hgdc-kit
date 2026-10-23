@@ -102,7 +102,9 @@ function useToggleShortcut(): void {
 
 // ── Navigation ──────────────────────────────────────────────────────────────────────
 
-const ShellContext = createContext<{ closeMobileNav: () => void }>({ closeMobileNav: () => {} })
+const ShellContext = createContext<{ closeMobileNav: () => void; product?: FamilyProduct }>({
+  closeMobileNav: () => {},
+})
 
 /** Pour fermer le tiroir mobile depuis un élément de la barre (un sélecteur, un bouton). */
 export function useAppShell(): { closeMobileNav: () => void } {
@@ -320,7 +322,7 @@ export function SidebarNavGroup(props: {
   active?: boolean
   /** Ouvert tant que la personne n'a rien choisi. Fermé par défaut. */
   defaultOpen?: boolean
-  /** Clé de mémorisation, par défaut le titre : à donner quand deux groupes portent le même. */
+  /** Clé de mémorisation, par défaut le titre, propre au produit de la coque : à donner quand deux groupes portent le même. */
   storageKey?: string
 }): React.JSX.Element
 export function SidebarNavGroup(props: {
@@ -351,7 +353,11 @@ function CollapsibleNavGroup({
   defaultOpen?: boolean
   storageKey?: string
 }): React.JSX.Element {
-  const key = storageKey ?? label
+  // Propre au produit : sous une origine partagée (`app.hgdc.ch/<produit>`), `localStorage` est
+  // commun à tous. Le thème et la barre réduite le sont volontairement (`theme`, `sidebar`), un
+  // groupe « Réglages » de Mail et de Host ne l'est pas (ADR 0020).
+  const { product } = useContext(ShellContext)
+  const key = product ? `${product}:${storageKey ?? label}` : (storageKey ?? label)
   const buttonId = useId()
   const listId = useId()
   const listRef = useRef<HTMLUListElement>(null)
@@ -872,6 +878,12 @@ function useContentLoading({ navigating, pending }: { navigating: boolean; pendi
   return visible
 }
 
+/**
+ * Délai entre le clic vers un autre produit et le H : une page prérendue s'affiche avant (une ou
+ * deux images), le H n'apparaît alors jamais ; une page à charger le montre aussitôt après.
+ */
+export const PRODUCT_LEAVE_DELAY_MS = 100
+
 export function AppShell({
   product,
   organization,
@@ -978,14 +990,25 @@ export function AppShell({
     setPagePending((count) => count + 1)
     return () => setPagePending((count) => count - 1)
   }, [])
-  const leave = useCallback(() => setLeaving(true), [])
+  // Après `PRODUCT_LEAVE_DELAY_MS` seulement : une page prérendue au survol s'affiche avant, sans
+  // que le H apparaisse (ADR 0020). Sinon le H couvre le contenu jusqu'au départ de la page.
+  const leaveTimer = useRef<number | undefined>(undefined)
+  const leave = useCallback(() => {
+    window.clearTimeout(leaveTimer.current)
+    leaveTimer.current = window.setTimeout(() => setLeaving(true), PRODUCT_LEAVE_DELAY_MS)
+  }, [])
   useEffect(() => {
     // Retour arrière depuis l'autre produit (cache de page) : la page revient telle quelle.
     const onPageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) setLeaving(false)
+      if (!event.persisted) return
+      window.clearTimeout(leaveTimer.current)
+      setLeaving(false)
     }
     window.addEventListener("pageshow", onPageShow)
-    return () => window.removeEventListener("pageshow", onPageShow)
+    return () => {
+      window.removeEventListener("pageshow", onPageShow)
+      window.clearTimeout(leaveTimer.current)
+    }
   }, [])
   const statusPageUrl = statusPage === false ? null : (statusPage ?? statusPageUrlFor(product))
   const loading = useContentLoading({ navigating, pending: pagePending > 0 || leaving })
@@ -1020,7 +1043,7 @@ export function AppShell({
   )
 
   return (
-    <ShellContext.Provider value={{ closeMobileNav: () => setMenuOpen(false) }}>
+    <ShellContext.Provider value={{ closeMobileNav: () => setMenuOpen(false), product }}>
       <ProductRailShownContext value={productRail}>
         <ShellLeaveContext value={leave}>
           <StatusPageContext value={statusPageUrl}>
@@ -1053,6 +1076,7 @@ export function AppShell({
                 </div>
               ) : null}
               <aside
+                data-slot="app-shell-sidebar"
                 aria-label="Barre latérale"
                 inert={pageBlocked || undefined}
                 className="group/sidebar hidden overflow-hidden text-shell-foreground transition-[width] duration-(--duration-base) ease-ios motion-reduce:transition-none lg:flex lg:w-64 lg:flex-col lg:rail:w-16"
@@ -1074,7 +1098,10 @@ export function AppShell({
                     à la ligne. Le contexte de la page (`header`) réclame 7 rem ; s'il ne les a pas à
                     côté de la marque, il descend sur une deuxième ligne avec la recherche, au lieu
                     d'être écrasé sous la loupe. À taille normale, tout tient sur une ligne. */}
-                  <header className="sticky top-[env(safe-area-inset-top,0px)] z-30 flex min-h-14 shrink-0 flex-wrap items-center gap-x-1 gap-y-1 border-b border-foreground/5 bg-background px-2 py-1.5 sm:px-4 lg:top-0">
+                  <header
+                    data-slot="app-shell-header"
+                    className="sticky top-[env(safe-area-inset-top,0px)] z-30 flex min-h-14 shrink-0 flex-wrap items-center gap-x-1 gap-y-1 border-b border-foreground/5 bg-background px-2 py-1.5 sm:px-4 lg:top-0"
+                  >
                     <button
                       type="button"
                       onClick={() => setMenuOpen(true)}
