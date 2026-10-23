@@ -4,8 +4,8 @@ import { HGDC_PRODUCTS, PRODUCT_ORIGINS, productEntryHref, productMenuEntries, p
 
 describe("adresses des produits (PRODUCT_ORIGINS)", () => {
   it("par défaut : le sous-domaine du produit, sans base", () => {
-    expect(productOrigin("Mail")).toEqual({ origin: "https://mail.hgdc.ch", basePath: "" })
-    expect(productEntryHref("mail")).toBe("https://mail.hgdc.ch/auth/hgdc?refresh=background&next=/")
+    expect(productOrigin("Docs", {})).toEqual({ origin: "https://docs.hgdc.ch", basePath: "" })
+    expect(productEntryHref("docs", {})).toBe("https://docs.hgdc.ch/auth/hgdc?refresh=background&next=/")
     expect(Object.keys(PRODUCT_ORIGINS).every((word) => word === word.toLowerCase())).toBe(true)
   })
 

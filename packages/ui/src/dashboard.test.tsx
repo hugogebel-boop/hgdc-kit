@@ -46,7 +46,7 @@ describe("catalogue des produits", () => {
     expect(Object.fromEntries(entries.map((e) => [e.name, e.href]))).toEqual({
       Account: "https://account.hgdc.ch",
       Host: "https://host.hgdc.ch/auth/hgdc?refresh=background&next=/",
-      Mail: "https://mail.hgdc.ch/auth/hgdc?refresh=background&next=/",
+      Mail: "https://app.hgdc.ch/mail/auth/hgdc?refresh=background&next=/",
       Portal: "https://portal.hgdc.ch/auth/hgdc?refresh=background&next=/",
       Status: "https://status.hgdc.ch/auth/hgdc?refresh=background&next=/",
       Analytics: "https://app.hgdc.ch/analytics/auth/hgdc?refresh=background&next=/",
@@ -68,7 +68,7 @@ describe("AccountMenu et le catalogue", () => {
     render(<AccountMenu user={user} onSignOut={() => {}} product="Host" />)
     fireEvent.click(screen.getByRole("button", { name: "Compte de Hugo Gebel" }))
     const mail = await screen.findByRole("menuitem", { name: "Mail" })
-    expect(mail.getAttribute("href")).toBe("https://mail.hgdc.ch/auth/hgdc?refresh=background&next=/")
+    expect(mail.getAttribute("href")).toBe("https://app.hgdc.ch/mail/auth/hgdc?refresh=background&next=/")
     expect(screen.getByRole("menuitem", { name: "Account" }).getAttribute("href")).toBe("https://account.hgdc.ch")
     expect(screen.getByLabelText("Produit ouvert")).toBeDefined()
     expect(screen.getByRole("menuitem", { name: "Portal" }).getAttribute("href")).toBe(
