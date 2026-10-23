@@ -73,7 +73,9 @@ export type ProductOrigin = { origin: string; basePath: string }
  * Ne change que l'entrée dans l'app (`entryHref`, menus et barre) : la page d'accueil publique
  * (`href`) reste `https://<mot>.hgdc.ch`.
  */
-export const PRODUCT_ORIGINS: Readonly<Record<string, ProductOrigin>> = {}
+export const PRODUCT_ORIGINS: Readonly<Record<string, ProductOrigin>> = {
+  analytics: { origin: "https://app.hgdc.ch", basePath: "/analytics" },
+}
 
 /** Adresse de l'app d'un produit : celle de `PRODUCT_ORIGINS`, sinon `https://<mot>.hgdc.ch`. */
 export function productOrigin(
