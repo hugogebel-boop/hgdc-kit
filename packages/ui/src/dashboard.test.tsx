@@ -50,7 +50,7 @@ describe("catalogue des produits", () => {
       Portal: "https://portal.hgdc.ch/auth/hgdc?refresh=background&next=/",
       Status: "https://status.hgdc.ch/auth/hgdc?refresh=background&next=/",
       Analytics: "https://app.hgdc.ch/analytics/auth/hgdc?refresh=background&next=/",
-      Docs: "https://docs.hgdc.ch/auth/hgdc?refresh=background&next=/",
+      Docs: "https://app.hgdc.ch/docs/auth/hgdc?refresh=background&next=/",
     })
     expect(HGDC_ACCOUNT.entryHref).toBe(HGDC_ACCOUNT.href)
     for (const product of HGDC_PRODUCTS) expect(product.href).toBe(`https://${product.subdomain}`)
