@@ -45,7 +45,7 @@ describe("catalogue des produits", () => {
     const entries = productMenuEntries({ current: "Host" })
     expect(Object.fromEntries(entries.map((e) => [e.name, e.href]))).toEqual({
       Account: "https://account.hgdc.ch",
-      Host: "https://host.hgdc.ch/auth/hgdc?refresh=background&next=/",
+      Host: "https://app.hgdc.ch/host/auth/hgdc?refresh=background&next=/",
       Mail: "https://app.hgdc.ch/mail/auth/hgdc?refresh=background&next=/",
       Portal: "https://portal.hgdc.ch/auth/hgdc?refresh=background&next=/",
       Status: "https://status.hgdc.ch/auth/hgdc?refresh=background&next=/",

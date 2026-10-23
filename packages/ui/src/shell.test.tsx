@@ -294,7 +294,7 @@ describe("Barre des produits", () => {
       "Docs",
     ])
     const host = within(rail).getByRole("link", { name: /Host/ })
-    expect(host.getAttribute("href")).toBe(`https://host.hgdc.ch${PRODUCT_ENTRY_PATH}?refresh=background&next=/`)
+    expect(host.getAttribute("href")).toBe(`https://app.hgdc.ch/host${PRODUCT_ENTRY_PATH}?refresh=background&next=/`)
     expect(host.getAttribute("aria-current")).toBeNull()
     const mail = within(rail).getByRole("link", { name: "Mail" })
     expect(mail.getAttribute("aria-current")).toBe("page")
