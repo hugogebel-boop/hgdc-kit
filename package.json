@@ -1,7 +1,7 @@
 {
   "name": "hgdc-kit",
   "private": true,
-  "description": "Paquets partagés de la H Collection : @hgdc/config, @hgdc/ui, @hgdc/auth, @hgdc/errors, @hgdc/domains, @hgdc/webhooks, @hgdc/assistant, @hgdc/status.",
+  "description": "Paquets partagés de la H Collection : @hgdc/config, @hgdc/ui, @hgdc/auth, @hgdc/errors, @hgdc/domains, @hgdc/webhooks, @hgdc/assistant, @hgdc/status, @hgdc/agents.",
   "license": "UNLICENSED",
   "type": "module",
   "packageManager": "bun@1.3.10",

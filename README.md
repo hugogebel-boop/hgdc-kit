@@ -1,6 +1,6 @@
 ---
 owner: Hugo Gebel
-last_reviewed: 2026-10-18
+last_reviewed: 2026-10-24
 ---
 
 # hgdc-kit
@@ -17,6 +17,7 @@ Le code commun de la H Collection (HGDC Host, Mail, Account…), publié sur npm
 | [`@hgdc/assistant`](packages/assistant) | Moteur de l’assistant IA : outils typés, boucle Claude en flux, tables et gardes Convex, crédits, clé scellée                     |
 | [`@hgdc/webhooks`](packages/webhooks)   | Webhooks signés (Standard Webhooks) : signature et vérification, secret `whsec_`, garde SSRF des adresses, calendrier de reprises |
 | [`@hgdc/status`](packages/status)       | Intégrer une page de HGDC Status dans un site : chargement du composant web `<hgdc-status>`, composant React `HgdcStatus`         |
+| [`@hgdc/agents`](packages/agents)       | Sites lisibles par les agents IA : pages en Markdown sur `Accept: text/markdown`, 404 en Markdown, routes des sites prérendus     |
 
 Le dépôt est public pour que chaque produit installe le kit sans jeton. Ce n'est pas du logiciel libre : tous droits réservés ([LICENSE](LICENSE)).
 
