@@ -5,10 +5,12 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { Alert } from "./alert.tsx"
 import { Card, CardContent, CardHeader, CardTitle } from "./card.tsx"
 import { Checkbox } from "./checkbox.tsx"
+import { ChoiceCards } from "./choice-cards.tsx"
 import { Breadcrumbs, PageHeader } from "./page-header.tsx"
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "./popover.tsx"
 import { RadioGroup, RadioGroupItem } from "./radio-group.tsx"
 import { SecretReveal } from "./secret-reveal.tsx"
+import { Steps } from "./steps.tsx"
 import { Switch } from "./switch.tsx"
 import { Pending, Skeleton } from "./skeleton.tsx"
 import { Tabs, TabsList, TabsPanel, TabsTab } from "./tabs.tsx"
@@ -150,6 +152,38 @@ describe("RadioGroup", () => {
     fireEvent.click(admin)
     expect(admin.getAttribute("aria-checked")).toBe("true")
     expect(member.getAttribute("aria-checked")).toBe("false")
+  })
+})
+
+describe("ChoiceCards", () => {
+  it("un seul choix, nommé par son titre et sa description, changé au clic", () => {
+    const chosen: string[] = []
+    render(
+      <ChoiceCards
+        label="Outil"
+        value="grafana"
+        onValueChange={(v) => chosen.push(v)}
+        options={[
+          { value: "grafana", title: "Grafana", description: "Contact point Webhook" },
+          { value: "sentry", title: "Sentry" },
+        ]}
+      />,
+    )
+    expect(screen.getByRole("radiogroup", { name: "Outil" })).toBeDefined()
+    const grafana = screen.getByRole("radio", { name: "Grafana, Contact point Webhook" })
+    expect(grafana.getAttribute("aria-checked")).toBe("true")
+    fireEvent.click(screen.getByRole("radio", { name: "Sentry" }))
+    expect(chosen).toEqual(["sentry"])
+  })
+})
+
+describe("Steps", () => {
+  it("une liste ordonnée, une étape par élément, détail sous le titre", () => {
+    render(<Steps items={[{ title: "Ouvre Grafana." }, { title: "Colle l'adresse.", detail: "Dans le champ URL." }]} />)
+    const items = screen.getAllByRole("listitem")
+    expect(items).toHaveLength(2)
+    expect(items[1]?.textContent).toContain("Colle l'adresse.")
+    expect(items[1]?.textContent).toContain("Dans le champ URL.")
   })
 })
 
