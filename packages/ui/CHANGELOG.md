@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.39.1
+
+### Patch Changes
+
+- 8fd8b78: Host n'est plus marqué « Préversion » : il sert en production les consoles et les sites de la famille depuis le 2026-10-23.
+
 ## 0.39.0
 
 ### Minor Changes
