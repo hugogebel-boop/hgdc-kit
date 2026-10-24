@@ -108,10 +108,13 @@ export function markdownRoutes(
   const special = pages.filter((p) => p.file !== `${p.path.slice(1)}.md`)
   const regular = pages.filter((p) => p.file === `${p.path.slice(1)}.md`)
 
-  for (const group of chunks(pages.map((p) => escapeRegex(p.path))))
+  // L'accueil d'un préfixe arrive aussi avec la barre finale : `/agence/`, forme que relaie le site parent.
+  const pattern = (path: string) => (base && path === base ? `${escapeRegex(path)}/?` : escapeRegex(path))
+
+  for (const group of chunks(pages.map((p) => pattern(p.path))))
     before.push({ src: `^(?:${group})$`, headers: { Vary: "Accept" }, continue: true })
   for (const page of special) {
-    const src = `^${escapeRegex(page.path)}$`
+    const src = `^${pattern(page.path)}$`
     const link = canonical(page.path === "/" ? "/" : page.path)
     before.push({
       src,

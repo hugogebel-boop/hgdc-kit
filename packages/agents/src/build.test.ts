@@ -119,6 +119,8 @@ describe("site sous un préfixe", async () => {
     expect(pages.map((p) => p.file).sort()).toEqual(["agence/blog/article.md", "agence/index.md"])
     expect(await readFile(new URL("agence/index.md", dir), "utf-8")).toContain("(https://hgdc.ch/contact)")
     expect(serve(routes, files, "/agence", "text/markdown")).toMatchObject({ file: "agence/index.md" })
+    expect(serve(routes, files, "/agence/", "text/markdown")).toMatchObject({ file: "agence/index.md" })
+    expect(serve(routes, files, "/agence/", "text/html")).toMatchObject({ headers: { vary: "Accept" } })
     expect(serve(routes, files, "/agence/blog/article", "text/markdown")).toMatchObject({
       file: "agence/blog/article.md",
     })
