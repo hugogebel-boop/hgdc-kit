@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.40.0
+
+### Minor Changes
+
+- 1ae2806: La console Status est servie sous `https://app.hgdc.ch/status` : `PRODUCT_ORIGINS` la déclare. `status.hgdc.ch` reste l'adresse des pages publiques et la console de secours.
+
 ## 0.39.1
 
 ### Patch Changes
