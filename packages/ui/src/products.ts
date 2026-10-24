@@ -7,6 +7,7 @@ import Rocket01Icon from "@hugeicons/core-free-icons/Rocket01Icon"
 import UserCircleIcon from "@hugeicons/core-free-icons/UserCircleIcon"
 import type { IconSvgElement } from "@hugeicons/react"
 
+import { APP_ORIGIN, APP_PRODUCTS } from "./addresses.ts"
 import { HGDC_EMAIL_ACCENT, type EmailAccent } from "./email-palette.ts"
 import { isFamilyProduct, type FamilyProduct } from "./family-svg.ts"
 
@@ -62,25 +63,16 @@ export const PRODUCT_ENTRY_PATH = "/auth/hgdc"
 export type ProductOrigin = { origin: string; basePath: string }
 
 /**
- * Adresse de l'app de chaque produit, par mot en minuscules. Défaut : `https://<mot>.hgdc.ch` sans
- * base. Un produit servi sous `https://app.hgdc.ch/<mot>` (`@hgdc/auth`, `appBasePath`) migre en
- * ajoutant sa ligne ici, une à la fois, quand son déploiement est prêt :
- *
- * ```ts
- * analytics: { origin: "https://app.hgdc.ch", basePath: "/analytics" },
- * ```
+ * Adresse de l'app de chaque produit servi sous `https://app.hgdc.ch/<mot>`, par mot en minuscules,
+ * déduite d'`APP_PRODUCTS` (`@hgdc/ui/addresses`). Un autre produit reste à `https://<mot>.hgdc.ch`
+ * sans base.
  *
  * Ne change que l'entrée dans l'app (`entryHref`, menus et barre) : la page d'accueil publique
  * (`href`) reste `https://<mot>.hgdc.ch`.
  */
-export const PRODUCT_ORIGINS: Readonly<Record<string, ProductOrigin>> = {
-  analytics: { origin: "https://app.hgdc.ch", basePath: "/analytics" },
-  mail: { origin: "https://app.hgdc.ch", basePath: "/mail" },
-  host: { origin: "https://app.hgdc.ch", basePath: "/host" },
-  docs: { origin: "https://app.hgdc.ch", basePath: "/docs" },
-  // Console seule : status.hgdc.ch reste l'adresse des pages publiques et la console de secours.
-  status: { origin: "https://app.hgdc.ch", basePath: "/status" },
-}
+export const PRODUCT_ORIGINS: Readonly<Record<string, ProductOrigin>> = Object.fromEntries(
+  APP_PRODUCTS.map((word) => [word, { origin: APP_ORIGIN, basePath: `/${word}` }]),
+)
 
 /** Adresse de l'app d'un produit : celle de `PRODUCT_ORIGINS`, sinon `https://<mot>.hgdc.ch`. */
 export function productOrigin(
