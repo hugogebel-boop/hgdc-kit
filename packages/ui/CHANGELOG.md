@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.41.0
+
+### Minor Changes
+
+- b34541f: `ChoiceCards` : un choix parmi quelques options riches, en tuiles (groupe radio, deux colonnes sur téléphone). `Steps` : marche à suivre numérotée, une phrase d'action par étape.
+
 ## 0.40.0
 
 ### Minor Changes
