@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.42.0
+
+### Minor Changes
+
+- fc8dbc0: `@hgdc/ui/addresses` : adresses d'un produit déduites de son mot (`productAddresses`, `productBasePath`, `APP_PRODUCTS`, `APP_ORIGIN`), au lieu de variables posées sur Host et Vercel et recopiées dans chaque produit. `PRODUCT_ORIGINS` en est déduit.
+
 ## 0.41.0
 
 ### Minor Changes
