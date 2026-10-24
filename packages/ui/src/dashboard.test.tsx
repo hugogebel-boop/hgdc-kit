@@ -37,7 +37,7 @@ describe("catalogue des produits", () => {
     const entries = productMenuEntries({ current: "mail" })
     expect(entries.map((e) => e.name)).toEqual(["Account", "Host", "Mail", "Portal", "Status", "Analytics", "Docs"])
     expect(entries.find((e) => e.current)?.name).toBe("Mail")
-    expect(entries.find((e) => e.name === "Host")?.hint).toBe("Préversion")
+    expect(entries.every((e) => e.hint === undefined)).toBe(true)
   })
 
   it("envoie chaque produit vers son entrée connectée, Account vers sa racine", () => {

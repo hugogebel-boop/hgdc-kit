@@ -310,7 +310,7 @@ describe("Barre des produits", () => {
     const links = within(rail).getAllByRole("link")
     expect(links.map((link) => link.textContent)).toEqual([
       "Account",
-      "Host, Préversion",
+      "Host",
       "Mail",
       "Portal",
       "Status",
