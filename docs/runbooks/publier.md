@@ -1,6 +1,6 @@
 ---
 owner: Hugo Gebel
-last_reviewed: 2026-10-23
+last_reviewed: 2026-10-25
 ---
 
 # Publier une version
@@ -39,6 +39,8 @@ Puis, sur npmjs.com, pour chacun :
    - `@hgdc/errors` : utilisateur `hugogebel-boop`, dépôt `hgdc-kit`, workflow `release.yml`, environnement vide.
    - `@hgdc/docs` : utilisateur `hugogebel-boop`, dépôt `hgdc-docs`, workflow `release.yml` (à créer dans `hgdc-docs` sur le modèle de celui du kit ; d'ici là, les versions suivantes partent du poste comme la première).
 2. Même page, _Publishing access_ → « Require two-factor authentication and disallow tokens ».
+
+`@hgdc/agents` 0.1.0 et 0.1.1 : publiés le 2026-10-24 depuis le poste par la voie du jeton ci-dessous, après la fusion de leur PR « chore: release ». **Trusted publisher à déclarer par Hugo** (`hugogebel-boop` / `hgdc-kit` / `release.yml`) : d'ici là, `release.yml` échoue sur `@hgdc/agents` (`E404` au `PUT`) et chaque version part du poste de la même façon.
 
 `@hgdc/status` 0.1.0 : publié le 2026-10-23 depuis le poste par la voie du jeton ci-dessous (le premier essai par `npm login` avait échoué sur le code 2FA, et serait parti en `0.0.0` : publier seulement depuis `main` après la release). Trusted publisher déclaré par Hugo le 2026-10-23 (`hugogebel-boop` / `hgdc-kit` / `release.yml`) : les versions suivantes passent par la CI, avec provenance.
 
