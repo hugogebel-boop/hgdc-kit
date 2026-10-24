@@ -107,7 +107,9 @@ const hidden = (el: Element) =>
   DROPPED.has(el.tag) ||
   el.attrs["aria-hidden"] === "true" ||
   "hidden" in el.attrs ||
-  hasClass(el, /(?:^|\s)(?:visually-hidden|sr-only|skip-link)(?:\s|$)/)
+  // `hidden` seul est la classe Tailwind `display: none` : l'autre moitié d'une image claire/sombre
+  // (`hidden dark:block`). `dark:hidden` ou `sm:hidden` ne comptent pas.
+  hasClass(el, /(?:^|\s)(?:visually-hidden|sr-only|skip-link|hidden)(?:\s|$)/)
 
 const hasBlock = (node: Node): boolean =>
   typeof node !== "string" && !hidden(node) && (!INLINE.has(node.tag) || node.children.some(hasBlock))

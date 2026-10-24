@@ -40,6 +40,14 @@ describe("htmlToMarkdown", () => {
     ).toBe("[Nous écrire](https://hgdc.ch/contact) [contact@hgdc.ch](mailto:contact@hgdc.ch) Découvrir X\n")
   })
 
+  test("logo clair et sombre (Tailwind) : lu une fois", () => {
+    expect(
+      md(
+        '<h1><img class="h-8 dark:hidden" alt="H Collection"><img class="hidden h-8 dark:block" alt="H Collection"></h1>',
+      ),
+    ).toBe("# H Collection\n")
+  })
+
   test("badges collés séparés", () => {
     expect(md("<p><span>Zurich</span><span>E-mails envoyés depuis la Suisse</span></p>")).toBe(
       "Zurich E-mails envoyés depuis la Suisse\n",
