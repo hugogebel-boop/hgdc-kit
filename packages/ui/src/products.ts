@@ -78,6 +78,8 @@ export const PRODUCT_ORIGINS: Readonly<Record<string, ProductOrigin>> = {
   mail: { origin: "https://app.hgdc.ch", basePath: "/mail" },
   host: { origin: "https://app.hgdc.ch", basePath: "/host" },
   docs: { origin: "https://app.hgdc.ch", basePath: "/docs" },
+  // Console seule : status.hgdc.ch reste l'adresse des pages publiques et la console de secours.
+  status: { origin: "https://app.hgdc.ch", basePath: "/status" },
 }
 
 /** Adresse de l'app d'un produit : celle de `PRODUCT_ORIGINS`, sinon `https://<mot>.hgdc.ch`. */

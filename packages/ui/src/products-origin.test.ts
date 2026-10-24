@@ -55,8 +55,9 @@ describe("barre des produits sous une origine partagée (ADR 0020)", () => {
     const by = Object.fromEntries(products.map((entry) => [entry.badge, entry]))
     expect(by.mail).toMatchObject({ href: "/mail/auth/hgdc?refresh=background&next=/", sameOrigin: true })
     expect(by.host).toMatchObject({ href: "/host/auth/hgdc?refresh=background&next=/", sameOrigin: true })
-    expect(by.status?.href).toBe("https://status.hgdc.ch/auth/hgdc?refresh=background&next=/")
-    expect(by.status?.sameOrigin).toBeUndefined()
+    expect(by.status).toMatchObject({ href: "/status/auth/hgdc?refresh=background&next=/", sameOrigin: true })
+    expect(by.portal?.href).toBe("https://portal.hgdc.ch/auth/hgdc?refresh=background&next=/")
+    expect(by.portal?.sameOrigin).toBeUndefined()
     // Le produit courant : sa racine sous sa base, sans détour par l'entrée, jamais marqué.
     expect(by.analytics).toMatchObject({ href: "/analytics/", current: true })
     expect(by.analytics?.sameOrigin).toBeUndefined()
