@@ -1,5 +1,11 @@
 # @hgdc/agents
 
+## 0.1.2
+
+### Patch Changes
+
+- cc4d039: `markdownRoutes` : l'accueil d'un site sous préfixe (`base`) sert aussi son Markdown avec la barre finale (`/agence/`), forme que relaie le site parent.
+
 ## 0.1.1
 
 ### Patch Changes
