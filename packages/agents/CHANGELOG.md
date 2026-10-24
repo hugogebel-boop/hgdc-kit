@@ -1,5 +1,11 @@
 # @hgdc/agents
 
+## 0.1.1
+
+### Patch Changes
+
+- 400a32e: `htmlToMarkdown` ignore les éléments de classe Tailwind `hidden` (moitié sombre d'un logo clair et sombre), comme `visually-hidden`.
+
 ## 0.1.0
 
 ### Minor Changes
