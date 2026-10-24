@@ -134,7 +134,7 @@ export const HGDC_ACCOUNT: HgdcCatalogProduct = { ...account, entryHref: account
 
 /** Les produits de la famille, dans leur ordre d'affichage. Account n'en fait pas partie (`HGDC_ACCOUNT`). */
 export const HGDC_PRODUCTS: ReadonlyArray<HgdcCatalogProduct> = [
-  product("Host", "Ton site en ligne, déployé à chaque modification.", Rocket01Icon, "preview"),
+  product("Host", "Ton site en ligne, déployé à chaque modification.", Rocket01Icon, "live"),
   product("Mail", "Tes e-mails, newsletters et formulaires, envoyés depuis ton adresse.", Mail01Icon, "live"),
   product("Portal", "Un espace partagé où ton client suit son projet, signe et paie.", Briefcase01Icon, "live"),
   product("Status", "La surveillance de tes sites et ta page de statut.", Activity01Icon, "live"),
