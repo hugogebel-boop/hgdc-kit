@@ -1,3 +1,5 @@
 export { htmlToMarkdown, pageTitle } from "./markdown.js"
 export { prefersMarkdown, varyOnAccept } from "./negotiate.js"
 export { linksFooter, withMarkdown, type MarkdownOptions } from "./fetch.js"
+export { canonicalLink, injectIntoHead, jsonLdScript } from "./head.js"
+export { HGDC_ORGANIZATION, HGDC_TRUST_PAGES, productJsonLd } from "./hgdc.js"
