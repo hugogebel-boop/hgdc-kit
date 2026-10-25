@@ -11,6 +11,16 @@ export const HGDC_TRUST_PAGES: Readonly<Record<string, string>> = {
   "/privacy": "https://hgdc.ch/confidentialite",
 }
 
+/**
+ * Fichiers de découverte que les agents cherchent à la racine de chaque hôte : ceux de l'entreprise, sur
+ * hgdc.ch (catalogue ARD, index Agent Skills). Pour l'option `redirects` de `withMarkdown`, avec
+ * `HGDC_TRUST_PAGES`.
+ */
+export const HGDC_DISCOVERY_FILES: Readonly<Record<string, string>> = {
+  "/.well-known/ard.json": "https://hgdc.ch/.well-known/ard.json",
+  "/.well-known/agent-skills/index.json": "https://hgdc.ch/.well-known/agent-skills/index.json",
+}
+
 /** Nœud schema.org de l'entreprise, même `@id` que sur hgdc.ch. */
 export const HGDC_ORGANIZATION = {
   "@type": "Organization",
@@ -18,6 +28,8 @@ export const HGDC_ORGANIZATION = {
   name: "Hugo Gebel Développement Conseil",
   alternateName: "HGDC",
   url: "https://hgdc.ch",
+  // Profils publics de l'entreprise (ceux de l'Agence, ex-SmartFlow, renommés sans changer d'adresse).
+  sameAs: ["https://www.linkedin.com/company/smartflowsa", "https://www.instagram.com/smartflowsa.ch"],
   description:
     "Entreprise individuelle suisse : agence web, accompagnement IA, outils en ligne de la H Collection et logiciel Stratta, pour les entreprises en Suisse.",
   email: "contact@hgdc.ch",
@@ -39,7 +51,7 @@ export const HGDC_ORGANIZATION = {
   },
 } as const
 
-/** Graphe JSON-LD d'un produit : l'entreprise et le site du produit, qu'elle publie. */
+/** Graphe JSON-LD d'un produit : l'entreprise, le produit (logiciel en ligne) et son site, qu'elle publie. */
 export function productJsonLd(product: { name: string; url: string; description: string }): {
   "@context": string
   "@graph": Record<string, unknown>[]
@@ -54,6 +66,17 @@ export function productJsonLd(product: { name: string; url: string; description:
         url: product.url,
         name: product.name,
         description: product.description,
+        inLanguage: "fr-CH",
+        publisher: { "@id": HGDC_ORGANIZATION["@id"] },
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": `${product.url}/#software`,
+        name: product.name,
+        url: product.url,
+        description: product.description,
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web",
         inLanguage: "fr-CH",
         publisher: { "@id": HGDC_ORGANIZATION["@id"] },
       },
