@@ -1,5 +1,11 @@
 # @hgdc/agents
 
+## 0.4.0
+
+### Minor Changes
+
+- 03c3a03: `HGDC_DISCOVERY_FILES` (catalogue ARD et index Agent Skills de hgdc.ch, pour `redirects`), `sameAs` sur `HGDC_ORGANIZATION`, et un nœud `SoftwareApplication` dans `productJsonLd`.
+
 ## 0.3.0
 
 ### Minor Changes
