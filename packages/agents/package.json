@@ -27,6 +27,10 @@
       "types": "./dist/build.d.ts",
       "default": "./dist/build.js"
     },
+    "./webmcp": {
+      "types": "./dist/webmcp.d.ts",
+      "default": "./dist/webmcp.js"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {

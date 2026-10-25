@@ -50,6 +50,16 @@ withMarkdown(handler.fetch, {
 
 Une page est convertie en Markdown, pour un GET ou un HEAD, quand la requête le préfère (`prefersMarkdown` : `text/markdown` accepté avec une qualité au moins égale à `text/html` ; un joker ne compte pas), quand le User-Agent est celui d'un robot d'IA connu (`isAgentUserAgent` : GPTBot, ClaudeBot, PerplexityBot et leurs variantes « -User » ; Googlebot garde le HTML), avec `?mode=agent`, ou par son jumeau `.md` (`/index.md`, `/tarifs.md`) quand l'app ne sert pas elle-même ce fichier. Les pages portent `Vary: Accept, User-Agent` et, en 200, un `Link` vers leur alternative. Une redirection, un fichier ou du JSON passent tels quels.
 
+## WebMCP (navigateur)
+
+```ts
+import { registerSiteTools } from "@hgdc/agents/webmcp"
+
+registerSiteTools({ prefix: "portal", name: "Portal", info: { llms: "https://portal.hgdc.ch/llms.txt" } })
+```
+
+Inscrit `portal_infos` et `portal_page` (page du site en Markdown) auprès du navigateur qui prend WebMCP en charge ; en lecture seule, sans effet ailleurs. À appeler une fois, côté client (effet du composant racine).
+
 ## Site prérendu (Astro, sortie Build Output API)
 
 À la fin du build, `@hgdc/agents/build` écrit `<page>.md` à côté de chaque page et donne les routes qui les servent, sur HGDC Host comme sur Vercel :
