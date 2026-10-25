@@ -254,6 +254,38 @@ export function pageTitle(html: string): string | null {
  * Markdown du contenu d'une page HTML.
  * @param base adresse de la page, pour rendre les liens absolus
  */
+const attribute = (tag: string, name: string) =>
+  new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, "i")
+    .exec(tag)
+    ?.slice(1)
+    .find((v) => v !== undefined)
+
+/** Première balise `<tag …>` du document dont un attribut vaut `value`, avec son attribut `read`. */
+function headValue(html: string, tag: string, key: string, value: string, read: string): string | null {
+  for (const m of html.matchAll(new RegExp(`<${tag}\\b[^>]*>`, "gi"))) {
+    if (attribute(m[0], key)?.toLowerCase() === value) {
+      const found = attribute(m[0], read)
+      if (found) return collapse(decode(found)).trim()
+    }
+  }
+  return null
+}
+
+/**
+ * Bloc de métadonnées YAML qui ouvre le Markdown d'une page : titre, description et adresse canonique, lus
+ * dans le `<head>` (`url` à défaut de `<link rel="canonical">`, sinon pas d'adresse). Les valeurs sont des
+ * chaînes JSON, du YAML valide quel que soit leur contenu.
+ */
+export function pageFrontmatter(html: string, url?: string | URL): string {
+  const fields: [string, string | null][] = [
+    ["title", pageTitle(html)],
+    ["description", headValue(html, "meta", "name", "description", "content")],
+    ["canonical", headValue(html, "link", "rel", "canonical", "href") ?? (url ? new URL(url).href : null)],
+  ]
+  const lines = fields.filter(([, v]) => v).map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+  return lines.length ? `---\n${lines.join("\n")}\n---\n\n` : ""
+}
+
 export function htmlToMarkdown(html: string, base: string | URL): string {
   const page = new URL(base)
   const link: Link = (href) => {

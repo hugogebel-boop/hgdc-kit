@@ -63,9 +63,9 @@ describe("site à la racine", async () => {
       { path: "/", file: "index.md" },
     ])
     expect(await readFile(new URL("contact.md", dir), "utf-8")).toBe(
-      "# Contact\n\n[Contact](https://hgdc.ch/contact)\n\n---\n\n[llms.txt](https://hgdc.ch/llms.txt)\n",
+      '---\ncanonical: "https://hgdc.ch/contact"\n---\n\n# Contact\n\n[Contact](https://hgdc.ch/contact)\n\n---\n\n[llms.txt](https://hgdc.ch/llms.txt)\n',
     )
-    expect(await readFile(new URL("404.md", dir), "utf-8")).toMatch(/^# Introuvable/)
+    expect(await readFile(new URL("404.md", dir), "utf-8")).toMatch(/\n# Introuvable/)
   })
 
   test("Markdown sur Accept: text/markdown, HTML sinon, Vary: Accept partout", () => {

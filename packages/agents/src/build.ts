@@ -3,7 +3,7 @@
 // `Accept: text/markdown`. Rien ne s'exécute à la requête : tout est fichier statique et route.
 import { readdir, readFile, writeFile } from "node:fs/promises"
 
-import { htmlToMarkdown } from "./markdown.js"
+import { htmlToMarkdown, pageFrontmatter } from "./markdown.js"
 
 /** Route Build Output API v3, sous-ensemble utilisé ici. */
 export type Route = {
@@ -70,7 +70,7 @@ export async function writeMarkdownPages(dir: URL, options: MarkdownBuildOptions
     const html = await readFile(new URL(file, dir), "utf-8")
     const url = `${options.site}${path ?? `${base}/`}`
     const target = notFound ? file.replace(/\.html$/, ".md") : markdownFile(path!, base)
-    await writeFile(new URL(target, dir), htmlToMarkdown(html, url) + footer)
+    await writeFile(new URL(target, dir), pageFrontmatter(html, url) + htmlToMarkdown(html, url) + footer)
     if (path !== null) pages.push({ path, file: target })
   }
   return pages
