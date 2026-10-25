@@ -11,7 +11,7 @@ export type Route = {
   dest?: string
   status?: number
   headers?: Record<string, string>
-  has?: { type: "header"; key: string; value: string }[]
+  has?: { type: "header" | "query"; key: string; value: string }[]
   continue?: boolean
 }
 
@@ -34,6 +34,17 @@ export type MarkdownBuildOptions = {
 const NOT_FOUND = "404.html"
 // Valeur de condition commune à Host (edge/src/router.ts) et Vercel : correspondance sur toute la valeur.
 const ACCEPTS_MARKDOWN = { type: "header", key: "accept", value: ".*text/markdown.*" } as const
+// Mêmes robots que `isAgentUserAgent` (discovery.ts) : ils reçoivent le Markdown sans le demander. La valeur
+// d'une condition est une expression ancrée, sensible à la casse.
+const AGENT_USER_AGENT = {
+  type: "header",
+  key: "user-agent",
+  value:
+    ".*(?:GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-User|Claude-SearchBot|PerplexityBot|Perplexity-User).*",
+} as const
+const AGENT_MODE = { type: "query", key: "mode", value: "agent" } as const
+const WANTS_MARKDOWN = [ACCEPTS_MARKDOWN, AGENT_USER_AGENT, AGENT_MODE]
+const VARY = "Accept, User-Agent"
 const MARKDOWN_TYPE = "text/markdown; charset=utf-8"
 // Host refuse une expression de plus de 4096 caractères : les listes de pages se découpent en dessous.
 const MAX_PATTERN = 3000
@@ -112,7 +123,7 @@ export function markdownRoutes(
   const pattern = (path: string) => (base && path === base ? `${escapeRegex(path)}/?` : escapeRegex(path))
 
   for (const group of chunks(pages.map((p) => pattern(p.path))))
-    before.push({ src: `^(?:${group})$`, headers: { Vary: "Accept" }, continue: true })
+    before.push({ src: `^(?:${group})$`, headers: { Vary: VARY }, continue: true })
   for (const page of special) {
     const src = `^${pattern(page.path)}$`
     const link = canonical(page.path === "/" ? "/" : page.path)
@@ -120,7 +131,7 @@ export function markdownRoutes(
       src,
       has: [ACCEPTS_MARKDOWN],
       dest: `/${page.file}`,
-      headers: { "Content-Type": MARKDOWN_TYPE, Vary: "Accept", Link: link },
+      headers: { "Content-Type": MARKDOWN_TYPE, Vary: VARY, Link: link },
     })
     before.push({ src: `^/${escapeRegex(page.file)}$`, headers: { Link: link }, continue: true })
   }
@@ -130,7 +141,7 @@ export function markdownRoutes(
       src: `^/(${group})$`,
       has: [ACCEPTS_MARKDOWN],
       dest: "/$1.md",
-      headers: { "Content-Type": MARKDOWN_TYPE, Vary: "Accept", Link: link },
+      headers: { "Content-Type": MARKDOWN_TYPE, Vary: VARY, Link: link },
     })
     // Lue directement (/contact.md), la version Markdown renvoie à la page HTML de référence.
     before.push({ src: `^/(${group})\\.md$`, headers: { Link: link }, continue: true })
@@ -143,8 +154,15 @@ export function markdownRoutes(
       has: [ACCEPTS_MARKDOWN],
       dest: `${base}/404.md`,
       status: 404,
-      headers: { "Content-Type": MARKDOWN_TYPE, Vary: "Accept" },
+      headers: { "Content-Type": MARKDOWN_TYPE, Vary: VARY },
     },
   ]
-  return { before, miss }
+  return { before: forEveryAgent(before), miss: forEveryAgent(miss) }
+}
+
+// `has` est un ET : une route Markdown devient une route par façon de demander le Markdown.
+function forEveryAgent(routes: Route[]): Route[] {
+  return routes.flatMap((route) =>
+    route.has?.[0] === ACCEPTS_MARKDOWN ? WANTS_MARKDOWN.map((condition) => ({ ...route, has: [condition] })) : [route],
+  )
 }
