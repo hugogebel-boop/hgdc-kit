@@ -39,7 +39,7 @@ describe("withMarkdown", () => {
     expect(response.headers.get("etag")).toBeNull()
     expect(response.headers.get("set-cookie")).toBe("s=1")
     expect(await response.text()).toBe(
-      "# Mail\n\nTes e-mails.\n\n---\n\n[Résumé pour les agents](https://hgdc.ch/llms.txt)\n",
+      '---\ntitle: "Mail"\n---\n\n# Mail\n\nTes e-mails.\n\n---\n\n[Résumé pour les agents](https://hgdc.ch/llms.txt)\n',
     )
   })
 

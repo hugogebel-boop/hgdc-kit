@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest"
 
-import { htmlToMarkdown, pageTitle } from "./markdown"
+import { htmlToMarkdown, pageFrontmatter, pageTitle } from "./markdown"
 
 const md = (body: string, base = "https://hgdc.ch/page") =>
   htmlToMarkdown(`<html><body><main>${body}</main></body></html>`, base)
@@ -73,6 +73,18 @@ describe("htmlToMarkdown", () => {
       "> Dit\n\n**Terme**\n\nSens\n\n`a*b`\n",
     )
   })
+})
+
+test("pageFrontmatter : titre, description et adresse canonique du <head>, en chaînes JSON", () => {
+  const head =
+    '<head><title>À propos · HGDC</title><meta name="description" content="Qui est &quot;HGDC&quot;"><link rel="canonical" href="https://hgdc.ch/a-propos"></head>'
+  expect(pageFrontmatter(head, "https://hgdc.ch/ignoree")).toBe(
+    '---\ntitle: "À propos · HGDC"\ndescription: "Qui est \\"HGDC\\""\ncanonical: "https://hgdc.ch/a-propos"\n---\n\n',
+  )
+  expect(pageFrontmatter("<title>x</title>", "https://hgdc.ch/x")).toBe(
+    '---\ntitle: "x"\ncanonical: "https://hgdc.ch/x"\n---\n\n',
+  )
+  expect(pageFrontmatter("<p>rien</p>")).toBe("")
 })
 
 test("pageTitle", () => {

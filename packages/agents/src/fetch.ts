@@ -1,7 +1,7 @@
 // Ce qu'une app rendue côté serveur (TanStack Start, ou tout handler `fetch`) montre aux agents : la page en
 // Markdown, ses données structurées et son adresse canonique, les pages de confiance, des erreurs d'API en JSON.
 import { canonicalLink, injectIntoHead, jsonLdScript } from "./head.js"
-import { htmlToMarkdown } from "./markdown.js"
+import { htmlToMarkdown, pageFrontmatter } from "./markdown.js"
 import { prefersMarkdown, varyOnAccept } from "./negotiate.js"
 
 export type MarkdownOptions = {
@@ -66,8 +66,14 @@ export function withMarkdown<Rest extends unknown[]>(
     if (!markdown || response.status < 200 || redirected)
       return withHeaders(response, request.method === "HEAD" ? null : enrichHead(response, url, options), varyOnAccept)
 
+    const html = await response.text()
+    // Métadonnées en tête ; l'adresse canonique seulement si l'origine publique est connue (une console
+    // relayée voit l'adresse de son relais, pas celle du visiteur).
+    const canonical = options.canonicalOrigin ? `${options.canonicalOrigin}${url.pathname}` : undefined
     const text =
-      htmlToMarkdown(await response.text(), request.url) + (options.footer ? `\n---\n\n${options.footer}\n` : "")
+      pageFrontmatter(html, canonical) +
+      htmlToMarkdown(html, request.url) +
+      (options.footer ? `\n---\n\n${options.footer}\n` : "")
     return withHeaders(response, request.method === "HEAD" ? null : text, (out) => {
       for (const name of BODY_HEADERS) out.delete(name)
       out.set("content-type", "text/markdown; charset=utf-8")
