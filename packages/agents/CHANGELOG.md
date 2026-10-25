@@ -1,5 +1,11 @@
 # @hgdc/agents
 
+## 0.6.0
+
+### Minor Changes
+
+- 67bafd0: `markdownRoutes` : les robots d'IA connus (User-Agent) et `?mode=agent` reçoivent aussi la version Markdown des pages prérendues et `404.md`, comme `withMarkdown`. `Vary: Accept, User-Agent`.
+
 ## 0.5.0
 
 ### Minor Changes
