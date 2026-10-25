@@ -1,5 +1,11 @@
 # @hgdc/agents
 
+## 0.5.0
+
+### Minor Changes
+
+- a60dfdd: `withMarkdown` : jumeau `.md` de chaque page, Markdown pour les robots d'IA connus et `?mode=agent`, en-tête `Link` sur les pages en 200 (alternative et option `links`), catalogue d'API RFC 9727 (`apiCatalog`), documents Markdown servis tels quels (`markdownFiles`). Les pages portent désormais `Vary: Accept, User-Agent`.
+
 ## 0.4.0
 
 ### Minor Changes

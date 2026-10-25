@@ -1,6 +1,6 @@
 {
   "name": "@hgdc/agents",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Sites lisibles par les agents IA : version Markdown des pages (Accept: text/markdown), 404 en Markdown, routes Build Output API pour les sites prérendus.",
   "license": "UNLICENSED",
   "homepage": "https://github.com/hugogebel-boop/hgdc-kit/tree/main/packages/agents#readme",
