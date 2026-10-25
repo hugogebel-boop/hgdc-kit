@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest"
 
 import { linksFooter, withMarkdown } from "./fetch"
+import { HGDC_TRUST_PAGES, productJsonLd } from "./hgdc"
 
 const PAGE = "<html><head><title>Mail</title></head><body><main><h1>Mail</h1><p>Tes e-mails.</p></main></body></html>"
 
@@ -99,6 +100,69 @@ describe("withMarkdown", () => {
     expect(seen[0]!.method).toBe("GET")
     expect(response.headers.get("content-type")).toBe("text/markdown; charset=utf-8")
     expect(await response.text()).toBe("")
+  })
+
+  test("pages de confiance : 301 vers hgdc.ch, barre finale comprise, en lecture seulement", async () => {
+    const { handler, seen } = app()
+    const wrapped = withMarkdown(handler, { redirects: HGDC_TRUST_PAGES })
+    for (const path of ["/about", "/about/"]) {
+      const response = await wrapped(new Request(`https://status.hgdc.ch${path}`))
+      expect(response.status).toBe(301)
+      expect(response.headers.get("location")).toBe("https://hgdc.ch/a-propos")
+    }
+    expect((await wrapped(new Request("https://status.hgdc.ch/aboutx"))).status).toBe(200)
+    expect(seen).toHaveLength(1)
+  })
+
+  test("JSON-LD et adresse canonique posés dans le <head>, sauf s'ils y sont déjà", async () => {
+    const jsonLd = productJsonLd({ name: "Status", url: "https://status.hgdc.ch", description: "Surveillance." })
+    const options = { jsonLd, canonicalOrigin: "https://status.hgdc.ch" }
+    const page = "<html><head><title>x</title></head><body><main><h1>x</h1></main></body></html>"
+    const html = await (await withMarkdown(app(200, page).handler, options)(get("text/html"))).text()
+    expect(html).toContain('<script type="application/ld+json">{"@context":"https://schema.org"')
+    expect(html).toContain('<link rel="canonical" href="https://status.hgdc.ch/mail/"></head>')
+    expect(html.match(/<\/head>/g)).toHaveLength(1)
+    const already =
+      '<html><head><link rel="canonical" href="/x"><script type="application/ld+json">{}</script></head><body></body></html>'
+    expect(await (await withMarkdown(app(200, already).handler, options)(get("text/html"))).text()).toBe(already)
+    const missing = await (await withMarkdown(app(404, page).handler, options)(get("text/html"))).text()
+    expect(missing).not.toContain("canonical")
+  })
+
+  test("<head> coupé entre deux morceaux du flux", async () => {
+    const chunks = ["<html><he", "ad><title>x</title></he", "ad><body>corps</body></html>"]
+    const handler = async () =>
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            for (const c of chunks) controller.enqueue(new TextEncoder().encode(c))
+            controller.close()
+          },
+        }),
+        { headers: { "content-type": "text/html" } },
+      )
+    const html = await (await withMarkdown(handler, { jsonLd: { a: "</script>" } })(get("text/html"))).text()
+    expect(html).toBe(
+      '<html><head><title>x</title><script type="application/ld+json">{"a":"\\u003c/script>"}</script></head><body>corps</body></html>',
+    )
+  })
+
+  test("API : une page introuvable sous le préfixe devient une erreur JSON (RFC 9457)", async () => {
+    const wrapped = withMarkdown(app(404).handler, {
+      apiPrefix: "/api",
+      apiHint: "Voir https://status.hgdc.ch/llms.txt",
+    })
+    const response = await wrapped(new Request("https://status.hgdc.ch/api/nope", { headers: { accept: "*/*" } }))
+    expect(response.status).toBe(404)
+    expect(response.headers.get("content-type")).toBe("application/problem+json")
+    expect(await response.json()).toMatchObject({
+      status: 404,
+      code: "not_found",
+      hint: "Voir https://status.hgdc.ch/llms.txt",
+    })
+    expect((await wrapped(new Request("https://status.hgdc.ch/apix"))).headers.get("content-type")).toMatch(
+      /^text\/html/,
+    )
   })
 
   test("transmet les arguments suivants du handler", async () => {
