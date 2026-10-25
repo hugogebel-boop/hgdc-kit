@@ -20,13 +20,21 @@ const page = (title: string) =>
   `<html><body><main><h1>${title}</h1><p><a href="contact">Contact</a></p></main></body></html>`
 
 /** Rejoue les routes comme Host et Vercel : avant le système de fichiers, puis après pour une adresse absente. */
-function serve(routes: { before: Route[]; miss: Route[] }, files: Set<string>, path: string, accept: string) {
+function serve(
+  routes: { before: Route[]; miss: Route[] },
+  files: Set<string>,
+  path: string,
+  accept: string,
+  agent: { ua?: string; mode?: string } = {},
+) {
   const headers: Record<string, string> = {}
   let status = 200
+  const actual = (c: { type: string; key: string }) =>
+    (c.type === "query" ? agent.mode : c.key === "user-agent" ? agent.ua : accept) ?? ""
   const phase = (list: Route[], current: string) => {
     for (const route of list) {
       const m = new RegExp(route.src).exec(current)
-      if (!m || !(route.has ?? []).every((c) => new RegExp(`^(?:${c.value})$`).test(accept))) continue
+      if (!m || !(route.has ?? []).every((c) => new RegExp(`^(?:${c.value})$`).test(actual(c)))) continue
       const sub = (v: string) => v.replace(/\$(\d)/g, (_, i: string) => m[Number(i)] ?? "")
       for (const [k, v] of Object.entries(route.headers ?? {})) headers[k.toLowerCase()] = sub(v)
       if (route.status) status = route.status
@@ -68,13 +76,13 @@ describe("site à la racine", async () => {
     expect(await readFile(new URL("404.md", dir), "utf-8")).toMatch(/\n# Introuvable/)
   })
 
-  test("Markdown sur Accept: text/markdown, HTML sinon, Vary: Accept partout", () => {
+  test("Markdown sur Accept: text/markdown, HTML sinon, Vary partout", () => {
     expect(serve(routes, files, "/", "text/markdown")).toMatchObject({
       status: 200,
       file: "index.md",
       headers: {
         "content-type": "text/markdown; charset=utf-8",
-        vary: "Accept",
+        vary: "Accept, User-Agent",
         link: '<https://hgdc.ch/>; rel="canonical"',
       },
     })
@@ -85,12 +93,22 @@ describe("site à la racine", async () => {
     expect(serve(routes, files, "/contact", "text/html")).toEqual({
       status: 200,
       file: "contact/index.html",
-      headers: { vary: "Accept" },
+      headers: { vary: "Accept, User-Agent" },
     })
     expect(serve(routes, files, "/contact.md", "*/*")).toMatchObject({
       file: "contact.md",
       headers: { link: '<https://hgdc.ch/contact>; rel="canonical"' },
     })
+  })
+
+  test("robot d'IA connu et ?mode=agent : Markdown même sans le demander ; Googlebot garde le HTML", () => {
+    const html = "text/html,*/*;q=0.8"
+    expect(serve(routes, files, "/contact", html, { ua: "Mozilla/5.0 (compatible; ClaudeBot/1.0)" }).file).toBe(
+      "contact.md",
+    )
+    expect(serve(routes, files, "/", html, { mode: "agent" }).file).toBe("index.md")
+    expect(serve(routes, files, "/nope", html, { ua: "GPTBot/1.1" })).toMatchObject({ status: 404, file: "404.md" })
+    expect(serve(routes, files, "/contact", html, { ua: "Googlebot/2.1" }).file).toBe("contact/index.html")
   })
 
   test("adresse inconnue : 404.md pour un agent", () => {
@@ -120,7 +138,7 @@ describe("site sous un préfixe", async () => {
     expect(await readFile(new URL("agence/index.md", dir), "utf-8")).toContain("(https://hgdc.ch/contact)")
     expect(serve(routes, files, "/agence", "text/markdown")).toMatchObject({ file: "agence/index.md" })
     expect(serve(routes, files, "/agence/", "text/markdown")).toMatchObject({ file: "agence/index.md" })
-    expect(serve(routes, files, "/agence/", "text/html")).toMatchObject({ headers: { vary: "Accept" } })
+    expect(serve(routes, files, "/agence/", "text/html")).toMatchObject({ headers: { vary: "Accept, User-Agent" } })
     expect(serve(routes, files, "/agence/blog/article", "text/markdown")).toMatchObject({
       file: "agence/blog/article.md",
     })
