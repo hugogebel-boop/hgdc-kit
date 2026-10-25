@@ -1,5 +1,11 @@
 # @hgdc/agents
 
+## 0.3.0
+
+### Minor Changes
+
+- 3c9e522: Le Markdown servi aux agents s'ouvre sur un frontmatter YAML (titre, description et adresse canonique lus dans le `<head>`) : `pageFrontmatter`, appliqué par `writeMarkdownPages` et `withMarkdown`.
+
 ## 0.2.0
 
 ### Minor Changes
