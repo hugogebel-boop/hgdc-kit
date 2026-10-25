@@ -1,8 +1,17 @@
 // Ce qu'une app rendue côté serveur (TanStack Start, ou tout handler `fetch`) montre aux agents : la page en
 // Markdown, ses données structurées et son adresse canonique, les pages de confiance, des erreurs d'API en JSON.
+import {
+  API_CATALOG_PATH,
+  apiCatalogResponse,
+  appendLinks,
+  isAgentUserAgent,
+  markdownTwin,
+  pageOfTwin,
+  type ApiCatalogEntry,
+} from "./discovery.js"
 import { canonicalLink, injectIntoHead, jsonLdScript } from "./head.js"
 import { htmlToMarkdown, pageFrontmatter } from "./markdown.js"
-import { prefersMarkdown, varyOnAccept } from "./negotiate.js"
+import { prefersMarkdown, varyOn, varyOnAccept } from "./negotiate.js"
 
 export type MarkdownOptions = {
   /** Markdown ajouté en pied de chaque page, après une ligne `---` : liens vers llms.txt, sitemap, contact. */
@@ -17,6 +26,15 @@ export type MarkdownOptions = {
   apiPrefix?: string
   /** Indication donnée dans ces erreurs JSON : où lire l'API. */
   apiHint?: string
+  /**
+   * Valeurs ajoutées à l'en-tête `Link` (RFC 8288) des pages, après l'alternative Markdown :
+   * `</llms.txt>; rel="describedby"`, `</.well-known/api-catalog>; rel="api-catalog"`…
+   */
+  links?: readonly string[]
+  /** Catalogue d'API (RFC 9727), servi à toute adresse qui finit par `/.well-known/api-catalog`. */
+  apiCatalog?: readonly ApiCatalogEntry[]
+  /** Documents Markdown servis tels quels, par chemin exact : `/auth.md`, `/pricing.md`. */
+  markdownFiles?: Readonly<Record<string, string>>
 }
 
 /** Pied de page standard : une ligne de liens, `[libellé](adresse)` séparés par « · ». */
@@ -47,39 +65,74 @@ export function withMarkdown<Rest extends unknown[]>(
     const url = new URL(request.url)
     const redirect = read ? options.redirects?.[url.pathname.replace(/(.)\/$/, "$1")] : undefined
     if (redirect) return new Response(null, { status: 301, headers: { location: redirect } })
+    const file = read ? options.markdownFiles?.[url.pathname] : undefined
+    if (file !== undefined)
+      return new Response(request.method === "HEAD" ? null : file, {
+        headers: { "content-type": "text/markdown; charset=utf-8" },
+      })
+    if (read && options.apiCatalog && url.pathname.endsWith(API_CATALOG_PATH))
+      return apiCatalogResponse(options.apiCatalog, request.method, url.pathname)
 
-    const markdown = read && prefersMarkdown(request.headers.get("accept"))
-    const response = markdown
-      ? await handler(
-          // Requête reconstruite depuis l'URL : le Request de Nitro (srvx) n'est pas celui d'undici, et
-          // `new Request(request, …)` le refuse. HEAD est rendu en GET, sinon le corps à convertir serait vide.
-          new Request(request.url, { method: "GET", headers: htmlAccept(request.headers), signal: request.signal }),
-          ...rest,
-        )
-      : await handler(request, ...rest)
+    // Markdown demandé par l'en-tête Accept, par un robot d'IA connu, par `?mode=agent` ou par le suffixe `.md`.
+    const wanted =
+      read &&
+      (prefersMarkdown(request.headers.get("accept")) ||
+        isAgentUserAgent(request.headers.get("user-agent")) ||
+        url.searchParams.get("mode") === "agent")
+    const twin = read ? pageOfTwin(url.pathname) : null
+    // Requête reconstruite depuis l'URL : le Request de Nitro (srvx) n'est pas celui d'undici, et
+    // `new Request(request, …)` le refuse. HEAD est rendu en GET, sinon le corps à convertir serait vide.
+    const render = (target: URL) =>
+      handler(
+        new Request(target.href, { method: "GET", headers: htmlAccept(request.headers), signal: request.signal }),
+        ...rest,
+      )
+    let page = url
+    let response = wanted || twin ? await render(url) : await handler(request, ...rest)
+    // Un `.md` que l'app ne sert pas elle-même est le jumeau Markdown de sa page.
+    if (twin && response.status === 404) {
+      page = new URL(twin + url.search, url)
+      response = await render(page)
+    }
+    const markdown = wanted || page !== url
     if (!read || !isHtml(response)) return response
 
-    if (options.apiPrefix && response.status === 404 && isUnder(url.pathname, options.apiPrefix))
-      return apiNotFound(url.pathname, options.apiHint)
+    if (options.apiPrefix && response.status === 404 && isUnder(page.pathname, options.apiPrefix))
+      return apiNotFound(page.pathname, options.apiHint)
 
     const redirected = response.status >= 300 && response.status < 400
+    const ok = response.status >= 200 && response.status < 300
     if (!markdown || response.status < 200 || redirected)
-      return withHeaders(response, request.method === "HEAD" ? null : enrichHead(response, url, options), varyOnAccept)
+      return withHeaders(response, request.method === "HEAD" ? null : enrichHead(response, page, options), (out) => {
+        varyOnPage(out)
+        if (ok)
+          appendLinks(out, [
+            `<${markdownTwin(page.pathname)}>; rel="alternate"; type="text/markdown"`,
+            ...(options.links ?? []),
+          ])
+      })
 
     const html = await response.text()
     // Métadonnées en tête ; l'adresse canonique seulement si l'origine publique est connue (une console
     // relayée voit l'adresse de son relais, pas celle du visiteur).
-    const canonical = options.canonicalOrigin ? `${options.canonicalOrigin}${url.pathname}` : undefined
+    const canonical = options.canonicalOrigin ? `${options.canonicalOrigin}${page.pathname}` : undefined
     const text =
       pageFrontmatter(html, canonical) +
-      htmlToMarkdown(html, request.url) +
+      htmlToMarkdown(html, page.href) +
       (options.footer ? `\n---\n\n${options.footer}\n` : "")
     return withHeaders(response, request.method === "HEAD" ? null : text, (out) => {
       for (const name of BODY_HEADERS) out.delete(name)
       out.set("content-type", "text/markdown; charset=utf-8")
-      varyOnAccept(out)
+      varyOnPage(out)
+      if (ok) appendLinks(out, [`<${page.pathname}>; rel="alternate"; type="text/html"`, ...(options.links ?? [])])
     })
   }
+}
+
+// Une page change selon Accept et selon le User-Agent (robots d'IA).
+function varyOnPage(headers: Headers) {
+  varyOnAccept(headers)
+  varyOn(headers, "User-Agent")
 }
 
 function htmlAccept(original: Headers): Headers {

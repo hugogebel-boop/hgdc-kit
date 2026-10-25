@@ -26,10 +26,15 @@ export function prefersMarkdown(accept: string | null | undefined): boolean {
   return markdown > 0 && markdown >= quality("text/html")
 }
 
+/** Ajoute un nom d'en-tête à `Vary`, sans doublon. */
+export function varyOn(headers: Headers, name: string): void {
+  const vary = headers.get("vary")
+  if (!vary) headers.set("vary", name)
+  else if (!vary.split(",").some((v) => [name.toLowerCase(), "*"].includes(v.trim().toLowerCase())))
+    headers.set("vary", `${vary}, ${name}`)
+}
+
 /** Ajoute `Accept` à l'en-tête `Vary` d'une réponse, sans doublon. */
 export function varyOnAccept(headers: Headers): void {
-  const vary = headers.get("vary")
-  if (!vary) headers.set("vary", "Accept")
-  else if (!vary.split(",").some((v) => ["accept", "*"].includes(v.trim().toLowerCase())))
-    headers.set("vary", `${vary}, Accept`)
+  varyOn(headers, "Accept")
 }

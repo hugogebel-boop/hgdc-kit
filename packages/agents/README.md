@@ -36,7 +36,19 @@ withMarkdown(handler.fetch, {
 
 Le JSON-LD et l'adresse canonique s'insèrent en flux avant `</head>`, seulement si la page n'en porte pas déjà : le rendu SSR en streaming n'est pas retenu au-delà du `<head>`.
 
-Seuls les GET et HEAD qui préfèrent le Markdown sont convertis (`prefersMarkdown` : `text/markdown` accepté avec une qualité au moins égale à `text/html` ; un joker ne compte pas). Une redirection, un fichier ou du JSON passent tels quels.
+Pour la découverte (0.5.0) :
+
+```ts
+withMarkdown(handler.fetch, {
+  links: ['</llms.txt>; rel="describedby"', '</.well-known/api-catalog>; rel="api-catalog"'], // en-tête Link des pages en 200
+  apiCatalog: [
+    { anchor: "https://status.hgdc.ch/", "service-desc": [{ href: "https://status.hgdc.ch/openapi.json" }] },
+  ], // RFC 9727
+  markdownFiles: { "/auth.md": AUTH_MD }, // servis tels quels en text/markdown
+})
+```
+
+Une page est convertie en Markdown, pour un GET ou un HEAD, quand la requête le préfère (`prefersMarkdown` : `text/markdown` accepté avec une qualité au moins égale à `text/html` ; un joker ne compte pas), quand le User-Agent est celui d'un robot d'IA connu (`isAgentUserAgent` : GPTBot, ClaudeBot, PerplexityBot et leurs variantes « -User » ; Googlebot garde le HTML), avec `?mode=agent`, ou par son jumeau `.md` (`/index.md`, `/tarifs.md`) quand l'app ne sert pas elle-même ce fichier. Les pages portent `Vary: Accept, User-Agent` et, en 200, un `Link` vers leur alternative. Une redirection, un fichier ou du JSON passent tels quels.
 
 ## Site prérendu (Astro, sortie Build Output API)
 
@@ -64,6 +76,8 @@ config.routes.splice(-1, 0, ...miss) // juste avant la page 404 de l'adaptateur
 | `linksFooter(links)`                                              | Pied de page : liens séparés par « · »                    |
 | `HGDC_TRUST_PAGES`, `HGDC_ORGANIZATION`, `productJsonLd(product)` | Pages de confiance et données structurées de l'entreprise |
 | `injectIntoHead(body, extra)`                                     | Insère des balises avant `</head>` d'un flux HTML         |
-| `varyOnAccept(headers)`                                           | Ajoute `Accept` à `Vary`                                  |
+| `varyOnAccept(headers)`, `varyOn(headers, name)`                  | Ajoute un en-tête à `Vary`                                |
+| `isAgentUserAgent`, `markdownTwin`, `pageOfTwin`                  | Robots d'IA, jumeau `.md` d'une page                      |
+| `apiCatalogResponse`, `appendLinks`                               | Catalogue d'API (RFC 9727), en-tête `Link`                |
 | `writeMarkdownPages(dir, options)` (`/build`)                     | Écrit les `.md` d'un build prérendu                       |
 | `markdownRoutes(pages, options)` (`/build`)                       | Routes Build Output API v3 qui les servent                |
