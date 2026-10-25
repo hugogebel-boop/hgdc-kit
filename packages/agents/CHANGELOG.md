@@ -1,5 +1,11 @@
 # @hgdc/agents
 
+## 0.2.0
+
+### Minor Changes
+
+- eaaa0fd: `withMarkdown` : options `redirects` (pages de confiance, `HGDC_TRUST_PAGES`), `jsonLd` et `canonicalOrigin` (insérés en flux dans le `<head>`), `apiPrefix` (404 sous l'API en `application/problem+json`). Nouveaux exports `HGDC_ORGANIZATION`, `productJsonLd`, `injectIntoHead`.
+
 ## 0.1.2
 
 ### Patch Changes
