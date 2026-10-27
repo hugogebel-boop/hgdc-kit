@@ -53,6 +53,7 @@ describe("adresses d'un produit (@hgdc/ui/addresses)", () => {
     expect(Object.keys(PRODUCT_ORIGINS)).toEqual([...APP_PRODUCTS])
     expect(PRODUCT_ORIGINS["docs"]).toEqual({ origin: "https://app.hgdc.ch", basePath: "/docs" })
     expect(isAppProduct("Status")).toBe(true)
-    expect(isAppProduct("portal")).toBe(false)
+    expect(isAppProduct("portal")).toBe(true)
+    expect(isAppProduct("account")).toBe(false)
   })
 })
