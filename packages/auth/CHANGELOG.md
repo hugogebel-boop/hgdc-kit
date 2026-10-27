@@ -1,5 +1,11 @@
 # @hgdc/auth
 
+## 0.18.0
+
+### Minor Changes
+
+- b2cdf24: IAssistant reçoit les événements d'organisation d'Account (`ACCOUNT_EVENT_AUDIENCES`).
+
 ## 0.17.1
 
 ### Patch Changes
