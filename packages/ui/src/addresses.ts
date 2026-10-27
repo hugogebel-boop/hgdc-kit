@@ -17,7 +17,7 @@ export const APP_ORIGIN = "https://app.hgdc.ch"
  * console seule, `status.hgdc.ch` garde les pages publiques et la console de secours. Vérifiée contre
  * le manifeste privé de la famille (`famille check`) : un produit relayé s'ajoute ici et là.
  */
-export const APP_PRODUCTS = ["analytics", "mail", "host", "docs", "status"] as const
+export const APP_PRODUCTS = ["analytics", "mail", "host", "docs", "status", "iassistant"] as const
 
 /** Vrai si le produit est servi sous `app.hgdc.ch`. */
 export function isAppProduct(product: string): boolean {

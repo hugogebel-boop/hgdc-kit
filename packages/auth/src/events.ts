@@ -22,14 +22,8 @@ import { ORG_ROLES, type OrgRole } from "./index.ts"
 export const ACCOUNT_EVENTS_PATH = "/hgdc/v1/account-events"
 
 /** Produits destinataires : l'audience signée de chaque événement. */
-export const ACCOUNT_EVENT_AUDIENCES: readonly ["host", "mail", "status", "portal", "analytics", "docs"] = [
-  "host",
-  "mail",
-  "status",
-  "portal",
-  "analytics",
-  "docs",
-] as const
+export const ACCOUNT_EVENT_AUDIENCES: readonly ["host", "mail", "status", "portal", "analytics", "docs", "iassistant"] =
+  ["host", "mail", "status", "portal", "analytics", "docs", "iassistant"] as const
 export type AccountEventAudience = (typeof ACCOUNT_EVENT_AUDIENCES)[number]
 
 /** En-têtes de la requête signée. */

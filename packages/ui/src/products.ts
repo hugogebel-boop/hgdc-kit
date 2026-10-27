@@ -1,6 +1,7 @@
 import Activity01Icon from "@hugeicons/core-free-icons/Activity01Icon"
 import Analytics01Icon from "@hugeicons/core-free-icons/Analytics01Icon"
 import BookOpen01Icon from "@hugeicons/core-free-icons/BookOpen01Icon"
+import BubbleChatIcon from "@hugeicons/core-free-icons/BubbleChatIcon"
 import Briefcase01Icon from "@hugeicons/core-free-icons/Briefcase01Icon"
 import Mail01Icon from "@hugeicons/core-free-icons/Mail01Icon"
 import Rocket01Icon from "@hugeicons/core-free-icons/Rocket01Icon"
@@ -134,6 +135,7 @@ export const HGDC_PRODUCTS: ReadonlyArray<HgdcCatalogProduct> = [
   product("Status", "La surveillance de tes sites et ta page de statut.", Activity01Icon, "live"),
   product("Analytics", "Tes visiteurs mesurés, sans cookies ni bannière.", Analytics01Icon, "live"),
   product("Docs", "Ta documentation en ligne, avec un assistant qui y répond.", BookOpen01Icon, "live"),
+  product("IAssistant", "Une bulle de chat IA sur ton site, qui répond à tes visiteurs.", BubbleChatIcon, "soon"),
 ]
 
 /** Vrai si le produit répond déjà (en service ou en préversion). */

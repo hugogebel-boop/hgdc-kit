@@ -14,6 +14,7 @@ export const PRODUCT_GRADIENT: Readonly<Record<FamilyProduct, { from: string; to
   status: { from: "#11ce8b", to: "#09b077" },
   analytics: { from: "#ffb020", to: "#e58309" },
   docs: { from: "#0ec1dc", to: "#0aa3c1" },
+  iassistant: { from: "#d946ef", to: "#c026d3" },
 }
 
 // En image plutôt qu'en SVG en ligne : chaque icône garde ses identifiants de dégradé pour elle,

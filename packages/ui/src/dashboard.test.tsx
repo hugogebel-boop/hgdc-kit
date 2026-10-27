@@ -24,7 +24,15 @@ afterEach(() => {
 
 describe("catalogue des produits", () => {
   it("décrit chaque produit par son mot, son sous-domaine et son état", () => {
-    expect(HGDC_PRODUCTS.map((p) => p.word)).toEqual(["Host", "Mail", "Portal", "Status", "Analytics", "Docs"])
+    expect(HGDC_PRODUCTS.map((p) => p.word)).toEqual([
+      "Host",
+      "Mail",
+      "Portal",
+      "Status",
+      "Analytics",
+      "Docs",
+      "IAssistant",
+    ])
     for (const product of [HGDC_ACCOUNT, ...HGDC_PRODUCTS]) {
       expect(product.name).toBe(product.word)
       expect(product.href).toBe(`https://${product.subdomain}`)
