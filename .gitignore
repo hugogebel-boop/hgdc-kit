@@ -12,3 +12,4 @@ dist
 *recovery*
 *.txt
 .loader-showcase
+/.packs/

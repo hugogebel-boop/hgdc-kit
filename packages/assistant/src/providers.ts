@@ -1,0 +1,124 @@
+import type { Price } from "./model.ts"
+
+/*
+ * Les modèles qu'un produit peut proposer quand les données doivent rester en Suisse ou dans l'UE
+ * (ADR 0011 de la famille) : Infomaniak (Suisse, API au format OpenAI, `./openai`) et Claude par
+ * AWS Bedrock, profil d'inférence `eu.` (UE, API au format Anthropic, `./bedrock`). Le produit
+ * choisit dans ce catalogue et pose les identifiants ; le catalogue ne lit aucune variable.
+ * Fonctions pures.
+ */
+
+/** Où le fournisseur traite les demandes. */
+export type Processing = "suisse" | "ue"
+
+export type ModelVendor = "infomaniak" | "bedrock"
+
+export type ModelOption = {
+  /** Identifiant stable, enregistré dans les réglages : `infomaniak/mistral-small-4`. */
+  id: string
+  vendor: ModelVendor
+  /** Nom du modèle chez le fournisseur. */
+  model: string
+  /** Nom affiché. */
+  label: string
+  /** Une phrase pour choisir. */
+  description: string
+  processing: Processing
+  /** Tarif en dollars par million de jetons, pour le plafond et le décompte des crédits. */
+  price: Price
+}
+
+/**
+ * Infomaniak facture en francs : tarifs convertis au taux arrondi au-dessus, pour que le plafond
+ * d'un tour ne soit jamais trop large.
+ */
+export const CHF_TO_USD = 1.3
+
+const chf = (input: number, output: number): Price => ({
+  input: input * CHF_TO_USD,
+  cacheWrite: input * CHF_TO_USD,
+  cacheRead: input * CHF_TO_USD,
+  output: output * CHF_TO_USD,
+})
+
+/** Bedrock : tarif d'Anthropic majoré de 10 % (points de terminaison régionaux et géographiques). */
+const bedrock = (input: number, output: number): Price => ({
+  input: input * 1.1,
+  cacheWrite: input * 1.25 * 1.1,
+  cacheRead: input * 0.1 * 1.1,
+  output: output * 1.1,
+})
+
+/**
+ * Modèles proposés, le défaut en tête. Tous savent appeler des outils (page des modèles
+ * d'Infomaniak, « Function call : Yes » ; fiches des modèles Claude sur Bedrock), lus le 2026-10-26.
+ */
+export const MODEL_OPTIONS: ReadonlyArray<ModelOption> = [
+  {
+    id: "infomaniak/mistral-small-4",
+    vendor: "infomaniak",
+    model: "mistralai/Mistral-Small-4-119B-2603",
+    label: "Mistral Small 4",
+    description: "Rapide et économique, bon en français. Hébergé en Suisse par Infomaniak.",
+    processing: "suisse",
+    price: chf(0.2, 0.75),
+  },
+  {
+    id: "infomaniak/qwen-3-5",
+    vendor: "infomaniak",
+    model: "Qwen/Qwen3.5-397B-A17B-FP8",
+    label: "Qwen 3.5",
+    description: "Plus précis sur les demandes complexes, un peu plus lent. Hébergé par Infomaniak.",
+    processing: "suisse",
+    price: chf(0.8, 3.6),
+  },
+  {
+    id: "infomaniak/apertus-1-5",
+    vendor: "infomaniak",
+    model: "swiss-ai/Apertus-v1.5-70B",
+    label: "Apertus 1.5",
+    description: "Le modèle suisse de l'EPFL et de l'ETH Zurich. Hébergé par Infomaniak.",
+    processing: "suisse",
+    price: chf(0.7, 2.5),
+  },
+  {
+    id: "bedrock/claude-haiku-5-5",
+    vendor: "bedrock",
+    model: "eu.anthropic.claude-haiku-5-5",
+    label: "Claude Haiku 5.5",
+    description: "Claude d'Anthropic, rapide. Traité dans l'Union européenne par AWS.",
+    processing: "ue",
+    price: bedrock(0.1, 0.5),
+  },
+  {
+    id: "bedrock/claude-sonnet-5-5",
+    vendor: "bedrock",
+    model: "eu.anthropic.claude-sonnet-5-5",
+    label: "Claude Sonnet 5.5",
+    description: "Claude d'Anthropic, la meilleure qualité de réponse. Traité dans l'Union européenne par AWS.",
+    processing: "ue",
+    price: bedrock(2, 10),
+  },
+]
+
+export const DEFAULT_MODEL_ID = "infomaniak/mistral-small-4"
+
+/** Le modèle d'un identifiant enregistré ; un identifiant retiré du catalogue retombe sur le défaut. */
+export function modelOption(id: string | null | undefined): ModelOption {
+  return MODEL_OPTIONS.find((option) => option.id === id) ?? (MODEL_OPTIONS[0] as ModelOption)
+}
+
+export function isModelId(id: string): boolean {
+  return MODEL_OPTIONS.some((option) => option.id === id)
+}
+
+export const PROCESSING_LABEL: Readonly<Record<Processing, string>> = {
+  suisse: "Traitement en Suisse",
+  ue: "Traitement dans l'UE",
+}
+
+/** Point de terminaison d'Infomaniak AI Services au format OpenAI (v2), pour un produit IA donné. */
+export function infomaniakBaseUrl(productId: string): string {
+  if (!/^\d+$/.test(productId)) throw new Error("Identifiant de produit Infomaniak invalide.")
+  return `https://api.infomaniak.com/2/ai/${productId}/openai/v1`
+}
