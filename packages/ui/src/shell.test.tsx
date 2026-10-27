@@ -300,7 +300,7 @@ describe("Barre des produits", () => {
     vi.useRealTimers()
   })
 
-  it("liste les sept produits, Account en tête, chacun par son entrée", () => {
+  it("liste les huit produits, Account en tête, chacun par son entrée", () => {
     render(
       <AppShell product="mail" nav={null} accountHref="http://localhost:3000">
         Page
@@ -316,6 +316,7 @@ describe("Barre des produits", () => {
       "Status",
       "Analytics",
       "Docs",
+      "IAssistant, Préversion",
     ])
     const host = within(rail).getByRole("link", { name: /Host/ })
     expect(host.getAttribute("href")).toBe(`https://app.hgdc.ch/host${PRODUCT_ENTRY_PATH}?refresh=background&next=/`)
