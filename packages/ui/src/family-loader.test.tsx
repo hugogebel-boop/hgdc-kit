@@ -222,9 +222,10 @@ describe("Cadre de la coque, hors de la coque (ADR 0020)", () => {
       "status",
       "analytics",
       "docs",
+      "iassistant",
     ])
     const sidebar = html.slice(html.indexOf('data-slot="shell-frame-sidebar"'))
-    for (const name of ["Account", "Host", "Mail", "Portal", "Status", "Analytics", "Docs"])
+    for (const name of ["Account", "Host", "Mail", "Portal", "Status", "Analytics", "Docs", "IAssistant"])
       expect(sidebar).toContain(`>${name}<`)
     expect(html).toContain('data-slot="shell-frame-nav"')
     expect(html).toContain('data-slot="shell-frame-header"')

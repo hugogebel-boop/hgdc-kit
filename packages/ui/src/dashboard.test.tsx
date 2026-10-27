@@ -43,9 +43,18 @@ describe("catalogue des produits", () => {
 
   it("ne met au menu qu'Account et les produits ouverts, avec le produit courant coché", () => {
     const entries = productMenuEntries({ current: "mail" })
-    expect(entries.map((e) => e.name)).toEqual(["Account", "Host", "Mail", "Portal", "Status", "Analytics", "Docs"])
+    expect(entries.map((e) => e.name)).toEqual([
+      "Account",
+      "Host",
+      "Mail",
+      "Portal",
+      "Status",
+      "Analytics",
+      "Docs",
+      "IAssistant",
+    ])
     expect(entries.find((e) => e.current)?.name).toBe("Mail")
-    expect(entries.every((e) => e.hint === undefined)).toBe(true)
+    expect(entries.filter((e) => e.hint !== undefined).map((e) => e.name)).toEqual(["IAssistant"])
   })
 
   it("envoie chaque produit vers son entrée connectée, Account vers sa racine", () => {
@@ -59,6 +68,7 @@ describe("catalogue des produits", () => {
       Status: "https://app.hgdc.ch/status/auth/hgdc?refresh=background&next=/",
       Analytics: "https://app.hgdc.ch/analytics/auth/hgdc?refresh=background&next=/",
       Docs: "https://app.hgdc.ch/docs/auth/hgdc?refresh=background&next=/",
+      IAssistant: "https://app.hgdc.ch/iassistant/auth/hgdc?refresh=background&next=/",
     })
     expect(HGDC_ACCOUNT.entryHref).toBe(HGDC_ACCOUNT.href)
     for (const product of HGDC_PRODUCTS) expect(product.href).toBe(`https://${product.subdomain}`)
