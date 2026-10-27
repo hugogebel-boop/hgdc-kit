@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.45.0
+
+### Minor Changes
+
+- 2f42536: Portal est servi sous `app.hgdc.ch/portal` : `APP_PRODUCTS`, `PRODUCT_ORIGINS` et le menu « Produits » le traitent comme les autres consoles. `portal.hgdc.ch` redirige vers la nouvelle adresse.
+
 ## 0.44.0
 
 ### Minor Changes
