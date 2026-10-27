@@ -44,7 +44,7 @@ Puis, sur npmjs.com, pour chacun :
 
 `@hgdc/status` 0.1.0 : publié le 2026-10-23 depuis le poste par la voie du jeton ci-dessous (le premier essai par `npm login` avait échoué sur le code 2FA, et serait parti en `0.0.0` : publier seulement depuis `main` après la release). Trusted publisher déclaré par Hugo le 2026-10-23 (`hugogebel-boop` / `hgdc-kit` / `release.yml`) : les versions suivantes passent par la CI, avec provenance.
 
-`@hgdc/assistant` 0.1.0 : publié le 2026-10-18 depuis le poste par la voie du jeton ci-dessous ; trusted publisher déclaré ensuite sur npmjs.com (`hugogebel-boop` / `hgdc-kit` / `release.yml`). Les versions suivantes passent par la CI, avec provenance.
+`@hgdc/assistant` 0.1.0 : publié le 2026-10-18 depuis le poste par la voie du jeton ci-dessous ; trusted publisher déclaré ensuite sur npmjs.com (`hugogebel-boop` / `hgdc-kit` / `release.yml`). 0.2.0 : la CI a rendu `E404` (déclaration inopérante), publié le 2026-10-27 depuis le poste ; trusted publisher redéclaré le même jour. Les versions suivantes passent par la CI, avec provenance.
 
 ### Cas général
 
