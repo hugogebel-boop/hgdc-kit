@@ -1,5 +1,13 @@
 # @hgdc/ui
 
+## 0.43.0
+
+### Minor Changes
+
+- b2cdf24: IAssistant rejoint les produits servis sous `app.hgdc.ch` (`APP_PRODUCTS`, `PRODUCT_ORIGINS`).
+- b2cdf24: IAssistant entre au catalogue (`HGDC_PRODUCTS`), à l'état « Bientôt » : la coque affiche son nom au lieu de « HGDC iassistant », les menus ne l'ouvrent pas encore.
+- b2cdf24: Icône d'IAssistant (pictogramme provisoire, deux bulles fuchsia) : `iassistant` rejoint `FAMILY_PRODUCTS`, avec ses icônes d'application et d'e-mail.
+
 ## 0.42.0
 
 ### Minor Changes
