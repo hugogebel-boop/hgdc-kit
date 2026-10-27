@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.44.0
+
+### Minor Changes
+
+- de39480: IAssistant passe en préversion dans le catalogue de la collection.
+
 ## 0.43.0
 
 ### Minor Changes
