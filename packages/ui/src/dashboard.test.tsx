@@ -64,7 +64,7 @@ describe("catalogue des produits", () => {
       Account: "https://account.hgdc.ch",
       Host: "https://app.hgdc.ch/host/auth/hgdc?refresh=background&next=/",
       Mail: "https://app.hgdc.ch/mail/auth/hgdc?refresh=background&next=/",
-      Portal: "https://portal.hgdc.ch/auth/hgdc?refresh=background&next=/",
+      Portal: "https://app.hgdc.ch/portal/auth/hgdc?refresh=background&next=/",
       Status: "https://app.hgdc.ch/status/auth/hgdc?refresh=background&next=/",
       Analytics: "https://app.hgdc.ch/analytics/auth/hgdc?refresh=background&next=/",
       Docs: "https://app.hgdc.ch/docs/auth/hgdc?refresh=background&next=/",
@@ -90,7 +90,7 @@ describe("AccountMenu et le catalogue", () => {
     expect(screen.getByRole("menuitem", { name: "Account" }).getAttribute("href")).toBe("https://account.hgdc.ch")
     expect(screen.getByLabelText("Produit ouvert")).toBeDefined()
     expect(screen.getByRole("menuitem", { name: "Portal" }).getAttribute("href")).toBe(
-      "https://portal.hgdc.ch/auth/hgdc?refresh=background&next=/",
+      "https://app.hgdc.ch/portal/auth/hgdc?refresh=background&next=/",
     )
   })
 
