@@ -25,7 +25,7 @@ export default defineSchema({
 })
 ```
 
-Variables Convex : `INFOMANIAK_AI_TOKEN` et `INFOMANIAK_AI_PRODUCT_ID` (Infomaniak, en Suisse, défaut), ou `BEDROCK_REGION` (une région `eu-*`, sinon Bedrock reste non branché) et `BEDROCK_API_KEY` avec `ASSISTANT_MODEL=bedrock/claude-sonnet-5-5` (Claude par AWS, profil `eu.`, dans l'UE). Anthropic en direct et OpenRouter (États-Unis) sont refusés hors développement local ([ADR 0022](../adr/0022-assistant-souverain-et-fabrique.md)).
+Variables Convex : `INFOMANIAK_AI_TOKEN` et `INFOMANIAK_AI_PRODUCT_ID` (Infomaniak, en Suisse, défaut), ou `BEDROCK_REGION` (une région de l'UE ou de Suisse, `EU_BEDROCK_REGIONS`, sinon Bedrock reste non branché) et `BEDROCK_API_KEY` avec `ASSISTANT_MODEL=bedrock/claude-sonnet-5-5` (Claude par AWS, profil `eu.`, dans l'UE). Anthropic en direct et OpenRouter (États-Unis) sont refusés hors développement local ([ADR 0022](../adr/0022-assistant-souverain-et-fabrique.md)).
 
 ## 2. Les outils
 

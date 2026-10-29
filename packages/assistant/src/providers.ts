@@ -147,11 +147,23 @@ export function processEnv(): ProviderEnv {
 
 const filled = (env: ProviderEnv, name: string): boolean => Boolean(env[name]?.trim())
 
-const EU_REGION = /^eu-[a-z]+-\d+$/
+/**
+ * Régions AWS acceptées pour Bedrock : l'UE et la Suisse (Zurich). Liste fermée : `eu-west-2`
+ * (Londres) porte le préfixe `eu-` mais n'est pas dans l'UE ; une région ouverte plus tard s'ajoute ici.
+ */
+export const EU_BEDROCK_REGIONS: readonly string[] = [
+  "eu-central-1", // Francfort
+  "eu-central-2", // Zurich
+  "eu-west-1", // Irlande
+  "eu-west-3", // Paris
+  "eu-north-1", // Stockholm
+  "eu-south-1", // Milan
+  "eu-south-2", // Espagne
+]
 
-/** Une région AWS de l'UE (`eu-central-2`, `eu-west-1`…). `us-east-1` ou une valeur libre : non. */
+/** Une région AWS de l'UE ou de Suisse (`EU_BEDROCK_REGIONS`). `us-east-1`, `eu-west-2` ou une valeur libre : non. */
 export function isEuBedrockRegion(region: string): boolean {
-  return EU_REGION.test(region.trim())
+  return EU_BEDROCK_REGIONS.includes(region.trim())
 }
 
 /** Un profil d'inférence géographique de l'UE (`eu.anthropic.…`) : la demande ne quitte pas l'UE. */
@@ -160,8 +172,8 @@ export function isEuBedrockModel(model: string): boolean {
 }
 
 /**
- * Lève si Bedrock sortirait de l'UE (ADR 0011 de la famille) : région hors `eu-*`, ou modèle sans
- * profil `eu.`. Le modèle est facultatif : le client ne le connaît pas, `modelClient` si.
+ * Lève si Bedrock sortirait de l'UE (ADR 0022) : région hors `EU_BEDROCK_REGIONS`, ou modèle sans
+ * profil `eu.`. Le modèle est facultatif : `bedrockClient` le vérifie à chaque appel.
  */
 export function assertEuBedrock(target: { region: string; model?: string }): void {
   if (!isEuBedrockRegion(target.region))
@@ -172,11 +184,16 @@ export function assertEuBedrock(target: { region: string; model?: string }): voi
 
 /**
  * Les identifiants du fournisseur sont posés. Bedrock : la région doit aussi être dans l'UE, sinon
- * le modèle reste « pas encore branché » plutôt que d'envoyer des données hors UE.
+ * le modèle reste « pas encore branché » plutôt que d'envoyer des données hors UE (un
+ * avertissement le dit dans les journaux).
  */
 export function vendorReady(vendor: ModelVendor, env: ProviderEnv = processEnv()): boolean {
   if (!PROVIDER_ENV[vendor].every((name) => filled(env, name))) return false
-  return vendor !== "bedrock" || isEuBedrockRegion(env.BEDROCK_REGION!)
+  if (vendor !== "bedrock" || isEuBedrockRegion(env.BEDROCK_REGION!)) return true
+  console.warn(
+    `Bedrock non branché : BEDROCK_REGION ${JSON.stringify(env.BEDROCK_REGION)} hors UE (EU_BEDROCK_REGIONS).`,
+  )
+  return false
 }
 
 /**

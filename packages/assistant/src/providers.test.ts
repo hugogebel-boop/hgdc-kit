@@ -89,12 +89,14 @@ describe("Bedrock reste dans l'UE", () => {
   it("région eu-* exigée : ailleurs, le fournisseur n'est pas branché", () => {
     expect(isEuBedrockRegion("eu-central-2")).toBe(true)
     expect(isEuBedrockRegion("eu-west-1")).toBe(true)
-    for (const region of ["us-east-1", "ap-southeast-1", "eu", "eu-central", "xeu-west-1", "EU-WEST-1"])
+    expect(isEuBedrockRegion(" eu-west-1 ")).toBe(true)
+    for (const region of ["us-east-1", "eu-west-2", "ap-southeast-1", "eu", "eu-central", "xeu-west-1", "EU-WEST-1"])
       expect(isEuBedrockRegion(region)).toBe(false)
     const us = { ...BEDROCK, BEDROCK_REGION: "us-east-1", ASSISTANT_MODEL: "bedrock/claude-haiku-5-5" }
     expect(vendorReady("bedrock", us)).toBe(false)
     expect(platformModel(us)).toBeNull()
     expect(sovereignReady(us)).toBe(false)
+    expect(sovereignReady({ ...us, BEDROCK_REGION: "eu-west-2" })).toBe(false)
   })
 
   it("profil eu. exigé pour le modèle", () => {
@@ -115,8 +117,18 @@ describe("Bedrock reste dans l'UE", () => {
     await expect(modelClient(rogue, { env: BEDROCK })).rejects.toThrow(/hors UE/)
   })
 
-  it("bedrockClient refuse une région hors UE", async () => {
+  it("modelClient rend null pour une région hors UE", async () => {
+    const env = { ...BEDROCK, BEDROCK_REGION: "us-east-1" }
+    expect(await modelClient(modelOption("bedrock/claude-haiku-5-5"), { env })).toBeNull()
+  })
+
+  it("bedrockClient refuse une région hors UE, et un modèle sans profil eu. à chaque appel", async () => {
     const { bedrockClient } = await import("./bedrock.ts")
     expect(() => bedrockClient({ region: "us-east-1", apiKey: "cle" })).toThrow(/hors UE/)
+    expect(() => bedrockClient({ region: "eu-west-2", accessKeyId: "a", secretAccessKey: "b" })).toThrow(/hors UE/)
+    const client = bedrockClient({ region: "eu-west-1", apiKey: "cle" })
+    const params = { max_tokens: 10, messages: [{ role: "user" as const, content: "Salut" }] }
+    expect(() => client.messages.stream({ ...params, model: "us.anthropic.claude-haiku-5-5" })).toThrow(/hors UE/)
+    expect(() => client.messages.stream({ ...params, model: "global.anthropic.claude-haiku-5-5" })).toThrow(/hors UE/)
   }, 30_000)
 })
