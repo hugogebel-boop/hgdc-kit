@@ -147,9 +147,53 @@ export function processEnv(): ProviderEnv {
 
 const filled = (env: ProviderEnv, name: string): boolean => Boolean(env[name]?.trim())
 
-/** Les identifiants du fournisseur sont posés. */
+/**
+ * Régions AWS acceptées pour Bedrock : l'UE et la Suisse (Zurich). Liste fermée : `eu-west-2`
+ * (Londres) porte le préfixe `eu-` mais n'est pas dans l'UE ; une région ouverte plus tard s'ajoute ici.
+ */
+export const EU_BEDROCK_REGIONS: readonly string[] = [
+  "eu-central-1", // Francfort
+  "eu-central-2", // Zurich
+  "eu-west-1", // Irlande
+  "eu-west-3", // Paris
+  "eu-north-1", // Stockholm
+  "eu-south-1", // Milan
+  "eu-south-2", // Espagne
+]
+
+/** Une région AWS de l'UE ou de Suisse (`EU_BEDROCK_REGIONS`). `us-east-1`, `eu-west-2` ou une valeur libre : non. */
+export function isEuBedrockRegion(region: string): boolean {
+  return EU_BEDROCK_REGIONS.includes(region.trim())
+}
+
+/** Un profil d'inférence géographique de l'UE (`eu.anthropic.…`) : la demande ne quitte pas l'UE. */
+export function isEuBedrockModel(model: string): boolean {
+  return model.trim().startsWith("eu.")
+}
+
+/**
+ * Lève si Bedrock sortirait de l'UE (ADR 0022) : région hors `EU_BEDROCK_REGIONS`, ou modèle sans
+ * profil `eu.`. Le modèle est facultatif : `bedrockClient` le vérifie à chaque appel.
+ */
+export function assertEuBedrock(target: { region: string; model?: string }): void {
+  if (!isEuBedrockRegion(target.region))
+    throw new Error(`Bedrock hors UE refusé : région ${JSON.stringify(target.region)}, attendue eu-*.`)
+  if (target.model !== undefined && !isEuBedrockModel(target.model))
+    throw new Error(`Bedrock hors UE refusé : modèle ${JSON.stringify(target.model)}, profil eu. attendu.`)
+}
+
+/**
+ * Les identifiants du fournisseur sont posés. Bedrock : la région doit aussi être dans l'UE, sinon
+ * le modèle reste « pas encore branché » plutôt que d'envoyer des données hors UE (un
+ * avertissement le dit dans les journaux).
+ */
 export function vendorReady(vendor: ModelVendor, env: ProviderEnv = processEnv()): boolean {
-  return PROVIDER_ENV[vendor].every((name) => filled(env, name))
+  if (!PROVIDER_ENV[vendor].every((name) => filled(env, name))) return false
+  if (vendor !== "bedrock" || isEuBedrockRegion(env.BEDROCK_REGION!)) return true
+  console.warn(
+    `Bedrock non branché : BEDROCK_REGION ${JSON.stringify(env.BEDROCK_REGION)} hors UE (EU_BEDROCK_REGIONS).`,
+  )
+  return false
 }
 
 /**

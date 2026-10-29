@@ -1,7 +1,7 @@
 import type { Price } from "./model.ts"
 import type { ModelClient } from "./node.ts"
 import { openAIClient } from "./openai.ts"
-import { infomaniakBaseUrl, platformModel, processEnv, vendorReady } from "./providers.ts"
+import { assertEuBedrock, infomaniakBaseUrl, platformModel, processEnv, vendorReady } from "./providers.ts"
 import type { ModelOption, ProviderEnv } from "./providers.ts"
 
 /*
@@ -43,8 +43,11 @@ export async function modelClient(option: ModelOption, options: ModelClientOptio
     return { client, ...base }
   }
   // Chargé à la demande : le SDK d'AWS (dépendance optionnelle) ne pèse que si Bedrock est choisi.
+  const region = env.BEDROCK_REGION!.trim()
+  // Avant de charger le SDK : un modèle hors profil `eu.` ne part jamais.
+  assertEuBedrock({ region, model: option.model })
   const { bedrockClient } = await import("./bedrock.ts")
-  const client = bedrockClient({ region: env.BEDROCK_REGION!.trim(), apiKey: env.BEDROCK_API_KEY!.trim() })
+  const client = bedrockClient({ region, apiKey: env.BEDROCK_API_KEY!.trim() })
   return { client, ...base }
 }
 
