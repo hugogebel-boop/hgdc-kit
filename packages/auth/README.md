@@ -51,6 +51,7 @@ import {
   mcpProtectedResourceMetadata,
   mcpResource,
   McpTokenError,
+  mcpTokenChallenge,
   verifyMcpAccessToken,
 } from "@hgdc/auth/mcp"
 import {
@@ -76,7 +77,8 @@ try {
   const access = await verifyMcpAccessToken(token, { product: "portal", keys, require: "read" })
   // access.userId, access.organizationId : vérifier encore que la personne est membre de l'organisation.
 } catch (error) {
-  if (error instanceof McpTokenError) return unauthorized({ ...challenge, error: error.bearerError })
+  // 401 invalid_token, ou 403 insufficient_scope avec le scope qui manque (`portal:read`, `portal:write`)
+  if (error instanceof McpTokenError) return unauthorized({ ...challenge, ...mcpTokenChallenge(error) })
   throw error
 }
 ```

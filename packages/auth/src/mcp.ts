@@ -131,12 +131,35 @@ export type McpTokenRejection =
 export class McpTokenError extends Error {
   readonly reason: McpTokenRejection
   readonly bearerError: "invalid_token" | "insufficient_scope"
-  constructor(reason: McpTokenRejection, message: string) {
+  /** Le scope qui manque (`mail:read`, `mail:write`) quand `bearerError` vaut `insufficient_scope`. */
+  readonly scope: string | undefined
+  constructor(reason: McpTokenRejection, message: string, scope?: string) {
     super(message)
     this.name = "McpTokenError"
     this.reason = reason
     this.bearerError = reason === "insufficient_scope" ? "insufficient_scope" : "invalid_token"
+    this.scope = reason === "insufficient_scope" ? scope : undefined
   }
+}
+
+/**
+ * Le défi Bearer d'un jeton refusé, à étaler dans `unauthorized()` de `@hgdc/api/bearer` :
+ * - jeton invalide : `{ error: "invalid_token" }`, réponse 401 ;
+ * - jeton valide sans le scope demandé : `{ error: "insufficient_scope", scope: "<produit>:read" }`
+ *   (ou `:write`), réponse 403 (RFC 6750 § 3.1, autorisation MCP « step-up »). Le client sait qu'il
+ *   doit redemander ce scope, pas un nouveau jeton.
+ *
+ * ```ts
+ * catch (error) {
+ *   if (error instanceof McpTokenError) return unauthorized({ ...challenge, ...mcpTokenChallenge(error) })
+ * }
+ * ```
+ */
+export function mcpTokenChallenge(
+  error: McpTokenError,
+): { error: "invalid_token" } | { error: "insufficient_scope"; scope?: string } {
+  if (error.bearerError !== "insufficient_scope") return { error: "invalid_token" }
+  return error.scope ? { error: "insufficient_scope", scope: error.scope } : { error: "insufficient_scope" }
 }
 
 /** Ce qu'un jeton vérifié autorise, pour ce produit seulement. */
@@ -180,8 +203,8 @@ const CLOCK_SKEW_SECONDS = 60
 const MAX_LIFETIME_SECONDS = 60 * 60
 const MIN_RSA_MODULUS_BYTES = 256
 
-function reject(reason: McpTokenRejection, message: string): never {
-  throw new McpTokenError(reason, message)
+function reject(reason: McpTokenRejection, message: string, scope?: string): never {
+  throw new McpTokenError(reason, message, scope)
 }
 
 function decodeSegment(segment: string): Uint8Array<ArrayBuffer> {
@@ -294,14 +317,15 @@ export async function verifyMcpAccessToken(token: string, options: VerifyMcpAcce
   if ((options.requireOrganization ?? true) && organization === undefined)
     reject("invalid_claims", "Aucune organisation choisie.")
 
-  if (typeof claims.scope !== "string") reject("insufficient_scope", "Aucun scope.")
+  const required = `${product}:${options.require ?? "read"}`
+  if (typeof claims.scope !== "string") reject("insufficient_scope", "Aucun scope.", required)
   const scopes = [
     ...new Set(claims.scope.split(" ").filter((scope) => parseMcpScope(scope)?.product === product)),
   ].toSorted()
-  if (scopes.length === 0) reject("insufficient_scope", `Aucun scope ${product}.`)
+  if (scopes.length === 0) reject("insufficient_scope", `Aucun scope ${product}.`, required)
   const canWrite = scopes.includes(`${product}:write`)
   if ((options.require ?? "read") === "write" && !canWrite)
-    reject("insufficient_scope", `Scope ${product}:write requis.`)
+    reject("insufficient_scope", `Scope ${product}:write requis.`, required)
 
   return {
     product,
