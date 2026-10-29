@@ -191,6 +191,33 @@ Prérequis : la table `rateLimit` dans le schéma de better-auth. Le schéma du 
 
 Limite commune : sans adresse signée (secret absent d'un côté, horloge décalée de plus de 60 s) ni proxy de confiance, tous les appels partagent la clé neutre, soit 3 essais de connexion par 10 s pour tout le monde. Quelqu'un qui appelle Convex directement peut alors bloquer la connexion des autres quelques secondes. C'est le prix de ne jamais croire une adresse écrite par le client.
 
+## Sessions et vérifications expirées
+
+better-auth n'efface une session expirée que lorsqu'elle est relue : une session abandonnée garde pour toujours son adresse IP et son navigateur. Les lignes `verification` expirées (codes, états OAuth, épreuves 2FA) restent aussi. `@hgdc/auth/expired` efface, par lots, les lignes dont `expiresAt` est passé : les sessions, puis les vérifications. Une session valable n'est jamais touchée. L'index `expiresAt` du schéma du composant borne la lecture.
+
+```ts
+// convex/authExpired.ts
+import { purgeExpiredAuthArgs, purgeExpiredAuthBatch } from "@hgdc/auth/expired"
+export const purgeExpiredAuth = internalMutation({
+  args: purgeExpiredAuthArgs,
+  returns: v.null(),
+  handler: async (ctx, args): Promise<null> =>
+    await purgeExpiredAuthBatch(
+      ctx,
+      { deleteMany: components.betterAuth.adapter.deleteMany, next: internal.authExpired.purgeExpiredAuth },
+      args,
+    ),
+})
+
+// convex/crons.ts
+crons.hourly("purge-sessions-expirees", { minuteUTC: 35 }, internal.authExpired.purgeExpiredAuth, {
+  model: "session",
+  cursor: null,
+})
+```
+
+La purge passe par l'adaptateur du composant, sans déclencheur : rien d'autre n'est effacé (un jeton OAuth qui pointait vers la session garde son `sessionId`, que better-auth traite comme absent).
+
 ## Clés JWKS statiques côté Convex
 
 Chaque appel HTTP à Convex avec un jeton (le rendu serveur de TanStack Start, `fetchAuthQuery`) fait vérifier ce jeton par le backend Convex, qui ne le met jamais en cache. Avec `getAuthConfigProvider()` seul, il va chercher les clés à `<site>/api/auth/convex/jwks` **à chaque appel** : sous charge, cette adresse répond 429 et la page tombe en erreur. Les clés se donnent donc en dur, par la variable `JWKS` du déploiement Convex :

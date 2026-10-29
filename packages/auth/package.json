@@ -31,6 +31,10 @@
       "types": "./dist/events.d.ts",
       "default": "./dist/events.js"
     },
+    "./expired": {
+      "types": "./dist/expired.d.ts",
+      "default": "./dist/expired.js"
+    },
     "./mcp": {
       "types": "./dist/mcp.d.ts",
       "default": "./dist/mcp.js"
