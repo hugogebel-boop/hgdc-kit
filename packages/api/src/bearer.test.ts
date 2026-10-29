@@ -92,6 +92,10 @@ describe("défi et 401", () => {
     expect(asciiChallengeText("Clé d’API inconnue ou révoquée — « hgdc_mail_… »")).toBe(
       "Cle d'API inconnue ou revoquee - hgdc_mail_...",
     )
+    expect(asciiChallengeText("Œuvre, cœur, Straße")).toBe("OEuvre, coeur, Strasse")
+    expect(wwwAuthenticate({ scope: "🙂", errorDescription: '""', error: "invalid_token" })).toBe(
+      'Bearer error="invalid_token"',
+    )
     const response = unauthorized({
       error: "invalid_token",
       errorDescription: "Jeton d'accès refusé.",

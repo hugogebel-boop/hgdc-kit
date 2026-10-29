@@ -52,6 +52,11 @@ export async function safeEqualHash(a: string, b: string): Promise<boolean> {
  */
 export function asciiChallengeText(value: string): string {
   return value
+    .replace(/œ/g, "oe")
+    .replace(/Œ/g, "OE")
+    .replace(/æ/g, "ae")
+    .replace(/Æ/g, "AE")
+    .replace(/ß/g, "ss")
     .normalize("NFKD")
     .replace(/\p{M}/gu, "")
     .replace(/[\u2018\u2019\u02BC]/g, "'")
@@ -62,8 +67,10 @@ export function asciiChallengeText(value: string): string {
     .trim()
 }
 
-function quote(value: string): string {
-  return `"${asciiChallengeText(value)}"`
+/** `nom="valeur"` en ASCII, ou rien si la valeur est vide une fois nettoyée (la grammaire exige un caractère). */
+function param(name: string, value: string | undefined): string[] {
+  const text = value === undefined ? "" : asciiChallengeText(value)
+  return text ? [`${name}="${text}"`] : []
 }
 
 export type BearerError = "invalid_request" | "invalid_token" | "insufficient_scope"
@@ -80,12 +87,13 @@ export type ChallengeOptions = {
 
 /** Valeur de l'en-tête `WWW-Authenticate` d'un défi Bearer, toujours en ASCII (`asciiChallengeText`). */
 export function wwwAuthenticate(options: ChallengeOptions = {}): string {
-  const params: string[] = []
-  if (options.realm) params.push(`realm=${quote(options.realm)}`)
-  if (options.resourceMetadata) params.push(`resource_metadata=${quote(options.resourceMetadata)}`)
-  if (options.scope) params.push(`scope=${quote(options.scope)}`)
-  if (options.error) params.push(`error=${quote(options.error)}`)
-  if (options.errorDescription) params.push(`error_description=${quote(options.errorDescription)}`)
+  const params = [
+    ...param("realm", options.realm),
+    ...param("resource_metadata", options.resourceMetadata),
+    ...param("scope", options.scope),
+    ...param("error", options.error),
+    ...param("error_description", options.errorDescription),
+  ]
   return params.length ? `Bearer ${params.join(", ")}` : "Bearer"
 }
 
