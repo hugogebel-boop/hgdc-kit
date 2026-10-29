@@ -122,3 +122,62 @@ export function infomaniakBaseUrl(productId: string): string {
   if (!/^\d+$/.test(productId)) throw new Error("Identifiant de produit Infomaniak invalide.")
   return `https://api.infomaniak.com/2/ai/${productId}/openai/v1`
 }
+
+// ───────────────────────────── Variables du déploiement ─────────────────────────────
+
+/** Les variables d'environnement lues par les fonctions ci-dessous (`process.env` par défaut). */
+export type ProviderEnv = Readonly<Record<string, string | undefined>>
+
+/**
+ * Variables lues, par fournisseur. `ASSISTANT_MODEL` choisit le modèle de la plateforme dans le
+ * catalogue (défaut : `DEFAULT_MODEL_ID`).
+ */
+export const PROVIDER_ENV = {
+  model: "ASSISTANT_MODEL",
+  infomaniak: ["INFOMANIAK_AI_TOKEN", "INFOMANIAK_AI_PRODUCT_ID"],
+  bedrock: ["BEDROCK_REGION", "BEDROCK_API_KEY"],
+  /** Drapeau explicite : `1` autorise Anthropic en direct et OpenRouter (traitement aux États-Unis). */
+  allowUs: "ASSISTANT_ALLOW_US_PROCESSING",
+} as const
+
+/** `process.env` quand il existe (Convex V8 et Node), sinon rien. */
+export function processEnv(): ProviderEnv {
+  return (globalThis as { process?: { env?: ProviderEnv } }).process?.env ?? {}
+}
+
+const filled = (env: ProviderEnv, name: string): boolean => Boolean(env[name]?.trim())
+
+/** Les identifiants du fournisseur sont posés. */
+export function vendorReady(vendor: ModelVendor, env: ProviderEnv = processEnv()): boolean {
+  return PROVIDER_ENV[vendor].every((name) => filled(env, name))
+}
+
+/**
+ * Le modèle de la plateforme : `ASSISTANT_MODEL` (identifiant du catalogue) ou le défaut, si son
+ * fournisseur est configuré ; `null` sinon. Un identifiant inconnu retombe sur le défaut.
+ */
+export function platformModel(env: ProviderEnv = processEnv()): ModelOption | null {
+  const option = modelOption(env[PROVIDER_ENV.model]?.trim())
+  return vendorReady(option.vendor, env) ? option : null
+}
+
+/**
+ * Un modèle souverain (Infomaniak en Suisse, Bedrock `eu.`) est branché : remplace
+ * `readKey(process.env.ASSISTANT_LLM_API_KEY) !== undefined` dans les queries et mutations.
+ */
+export function sovereignReady(env: ProviderEnv = processEnv()): boolean {
+  return platformModel(env) !== null
+}
+
+/** Un Convex lancé sur le poste (`http://127.0.0.1` ou `localhost`), jamais un déploiement en ligne. */
+export function isLocalDeployment(env: ProviderEnv = processEnv()): boolean {
+  return /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\/?$/.test(env.CONVEX_CLOUD_URL?.trim() ?? "")
+}
+
+/**
+ * Anthropic en direct et OpenRouter (traitement aux États-Unis, ADR 0011 de la famille) : permis en
+ * développement local, ou avec le drapeau `ASSISTANT_ALLOW_US_PROCESSING=1` posé exprès.
+ */
+export function usProcessingAllowed(env: ProviderEnv = processEnv()): boolean {
+  return isLocalDeployment(env) || env[PROVIDER_ENV.allowUs]?.trim() === "1"
+}

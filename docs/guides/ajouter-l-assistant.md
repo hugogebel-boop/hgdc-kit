@@ -1,6 +1,6 @@
 ---
 owner: Hugo Gebel
-last_reviewed: 2026-10-18
+last_reviewed: 2026-10-29
 ---
 
 # Ajouter l'assistant à un produit
@@ -25,11 +25,11 @@ export default defineSchema({
 })
 ```
 
-Variables Convex : `ASSISTANT_LLM_API_KEY` (clé OpenRouter `sk-or-…` du produit, plafonnée, ou Anthropic `sk-ant-…`) et `BETTER_AUTH_SECRET` (déjà là : il scelle la clé propre d'une organisation).
+Variables Convex : `INFOMANIAK_AI_TOKEN` et `INFOMANIAK_AI_PRODUCT_ID` (Infomaniak, en Suisse, défaut), ou `BEDROCK_REGION` et `BEDROCK_API_KEY` avec `ASSISTANT_MODEL=bedrock/claude-sonnet-5-5` (Claude par AWS, profil `eu.`, dans l'UE). Anthropic en direct et OpenRouter (États-Unis) sont refusés hors développement local ([ADR 0022](../adr/0022-assistant-souverain-et-fabrique.md)).
 
 ## 2. Les outils
 
-Un outil reprend une action de l'interface. Le moteur impose sa classe : `read` lit (query) ; `write` modifie sans rien envoyer ni détruire ; `confirm` envoie, publie, supprime ou ne se rattrape pas, et pendant le tour il ne peut que **décrire une carte**, en lecture seule. Le fichier n'importe rien du serveur : l'action Node et les fonctions Convex le partagent.
+Un outil reprend une action de l'interface. Le moteur impose sa classe : `read` lit (query) ; `write` modifie sans rien envoyer ni détruire ; `confirm` publie, supprime ou ne se rattrape pas, et pendant le tour il ne peut que **décrire une carte**, en lecture seule ; `send` envoie vers l'extérieur (e-mail, webhook, message) et passe, lui aussi, toujours par une carte. `private: true` et `untrusted: true` marquent ce qu'un outil rend (garde « trifecta », section 5). Le fichier n'importe rien du serveur : l'action Node et les fonctions Convex le partagent.
 
 ```ts
 // convex/assistant/tools.ts
@@ -60,23 +60,12 @@ L'action Node n'a pas d'identité (elle est planifiée) : la personne vient de l
 
 ```ts
 // convex/assistantTools.ts
-import {
-  runProposeTool,
-  runReadTool,
-  runWriteTool,
-  type ConfirmHandlers,
-  type ReadHandlers,
-  type WriteHandlers,
-} from "@hgdc/assistant/convex"
-import { ConvexError, v } from "convex/values"
+import type { ConfirmHandlers, ReadHandlers, Speaker, WriteHandlers } from "@hgdc/assistant/convex"
+import { ConvexError } from "convex/values"
 
-import { internalMutation, internalQuery, type MutationCtx, type QueryCtx } from "./_generated/server"
+import type { MutationCtx, QueryCtx } from "./_generated/server"
 import { TOOLS } from "./assistant/tools"
 import { memberRole, startRedeploy } from "./deployments"
-
-/** La personne pour qui l'assistant agit, vérifiée par la mutation `assistant.send`. */
-export const vSpeaker = v.object({ organizationId: v.string(), userId: v.string() })
-type Speaker = { organizationId: string; userId: string }
 
 async function requireRole(ctx: QueryCtx, speaker: Speaker, roles: string[]) {
   // Relu à chaque outil : retiré de l'organisation pendant la conversation, plus rien.
@@ -92,7 +81,7 @@ async function ownedDeployment(ctx: QueryCtx, speaker: Speaker, raw: string) {
   return deployment
 }
 
-const READ: ReadHandlers<typeof TOOLS, QueryCtx> = {
+export const READ: ReadHandlers<typeof TOOLS, QueryCtx> = {
   list_deployments: async (ctx, { projectId, limit }, speaker) => {
     await requireRole(ctx, speaker, ["member", "admin", "owner"])
     const id = ctx.db.normalizeId("projects", projectId)
@@ -107,7 +96,7 @@ const READ: ReadHandlers<typeof TOOLS, QueryCtx> = {
   },
 }
 
-const WRITE: WriteHandlers<typeof TOOLS, MutationCtx> = {}
+export const WRITE: WriteHandlers<typeof TOOLS, MutationCtx> = {}
 
 /**
  * `card` décrit la carte avec un `ctx` en lecture seule (le kit retire `insert`, `patch` et le
@@ -141,211 +130,61 @@ export const CONFIRM: ConfirmHandlers<typeof TOOLS, MutationCtx> = {
     },
   },
 }
-
-const turnCall = {
-  speaker: vSpeaker,
-  threadId: v.id("assistantThreads"),
-  messageId: v.id("assistantMessages"),
-  name: v.string(),
-  input: v.any(),
-}
-
-export const runRead = internalQuery({
-  args: { speaker: vSpeaker, name: v.string(), input: v.any() },
-  handler: async (ctx, { speaker, name, input }) =>
-    await runReadTool(ctx, { tools: TOOLS, speaker, name, input }, READ),
-})
-
-export const runWrite = internalMutation({
-  args: turnCall,
-  handler: async (ctx, { speaker, ...call }) => await runWriteTool(ctx, { tools: TOOLS, speaker, ...call }, WRITE),
-})
-
-export const runPropose = internalMutation({
-  args: turnCall,
-  handler: async (ctx, { speaker, ...call }) => await runProposeTool(ctx, { tools: TOOLS, speaker, ...call }, CONFIRM),
-})
 ```
 
 `execute` vérifie tout avant d'écrire : une `ConvexError` texte passe la carte en « Échec » sans annuler la transaction, toute autre erreur annule tout et la carte reste à confirmer. Les sorties d'outils sont toujours coupées à 20 000 caractères par le kit.
 
-## 4. Les fonctions publiques
+## 4. Les fonctions Convex : `createConsoleAssistant`
 
-Chaque query et mutation pose la garde, puis passe la personne vérifiée au kit.
+La fabrique écrit les fonctions que chaque console répétait : `status`, `threads`, `thread`, `send`, `confirm`, `cancel`, `remove` (publiques, chacune passe d'abord par la garde du produit), puis `context`, `progress`, `finish`, `runRead`, `runWrite`, `runPropose`, `sweep`, `purge`, `eraseOf`, `exportOf` (internes). Le produit exporte celles qu'il veut et garde les siennes à côté (réglage propre, statut enrichi).
 
 ```ts
 // convex/assistant.ts
-import {
-  cancelAction,
-  confirmAction,
-  deleteThread,
-  eraseUser,
-  failStuckTurns,
-  finishTurn,
-  listThreads,
-  progressMessage,
-  purgeIdleThreads,
-  readStatus,
-  readThread,
-  removeKey,
-  startTurn,
-  storeKey,
-  turnContext,
-  vFinishTurn,
-  vProgress,
-} from "@hgdc/assistant/convex"
-import { readKey } from "@hgdc/assistant/model"
+import { createConsoleAssistant } from "@hgdc/assistant/console"
 import { v } from "convex/values"
 
-import { internal } from "./_generated/api"
-import { internalMutation, internalQuery, mutation, query } from "./_generated/server"
+import { internalMutation, internalQuery, mutation, query, type QueryCtx } from "./_generated/server"
 import { TOOLS } from "./assistant/tools"
-import { CONFIRM } from "./assistantTools"
+import { CONFIRM, READ } from "./assistantTools"
 import { requireMember } from "./lib/functions" // requireOrgMember de @hgdc/auth/convex, sur la copie d'Account
 
-export const MONTHLY_CREDITS = 300
-const platformKey = () => readKey(process.env.ASSISTANT_LLM_API_KEY) !== undefined
-
-export const status = query({
-  args: { organizationId: v.string() },
-  handler: async (ctx, { organizationId }) => {
-    await requireMember(ctx, organizationId)
-    return await readStatus(ctx, organizationId, { limit: MONTHLY_CREDITS, platformKey: platformKey() })
+const assistant = createConsoleAssistant({
+  builders: { query, mutation, internalQuery, internalMutation },
+  // Ajoutés à chaque fonction publique ; la garde rend la personne vérifiée.
+  guard: {
+    args: { organizationId: v.string() },
+    speaker: async (ctx: QueryCtx, { organizationId }) => {
+      const { userId } = await requireMember(ctx, organizationId)
+      return { organizationId, userId }
+    },
   },
+  tools: TOOLS,
+  read: READ,
+  confirm: CONFIRM,
+  // La page ouverte : son identifiant vient du navigateur, `describe` le vérifie comme les autres.
+  page: { args: v.object({ kind: v.literal("deployment"), id: v.string() }), describe: pageContext },
+  // Défauts : module « assistant », action « assistantNode:run », 300 crédits, 90 jours, `sovereignReady()`.
 })
 
-export const threads = query({
-  args: { organizationId: v.string() },
-  handler: async (ctx, { organizationId }) => {
-    const { userId } = await requireMember(ctx, organizationId)
-    return await listThreads(ctx, { organizationId, userId })
-  },
-})
-
-export const thread = query({
-  args: { organizationId: v.string(), threadId: v.id("assistantThreads") },
-  handler: async (ctx, { organizationId, threadId }) => {
-    const { userId } = await requireMember(ctx, organizationId)
-    return await readThread(ctx, { organizationId, userId }, threadId)
-  },
-})
-
-export const send = mutation({
-  args: {
-    organizationId: v.string(),
-    threadId: v.optional(v.id("assistantThreads")),
-    text: v.string(),
-    page: v.optional(v.object({ kind: v.literal("deployment"), id: v.string() })),
-  },
-  handler: async (ctx, args) => {
-    const { userId } = await requireMember(ctx, args.organizationId)
-    const speaker = { organizationId: args.organizationId, userId }
-    // Contrôle des crédits et réservation dans la même transaction.
-    const turn = await startTurn(ctx, speaker, {
-      threadId: args.threadId ?? null,
-      text: args.text,
-      limit: MONTHLY_CREDITS,
-      platformKey: platformKey(),
-    })
-    // La page ouverte : son identifiant vient du navigateur, il est vérifié comme les autres.
-    const context = args.page ? await pageContext(ctx, speaker, args.page) : ""
-    await ctx.scheduler.runAfter(0, internal.assistantNode.run, {
-      messageId: turn.messageId,
-      threadId: turn.threadId,
-      text: context ? `${turn.text}\n\n(Page ouverte) ${context}` : turn.text,
-      speaker,
-    })
-    return turn.threadId
-  },
-})
-
-export const confirm = mutation({
-  args: { organizationId: v.string(), actionId: v.id("assistantActions") },
-  handler: async (ctx, { organizationId, actionId }) => {
-    const { userId } = await requireMember(ctx, organizationId)
-    return await confirmAction(ctx, { organizationId, userId }, actionId, { tools: TOOLS, handlers: CONFIRM })
-  },
-})
-
-export const cancel = mutation({
-  args: { organizationId: v.string(), actionId: v.id("assistantActions") },
-  handler: async (ctx, { organizationId, actionId }) => {
-    const { userId } = await requireMember(ctx, organizationId)
-    await cancelAction(ctx, { organizationId, userId }, actionId)
-  },
-})
-
-export const remove = mutation({
-  args: { organizationId: v.string(), threadId: v.id("assistantThreads") },
-  handler: async (ctx, { organizationId, threadId }) => {
-    const { userId } = await requireMember(ctx, organizationId)
-    // Refusé tant qu'une réponse est en cours.
-    await deleteThread(ctx, { organizationId, userId }, threadId)
-  },
-})
-
-export const removeOrganizationKey = mutation({
-  args: { organizationId: v.string() },
-  handler: async (ctx, { organizationId }) => {
-    await requireMember(ctx, organizationId, "admin")
-    await removeKey(ctx, organizationId)
-  },
-})
-
-// ── Internes : appelées par l'action Node et les crons ──
-
-export const context = internalQuery({
-  args: { messageId: v.id("assistantMessages"), organizationId: v.string() },
-  handler: async (ctx, args) => await turnContext(ctx, args),
-})
-
-export const progress = internalMutation({
-  args: vProgress,
-  handler: async (ctx, args) => await progressMessage(ctx, args),
-})
-
-export const finish = internalMutation({ args: vFinishTurn, handler: async (ctx, args) => await finishTurn(ctx, args) })
-
-export const saveKey = internalMutation({
-  args: { organizationId: v.string(), sealed: v.string(), hint: v.string(), updatedBy: v.string() },
-  handler: async (ctx, args) => await storeKey(ctx, args),
-})
-
-export const sweep = internalMutation({ args: {}, handler: async (ctx) => await failStuckTurns(ctx) })
-
-export const purge = internalMutation({
-  args: {},
-  handler: async (ctx) => await purgeIdleThreads(ctx, { before: Date.now() - 90 * 86_400_000 }),
-})
-
-/** Effacement d'une personne, par lots replanifiés jusqu'au bout. */
-export const eraseOf = internalMutation({
-  args: { userId: v.string() },
-  handler: async (ctx, { userId }) => {
-    const { done } = await eraseUser(ctx, userId)
-    if (!done) await ctx.scheduler.runAfter(0, internal.assistant.eraseOf, { userId })
-  },
-})
+export const { status, threads, thread, send, confirm, cancel, remove } = assistant.public
+export const { context, progress, finish, runRead, runWrite, runPropose, sweep, purge, eraseOf, exportOf } =
+  assistant.internal
 ```
 
-Crons : `crons.interval("assistant interrompu", { minutes: 15 }, internal.assistant.sweep)` (une réponse jamais finie garde sa réservation comme coût) et `crons.daily("assistant purge", …, internal.assistant.purge)`. L'export d'une personne appelle `exportUser` (conversations et cartes).
+Les gestionnaires (`READ`, `WRITE`, `CONFIRM`) restent dans `convex/assistantTools.ts`, exportés ; `runRead`, `runWrite` et `runPropose` ne s'y écrivent plus. Crons : `crons.interval("assistant interrompu", { minutes: 15 }, internal.assistant.sweep)` (une réponse jamais finie garde sa réservation comme coût) et `crons.daily("assistant purge", …, internal.assistant.purge)` (un lot plein se replanifie).
 
-## 5. L'action Node
+Sans fabrique, chaque fonction du kit (`startTurn`, `readThread`, `confirmAction`…) reste disponible dans `@hgdc/assistant/convex`, pour une console qui sort du modèle (Portal, Mail).
+
+## 5. L'action Node : `createConsoleRunner`
 
 ```ts
 // convex/assistantNode.ts
 "use node"
 
-import { clientFor, runTurn, verifyKey } from "@hgdc/assistant/node"
-import { readKey } from "@hgdc/assistant/model"
-import { keyHint, openSecret, sealSecret } from "@hgdc/assistant/secret"
-import type Anthropic from "@anthropic-ai/sdk"
-import { ConvexError, v } from "convex/values"
+import { createConsoleRunner } from "@hgdc/assistant/console/node"
 
-import { internal } from "./_generated/api"
-import { action, internalAction } from "./_generated/server"
+import { internalAction } from "./_generated/server"
 import { TOOLS } from "./assistant/tools"
-import { vSpeaker } from "./assistantTools"
 
 // Fixe : elle est mise en cache avec les outils (le kit y ajoute ses règles). Le contexte du tour part à côté.
 const SYSTEM = `Tu es l'assistant de Host, la plateforme de déploiement : projets, déploiements, journaux, domaines.
@@ -353,102 +192,16 @@ Tu agis pour la personne connectée, avec les outils fournis : ils reprennent ce
 - Français, tutoiement, phrases courtes. Jamais de grand tiret.
 - N'invente jamais un identifiant : relis-le avec un outil de lecture.`
 
-export const run = internalAction({
-  args: {
-    messageId: v.id("assistantMessages"),
-    threadId: v.id("assistantThreads"),
-    text: v.string(),
-    speaker: vSpeaker,
-  },
-  handler: async (ctx, { messageId, threadId, text, speaker }) => {
-    const { organizationId } = speaker
-    const stop = (text: string) =>
-      ctx.runMutation(internal.assistant.finish, {
-        messageId,
-        organizationId,
-        status: "error",
-        text,
-        tools: [],
-        history: null,
-        historyFull: false,
-        notesUpTo: 0,
-        costMicros: 0,
-        costComplete: true,
-        inputTokens: 0,
-        outputTokens: 0,
-      })
-    // `null` : tour déjà soldé, ou clé de l'organisation retirée depuis la demande. Jamais de repli
-    // sur la clé de la plateforme pour un tour qui n'a rien réservé.
-    const turn = await ctx.runQuery(internal.assistant.context, { messageId, organizationId })
-    if (!turn) return await stop("La clé de l'organisation a été retirée. Réessaie.")
-    const secret = process.env.BETTER_AUTH_SECRET ?? ""
-    // `sealedKey` est nul pour un tour réservé : clé de la plateforme seulement.
-    const key = turn.sealedKey
-      ? await openSecret(turn.sealedKey, { secret, context: organizationId }).catch(() => undefined)
-      : readKey(process.env.ASSISTANT_LLM_API_KEY)
-    if (!key)
-      return await stop("L'assistant n'est pas branché. Un administrateur peut enregistrer la clé dans les réglages.")
-    const { client, model, direct } = clientFor(key, { origin: "https://host.hgdc.ch", title: "Host" })
-    const call = (name: string, input: Record<string, unknown>) => ({ speaker, threadId, messageId, name, input })
-    const result = await runTurn({
-      client,
-      model,
-      direct,
-      system: SYSTEM,
-      context: `Organisation ${organizationId}. Date : ${new Date().toISOString().slice(0, 10)}.`,
-      tools: TOOLS,
-      history: JSON.parse(turn.history) as Anthropic.MessageParam[],
-      notes: turn.notes,
-      text,
-      // La réservation du tour en est le plafond : la boucle s'arrête avant de la dépasser.
-      maxCostMicros: turn.maxCostMicros,
-      // Le moteur choisit le gestionnaire selon la classe déclarée de l'outil.
-      handlers: {
-        read: (c) => ctx.runQuery(internal.assistantTools.runRead, { speaker, name: c.name, input: c.input }),
-        write: (c) => ctx.runMutation(internal.assistantTools.runWrite, call(c.name, c.input)),
-        propose: (c) => ctx.runMutation(internal.assistantTools.runPropose, call(c.name, c.input)),
-      },
-      onProgress: async ({ text, tools }) => {
-        await ctx.runMutation(internal.assistant.progress, { messageId, organizationId, text, tools })
-      },
-    })
-    // `result.failure` donne la nature d'une panne (« api », « timeout »…) : c'est elle qu'on journalise,
-    // jamais l'erreur brute du fournisseur ni le texte de la conversation.
-    await ctx.runMutation(internal.assistant.finish, {
-      messageId,
-      organizationId,
-      status: result.status,
-      text: result.text,
-      tools: result.tools,
-      history: result.history,
-      historyFull: result.historyFull,
-      notesUpTo: turn.notesUpTo,
-      costMicros: result.costMicros,
-      // Une étape perdue (rejouée, coupée) : le débit vaut au moins la réservation.
-      costComplete: result.costComplete,
-      inputTokens: result.usage.input + result.usage.cacheRead + result.usage.cacheWrite,
-      outputTokens: result.usage.output,
-    })
-  },
-})
-
-/** Clé propre de l'organisation : essayée, scellée (liée à l'organisation), jamais rendue. Administrateurs seulement. */
-export const saveOrganizationKey = action({
-  args: { organizationId: v.string(), key: v.string() },
-  handler: async (ctx, { organizationId, key }) => {
-    const { userId } = await ctx.runQuery(internal.lib.access.requireAdmin, { organizationId })
-    const refused = await verifyKey(key)
-    if (refused) throw new ConvexError(refused)
-    const sealed = await sealSecret(key.trim(), {
-      secret: process.env.BETTER_AUTH_SECRET ?? "",
-      context: organizationId,
-    })
-    await ctx.runMutation(internal.assistant.saveKey, { organizationId, sealed, hint: keyHint(key), updatedBy: userId })
-  },
-})
+export const run = createConsoleRunner({ internalAction, tools: TOOLS, system: SYSTEM })
 ```
 
+Le modèle vient de `sovereignClient()` (`@hgdc/assistant/clients`) : Infomaniak en Suisse par défaut, ou Claude par Bedrock, profil `eu.`, selon `ASSISTANT_MODEL`. Sans identifiants, le tour s'arrête sur « L'assistant n'est pas encore branché. ». Options : `context` (contexte du tour, la date par défaut), `formal` (vouvoiement), `trifecta` et `taint` (garde « trifecta », plus bas), `client` (un autre modèle du catalogue).
+
 Bornes posées par `runTurn` : 12 étapes, 8 appels d'outils par étape, 8 minutes pour le tour entier (requête en cours coupée), le coût réservé, 20 000 caractères par résultat d'outil (balises désarmées ; `markup: true` dans `runReadTool` pour garder un corps HTML à reprendre), 700 000 octets d'historique (au-delà, la conversation est déclarée pleine).
+
+### Garde « trifecta »
+
+Un outil qui rend des données privées se marque `private: true` ; un outil qui rend du contenu de tiers (page explorée, e-mail reçu, réponse de webhook), `untrusted: true`. Un outil qui envoie vers l'extérieur est de classe `send` : toujours une carte, jamais exécuté pendant le tour, gestionnaire dans `CONFIRM` comme un outil `confirm`. Quand un même tour a lu les deux, la carte d'un `send` porte la mise en garde `TRIFECTA_DETAIL` ; avec `trifecta: "block"`, l'appel est refusé et le modèle le lit. `taint: { untrusted: true }` compte la demande elle-même comme non fiable (visiteur anonyme). La garde vaut pour un tour : l'historique des tours précédents n'en fait pas partie.
 
 ## 6. L'interface
 

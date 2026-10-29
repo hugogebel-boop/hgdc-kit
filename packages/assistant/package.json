@@ -51,6 +51,22 @@
       "types": "./dist/bedrock.d.ts",
       "default": "./dist/bedrock.js"
     },
+    "./clients": {
+      "types": "./dist/clients.d.ts",
+      "default": "./dist/clients.js"
+    },
+    "./trifecta": {
+      "types": "./dist/trifecta.d.ts",
+      "default": "./dist/trifecta.js"
+    },
+    "./console": {
+      "types": "./dist/console.d.ts",
+      "default": "./dist/console.js"
+    },
+    "./console/node": {
+      "types": "./dist/console-node.d.ts",
+      "default": "./dist/console-node.js"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {

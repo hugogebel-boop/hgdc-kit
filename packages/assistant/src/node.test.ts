@@ -3,7 +3,15 @@ import { ConvexError } from "convex/values"
 import { describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
-import { runTurn, verifyKey, type ModelClient, type RunTurnOptions, type ToolCall } from "./node.ts"
+import {
+  clientFor,
+  runTurn,
+  US_PROCESSING_REFUSED,
+  verifyKey,
+  type ModelClient,
+  type RunTurnOptions,
+  type ToolCall,
+} from "./node.ts"
 import { defineTools } from "./tools.ts"
 
 const TOOLS = defineTools({
@@ -120,7 +128,13 @@ describe("runTurn", () => {
     const h = handlers()
     const result = await runTurn(base(client, { handlers: h }))
 
-    expect(h.read).toHaveBeenCalledWith({ id: "t1", name: "list_monitors", kind: "read", input: { status: "down" } })
+    expect(h.read).toHaveBeenCalledWith({
+      id: "t1",
+      name: "list_monitors",
+      kind: "read",
+      input: { status: "down" },
+      trifecta: false,
+    })
     expect(h.write.mock.calls[0]?.[0].name).toBe("pause_monitor")
     // Un outil `confirm` ne passe jamais par `write` : seulement par `propose`.
     expect(h.propose.mock.calls[0]?.[0]).toMatchObject({ name: "publish_incident", kind: "confirm" })
@@ -263,17 +277,128 @@ describe("contre-revue", () => {
   })
 })
 
+const LOCAL = { env: { CONVEX_CLOUD_URL: "http://127.0.0.1:3210" } }
+
 describe("verifyKey", () => {
   it("refuse une clé inconnue et lit la réponse d'OpenRouter", async () => {
-    expect(await verifyKey("sk-proj-123")).toContain("Colle une clé")
+    expect(await verifyKey("sk-proj-123", fetch, LOCAL)).toContain("Colle une clé")
     const refused = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(
       async () => new Response(null, { status: 401 }),
     )
-    expect(await verifyKey(`sk-or-v1-${"a".repeat(30)}`, refused)).toContain("OpenRouter refuse")
+    expect(await verifyKey(`sk-or-v1-${"a".repeat(30)}`, refused, LOCAL)).toContain("OpenRouter refuse")
     const ok = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(
       async () => new Response("{}", { status: 200 }),
     )
-    expect(await verifyKey(`sk-or-v1-${"a".repeat(30)}`, ok)).toBeNull()
+    expect(await verifyKey(`sk-or-v1-${"a".repeat(30)}`, ok, LOCAL)).toBeNull()
     expect(ok.mock.calls[0]?.[0]).toBe("https://openrouter.ai/api/v1/key")
+  })
+})
+
+describe("Anthropic en direct et OpenRouter dépréciés", () => {
+  const key = `sk-or-v1-${"a".repeat(30)}`
+  const online = { CONVEX_CLOUD_URL: "https://convex.host.hgdc.ch" }
+
+  it("refusés sur un déploiement en ligne, sans appel réseau", async () => {
+    const fetcher = vi.fn<(url: string, init: RequestInit) => Promise<Response>>()
+    expect(await verifyKey(key, fetcher, { env: online })).toContain("ne sont plus acceptées")
+    expect(fetcher).not.toHaveBeenCalled()
+    expect(() => clientFor(key, { origin: "https://app.hgdc.ch", title: "Host", env: online })).toThrow(
+      US_PROCESSING_REFUSED,
+    )
+  })
+
+  it("permis en développement local, ou avec le drapeau explicite", () => {
+    expect(clientFor(key, { origin: "x", title: "Host", ...LOCAL }).direct).toBe(false)
+    const flagged = { ...online, ASSISTANT_ALLOW_US_PROCESSING: "1" }
+    expect(clientFor(key, { origin: "x", title: "Host", env: flagged }).model).toBe("anthropic/claude-haiku-5.5")
+    expect(() =>
+      clientFor(key, { origin: "x", title: "Host", env: { ...online, ASSISTANT_ALLOW_US_PROCESSING: "true" } }),
+    ).toThrow(US_PROCESSING_REFUSED)
+  })
+})
+
+describe("garde « trifecta » par tour", () => {
+  const MAIL = defineTools({
+    read_inbox: {
+      kind: "read",
+      label: "Lecture de la boîte",
+      description: "E-mails reçus.",
+      input: z.object({}),
+      private: true,
+      untrusted: true,
+    },
+    read_contacts: {
+      kind: "read",
+      label: "Lecture des contacts",
+      description: "Contacts.",
+      input: z.object({}),
+      private: true,
+    },
+    fetch_page: {
+      kind: "read",
+      label: "Lecture d'une page",
+      description: "Une page web.",
+      input: z.object({ url: z.string() }),
+      untrusted: true,
+    },
+    send_email: {
+      kind: "send",
+      label: "Envoi d'un e-mail",
+      description: "Envoie un e-mail.",
+      input: z.object({ to: z.string() }),
+    },
+  })
+  const send = { id: "s", name: "send_email", input: { to: "x@example.com" } }
+
+  it("un envoi passe toujours par une carte, jamais par write ; sans trifecta, la carte n'a pas de mise en garde", async () => {
+    const { client } = fakeClient([{ tools: [{ id: "c", name: "read_contacts", input: {} }, send] }, { text: "Ok." }])
+    const h = handlers()
+    await runTurn(base(client, { tools: MAIL, handlers: h }))
+    expect(h.write).not.toHaveBeenCalled()
+    expect(h.propose.mock.calls[0]?.[0]).toMatchObject({ name: "send_email", kind: "send", trifecta: false })
+  })
+
+  it("données privées puis contenu non fiable dans le même tour : la carte est marquée", async () => {
+    const { client } = fakeClient([
+      { tools: [{ id: "c", name: "read_contacts", input: {} }] },
+      { tools: [{ id: "p", name: "fetch_page", input: { url: "https://example.com" } }, send] },
+      { text: "Carte proposée." },
+    ])
+    const h = handlers()
+    await runTurn(base(client, { tools: MAIL, handlers: h }))
+    expect(h.propose.mock.calls[0]?.[0]).toMatchObject({ name: "send_email", trifecta: true })
+  })
+
+  it("un outil à la fois privé et non fiable suffit ; un outil en erreur compte aussi", async () => {
+    const { client } = fakeClient([{ tools: [{ id: "i", name: "read_inbox", input: {} }, send] }, { text: "." }])
+    const h = handlers()
+    h.read.mockRejectedValueOnce(new ConvexError("Boîte indisponible."))
+    await runTurn(base(client, { tools: MAIL, handlers: h }))
+    expect(h.propose.mock.calls[0]?.[0]).toMatchObject({ trifecta: true })
+  })
+
+  it("politique block : l'envoi est refusé et le modèle le lit ; le tour suivant repart propre", async () => {
+    const { client, requests } = fakeClient([
+      { tools: [{ id: "i", name: "read_inbox", input: {} }, send] },
+      { text: "." },
+    ])
+    const h = handlers()
+    await runTurn(base(client, { tools: MAIL, handlers: h, trifecta: "block" }))
+    expect(h.propose).not.toHaveBeenCalled()
+    const results = requests[1]!.messages.at(-1)!.content as Anthropic.ToolResultBlockParam[]
+    expect(results[1]).toMatchObject({ is_error: true })
+    expect(JSON.stringify(results[1]?.content)).toContain("Envoi refusé")
+
+    const next = fakeClient([{ tools: [send] }, { text: "." }])
+    const h2 = handlers()
+    await runTurn(base(next.client, { tools: MAIL, handlers: h2, trifecta: "block" }))
+    expect(h2.propose).toHaveBeenCalledTimes(1)
+  })
+
+  it("une demande non fiable (visiteur anonyme) compte dès le départ", async () => {
+    const { client } = fakeClient([{ tools: [{ id: "c", name: "read_contacts", input: {} }, send] }, { text: "." }])
+    const h = handlers()
+    await runTurn(base(client, { tools: MAIL, handlers: h, taint: { untrusted: true } }))
+    expect(h.propose.mock.calls[0]?.[0]).toMatchObject({ trifecta: true })
   })
 })
