@@ -18,6 +18,7 @@
         "@anthropic-ai/sdk",
         "@changesets/cli",
         "@convex-dev/better-auth",
+        "@convex-dev/rate-limiter",
         "@convex-dev/react-query",
         "@tailwindcss/vite",
         "@tanstack/react-query",
