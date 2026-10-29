@@ -83,6 +83,23 @@ try {
 
 Règles : exiger `require: "write"` pour toute écriture ; ne jamais transmettre le jeton à une autre API ; ne jamais renvoyer `error.message` au client. Le jeton vaut 15 minutes : une révocation dans Account coupe le renouvellement tout de suite.
 
+## Relayer le serveur MCP depuis la console
+
+Quand le serveur MCP vit dans Convex et que la console le sert sous `app.hgdc.ch/<produit>/mcp`, `createMcpProxy` relaie `/mcp`, `/mcp/server-card` et le document RFC 9728 de la ressource, et refuse le reste (404). Il ne transmet que les en-têtes du protocole et `authorization`, jamais `cookie` ; il retire `set-cookie` de la réponse, plafonne le corps à 1 Mio et répond 502 au format JSON-RPC si Convex ne répond pas dans 60 secondes.
+
+```ts
+// src/routes/mcp.ts (la route serveur de la console)
+import { createMcpProxy } from "@hgdc/auth/server"
+
+const relay = createMcpProxy(process.env.VITE_CONVEX_SITE_URL!, {
+  product: "host",
+  basePath: "/host", // la base de la console, retirée avant le relais
+  addressSecret: () => process.env.AUTH_PROXY_SECRET, // l'adresse du visiteur part signée
+})
+```
+
+Sans `addressSecret`, l'adresse du visiteur n'est pas signée et Convex ne la voit pas. Le produit doit servir la même liste de routes que Convex : une route ajoutée des deux côtés à la fois.
+
 ## Servir le produit sous un chemin
 
 Un produit peut être servi sous `https://<hôte>/<produit>` (base `/analytics`) au lieu de la racine d'un sous-domaine. Chaque option est absente par défaut : sans elle, le comportement est celui d'un produit à la racine. Règle commune : `next` et `errorCallbackURL` sont des chemins **du produit, sans la base** (ceux du routeur) ; le kit remet la base devant avant de rediriger.
