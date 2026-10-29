@@ -30,14 +30,14 @@
     },
     "packages/api": {
       "name": "@hgdc/api",
-      "version": "0.0.0",
+      "version": "0.2.0",
       "dependencies": {
         "zod": "^4.6.5",
       },
     },
     "packages/assistant": {
       "name": "@hgdc/assistant",
-      "version": "0.2.0",
+      "version": "0.4.0",
       "dependencies": {
         "zod": "^4.6.5",
       },
@@ -61,7 +61,7 @@
     },
     "packages/auth": {
       "name": "@hgdc/auth",
-      "version": "0.18.0",
+      "version": "0.23.0",
       "dependencies": {
         "zod": "^4.6.5",
       },
@@ -86,7 +86,7 @@
     },
     "packages/config": {
       "name": "@hgdc/config",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "bin": {
         "hgdc-stack": "./dist/cli.js",
       },
