@@ -1,6 +1,6 @@
 {
   "name": "@hgdc/api",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "API publiques des produits HGDC : clés hgdc_<produit>_ (somme de contrôle, SHA-256, scopes), Bearer et métadonnées RFC 9728, erreurs problem+json (RFC 9457) et dialectes Resend et Vercel, pagination par curseur, limites de débit, serveur MCP Streamable HTTP sans état, OpenAPI 3.1. Web Crypto seulement : Convex, navigateur, Bun et Node.",
   "license": "UNLICENSED",
   "homepage": "https://github.com/hugogebel-boop/hgdc-kit/tree/main/packages/api#readme",
