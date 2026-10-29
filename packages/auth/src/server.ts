@@ -18,6 +18,14 @@ import {
   withSyncedMarker,
   type BasePathOptions,
 } from "./index.ts"
+import { signClientAddress, visitorAddress } from "./client-address.ts"
+
+export {
+  CLIENT_ADDRESS_HEADER,
+  CLIENT_ADDRESS_SIGNATURE_HEADER,
+  restoreClientAddress,
+  visitorAddress,
+} from "./client-address.ts"
 
 /** En-tête qui porte le `sec-fetch-mode` du navigateur à travers le proxy. */
 export const FETCH_MODE_HEADER = "x-hgdc-fetch-mode"
@@ -53,11 +61,15 @@ export function restoreFetchMode(request: Request): Request {
  * `/api/auth/*`, sans base. Le préfixe est retiré avant le relais (`/analytics/api/auth/x` part vers
  * `/api/auth/x`), une seule fois, sur une frontière de segment. Un chemin sans la base (les appels
  * internes de `createHgdcEntry`) passe tel quel.
+ *
+ * `options.addressSecret` (secret partagé avec Convex) : l'adresse du visiteur part signée, et
+ * `restoreClientAddress` la rend à better-auth côté Convex (`client-address.ts`). Absent : comme
+ * avant, Convex ne voit que l'adresse du front, la même pour tous les visiteurs.
  */
 export function createAuthProxy(
   convexSiteUrl: string,
   fetchImpl: typeof fetch = fetch,
-  options: BasePathOptions = {},
+  options: BasePathOptions & { addressSecret?: string } = {},
 ): (request: Request) => Promise<Response> {
   const target = new URL(convexSiteUrl)
   const appBase = normalizeBasePath(options.basePath)
@@ -77,8 +89,15 @@ export function createAuthProxy(
     const mode = request.headers.get("sec-fetch-mode")
     if (mode) headers.set(FETCH_MODE_HEADER, mode)
     else headers.delete(FETCH_MODE_HEADER)
+    const upstream = new URL(`${target.origin}${upstreamPath}${url.search}`)
+    await signClientAddress(headers, {
+      address: visitorAddress(request.headers),
+      method: request.method,
+      target: upstream,
+      secret: options.addressSecret,
+    })
     const hasBody = request.method !== "GET" && request.method !== "HEAD"
-    return await fetchImpl(`${target.origin}${upstreamPath}${url.search}`, {
+    return await fetchImpl(upstream.href, {
       method: request.method,
       headers,
       redirect: "manual",
