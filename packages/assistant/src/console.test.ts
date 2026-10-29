@@ -190,4 +190,21 @@ describe("createConsoleRunner", () => {
     // Trois étapes à (100 + 50) jetons, à 1 $ par million : 450 micro-dollars.
     expect((await t.query(fn.lastMessage, {}))?.costMicros).toBe(450)
   }, 30_000)
+
+  it("s'arrête après maxSteps appels au modèle", async () => {
+    const t = convexTest(schema, modules)
+    await seedDeployment(t)
+    const threadId = await t.mutation(fn.send, { ...ana, text: "Préviens le client." })
+    const message = await t.query(fn.lastMessage, {})
+    await t.action(api.consoleNode.runShort, {
+      messageId: message!._id,
+      threadId,
+      text: "Préviens le client.",
+      speaker: ana,
+    })
+
+    const view = await t.query(fn.thread, { ...ana, threadId })
+    expect(view.messages.at(-1)?.text).toContain("beaucoup d'étapes")
+    expect(view.actions).toHaveLength(0)
+  }, 30_000)
 })

@@ -36,6 +36,8 @@ export type ConsoleRunnerConfig<T extends ToolSet> = {
   formal?: boolean
   trifecta?: TrifectaPolicy
   taint?: Partial<Taint>
+  /** Appels au modèle par tour au plus. Défaut du moteur : 12. */
+  maxSteps?: number
 }
 
 const STOPPED = {
@@ -109,6 +111,7 @@ export function createConsoleRunner<T extends ToolSet>(
         ...(config.formal === undefined ? {} : { formal: config.formal }),
         ...(config.trifecta === undefined ? {} : { trifecta: config.trifecta }),
         ...(config.taint === undefined ? {} : { taint: config.taint }),
+        ...(config.maxSteps === undefined ? {} : { maxSteps: config.maxSteps }),
         handlers: {
           read: async (c) => (await ctx.runQuery(refs.runRead, { speaker, name: c.name, input: c.input })) as string,
           write: async (c) => (await ctx.runMutation(refs.runWrite, call(c.name, c.input))) as string,
