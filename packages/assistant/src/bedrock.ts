@@ -1,6 +1,7 @@
 import { AnthropicBedrock } from "@anthropic-ai/bedrock-sdk"
 
 import type { ModelClient } from "./node.ts"
+import { assertEuBedrock } from "./providers.ts"
 
 /*
  * Claude par AWS Bedrock, pour `runTurn` : même API au format Anthropic, servie par AWS. Le modèle
@@ -14,7 +15,9 @@ export type BedrockCredentials =
   /** Clés IAM d'un utilisateur limité à `bedrock:InvokeModel*`. */
   | { region: string; accessKeyId: string; secretAccessKey: string }
 
+/** Lève pour une région hors UE (`assertEuBedrock`) : le modèle passé à `runTurn` doit aussi être `eu.`. */
 export function bedrockClient(credentials: BedrockCredentials): ModelClient {
+  assertEuBedrock({ region: credentials.region })
   const client =
     "apiKey" in credentials
       ? new AnthropicBedrock({ awsRegion: credentials.region, apiKey: credentials.apiKey })

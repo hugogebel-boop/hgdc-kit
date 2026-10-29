@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest"
 
 import { modelClient, sovereignClient } from "./clients.ts"
 import {
+  assertEuBedrock,
   DEFAULT_MODEL_ID,
+  isEuBedrockModel,
+  isEuBedrockRegion,
   isLocalDeployment,
   MODEL_OPTIONS,
   modelOption,
@@ -79,5 +82,41 @@ describe("clients", () => {
     const choice = await sovereignClient({ env: { ...BEDROCK, ASSISTANT_MODEL: "bedrock/claude-haiku-5-5" } })
     expect(choice?.model).toBe("eu.anthropic.claude-haiku-5-5")
     expect(typeof choice?.client.messages.stream).toBe("function")
+  }, 30_000)
+})
+
+describe("Bedrock reste dans l'UE", () => {
+  it("région eu-* exigée : ailleurs, le fournisseur n'est pas branché", () => {
+    expect(isEuBedrockRegion("eu-central-2")).toBe(true)
+    expect(isEuBedrockRegion("eu-west-1")).toBe(true)
+    for (const region of ["us-east-1", "ap-southeast-1", "eu", "eu-central", "xeu-west-1", "EU-WEST-1"])
+      expect(isEuBedrockRegion(region)).toBe(false)
+    const us = { ...BEDROCK, BEDROCK_REGION: "us-east-1", ASSISTANT_MODEL: "bedrock/claude-haiku-5-5" }
+    expect(vendorReady("bedrock", us)).toBe(false)
+    expect(platformModel(us)).toBeNull()
+    expect(sovereignReady(us)).toBe(false)
+  })
+
+  it("profil eu. exigé pour le modèle", () => {
+    expect(isEuBedrockModel("eu.anthropic.claude-haiku-5-5")).toBe(true)
+    expect(isEuBedrockModel("us.anthropic.claude-haiku-5-5")).toBe(false)
+    expect(isEuBedrockModel("global.anthropic.claude-haiku-5-5")).toBe(false)
+    expect(isEuBedrockModel("anthropic.claude-haiku-5-5")).toBe(false)
+  })
+
+  it("assertEuBedrock lève pour une région ou un modèle hors UE", () => {
+    expect(() => assertEuBedrock({ region: "eu-central-2", model: "eu.anthropic.claude-haiku-5-5" })).not.toThrow()
+    expect(() => assertEuBedrock({ region: "us-east-1" })).toThrow(/hors UE/)
+    expect(() => assertEuBedrock({ region: "eu-central-2", model: "us.anthropic.claude-haiku-5-5" })).toThrow(/hors UE/)
+  })
+
+  it("modelClient refuse un modèle Bedrock sans profil eu., même avec une région de l'UE", async () => {
+    const rogue = { ...modelOption("bedrock/claude-haiku-5-5"), model: "us.anthropic.claude-haiku-5-5" }
+    await expect(modelClient(rogue, { env: BEDROCK })).rejects.toThrow(/hors UE/)
+  })
+
+  it("bedrockClient refuse une région hors UE", async () => {
+    const { bedrockClient } = await import("./bedrock.ts")
+    expect(() => bedrockClient({ region: "us-east-1", apiKey: "cle" })).toThrow(/hors UE/)
   }, 30_000)
 })
