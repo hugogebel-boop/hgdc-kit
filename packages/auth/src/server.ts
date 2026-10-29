@@ -23,8 +23,13 @@ import { signClientAddress, visitorAddress } from "./client-address.ts"
 export {
   CLIENT_ADDRESS_HEADER,
   CLIENT_ADDRESS_SIGNATURE_HEADER,
+  HGDC_IP_ADDRESS_OPTIONS,
+  NEUTRAL_CLIENT_ADDRESS,
+  RATE_LIMIT_ADDRESS_HEADER,
+  rateLimitAddress,
   restoreClientAddress,
   visitorAddress,
+  type RestoreClientAddressOptions,
 } from "./client-address.ts"
 
 export { convexPath, createMcpProxy, MAX_MCP_BODY_BYTES, type McpProxyOptions } from "./mcp-proxy.ts"

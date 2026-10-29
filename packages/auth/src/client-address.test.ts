@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest"
 import {
   CLIENT_ADDRESS_HEADER,
   CLIENT_ADDRESS_SIGNATURE_HEADER,
+  NEUTRAL_CLIENT_ADDRESS,
+  RATE_LIMIT_ADDRESS_HEADER,
+  rateLimitAddress,
   restoreClientAddress,
   signClientAddress,
   visitorAddress,
@@ -74,15 +77,17 @@ describe("adresse signée de bout en bout", () => {
     expect(a.headers.get("x-forwarded-for")).not.toBe(b.headers.get("x-forwarded-for"))
   })
 
-  it("sans secret côté proxy : rien n'est signé, Convex garde l'adresse du reverse proxy", async () => {
+  it("sans secret côté proxy : rien n'est signé, Convex garde l'adresse du reverse proxy de confiance", async () => {
     const sent = await throughProxy({ "x-real-ip": "203.0.113.7" })
     expect(sent.headers.get(CLIENT_ADDRESS_HEADER)).toBeNull()
-    expect((await restoreClientAddress(sent, SECRET)).headers.get("x-forwarded-for")).toBe("172.30.0.5")
+    const restored = await restoreClientAddress(sent, SECRET, { trustForwardedFor: true })
+    expect(restored.headers.get("x-forwarded-for")).toBe("172.30.0.5")
+    expect(restored.headers.get(RATE_LIMIT_ADDRESS_HEADER)).toBe("172.30.0.5")
   })
 
   it("sans secret côté Convex : l'adresse signée est retirée et ignorée", async () => {
     const sent = await throughProxy({ "x-real-ip": "203.0.113.7" }, { secret: SECRET })
-    const restored = await restoreClientAddress(sent, undefined)
+    const restored = await restoreClientAddress(sent, undefined, { trustForwardedFor: true })
     expect(restored.headers.get("x-forwarded-for")).toBe("172.30.0.5")
     expect(restored.headers.get(CLIENT_ADDRESS_HEADER)).toBeNull()
   })
@@ -93,7 +98,7 @@ describe("restoreClientAddress refuse la falsification", () => {
     return await restoreClientAddress(
       new Request(url, { method: "POST", headers: { "x-forwarded-for": "198.51.100.66", ...headers } }),
       SECRET,
-      NOW,
+      { now: NOW, trustForwardedFor: true },
     )
   }
 
@@ -184,8 +189,75 @@ describe("restoreClientAddress refuse la falsification", () => {
     expect(sent.headers.get(CLIENT_ADDRESS_SIGNATURE_HEADER)).toBeNull()
   })
 
-  it("une requête sans en-tête de signature est rendue telle quelle", async () => {
-    const plain = new Request(`${CONVEX}/api/auth/ok`)
-    expect(await restoreClientAddress(plain, SECRET)).toBe(plain)
+  it("l'ancienne signature (instant en troisième argument) marche encore", async () => {
+    const headers = new Headers()
+    const url = `${CONVEX}/api/auth/sign-in/email`
+    await signClientAddress(headers, {
+      address: "203.0.113.7",
+      method: "POST",
+      target: new URL(url),
+      secret: SECRET,
+      now: NOW,
+    })
+    const restored = await restoreClientAddress(new Request(url, { method: "POST", headers }), SECRET, NOW)
+    expect(restored.headers.get(RATE_LIMIT_ADDRESS_HEADER)).toBe("203.0.113.7")
+  })
+})
+
+describe("sans signature, jamais le x-forwarded-for du client (Convex Cloud)", () => {
+  const url = `${CONVEX}/api/auth/sign-in/email`
+
+  it("adresse forgée par le client : remplacée par la clé neutre partout", async () => {
+    const restored = await restoreClientAddress(
+      new Request(url, {
+        method: "POST",
+        headers: {
+          "x-forwarded-for": "203.0.113.7",
+          "x-real-ip": "203.0.113.8",
+          [RATE_LIMIT_ADDRESS_HEADER]: "203.0.113.9",
+        },
+      }),
+      SECRET,
+    )
+    for (const name of ["x-forwarded-for", "x-real-ip", RATE_LIMIT_ADDRESS_HEADER])
+      expect(restored.headers.get(name), name).toBe(NEUTRAL_CLIENT_ADDRESS)
+  })
+
+  it("signature fausse : clé neutre, même avec un secret", async () => {
+    const restored = await restoreClientAddress(
+      new Request(url, {
+        method: "POST",
+        headers: {
+          "x-forwarded-for": "203.0.113.7",
+          [CLIENT_ADDRESS_HEADER]: "203.0.113.7",
+          [CLIENT_ADDRESS_SIGNATURE_HEADER]: `${NOW / 1000}.${"0".repeat(64)}`,
+        },
+      }),
+      SECRET,
+      { now: NOW },
+    )
+    expect(restored.headers.get(RATE_LIMIT_ADDRESS_HEADER)).toBe(NEUTRAL_CLIENT_ADDRESS)
+  })
+
+  it("reverse proxy de confiance : la dernière adresse, celle qu'il a écrite", async () => {
+    const restored = await restoreClientAddress(
+      new Request(url, { headers: { "x-forwarded-for": "198.51.100.1, 203.0.113.7" } }),
+      undefined,
+      { trustForwardedFor: true },
+    )
+    expect(restored.headers.get(RATE_LIMIT_ADDRESS_HEADER)).toBe("203.0.113.7")
+  })
+
+  it("rateLimitAddress : signée, puis proxy de confiance, puis clé neutre", () => {
+    expect(rateLimitAddress({ signed: "203.0.113.7", forwardedFor: "1.1.1.1", trustForwardedFor: true })).toBe(
+      "203.0.113.7",
+    )
+    expect(rateLimitAddress({ signed: undefined, forwardedFor: "1.1.1.1", trustForwardedFor: true })).toBe("1.1.1.1")
+    expect(rateLimitAddress({ signed: undefined, forwardedFor: "1.1.1.1", trustForwardedFor: false })).toBe(
+      NEUTRAL_CLIENT_ADDRESS,
+    )
+    expect(rateLimitAddress({ signed: undefined, forwardedFor: undefined, trustForwardedFor: true })).toBe(
+      NEUTRAL_CLIENT_ADDRESS,
+    )
   })
 })

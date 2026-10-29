@@ -145,6 +145,46 @@ authComponent.registerRoutes(http, (ctx) => {
 })
 ```
 
+## Limite de connexion par adresse
+
+better-auth limite chaque adresse (3 essais par 10 s sur `/sign-in/*`, 100 par 10 s ailleurs). Sur Convex, trois pièces la rendent juste :
+
+1. **Adresse signée** : le proxy signe l'adresse du visiteur (`createAuthProxy(url, fetch, { addressSecret })`), Convex la vérifie (`restoreClientAddress`). Même secret des deux côtés, un par produit.
+2. **Jamais le `x-forwarded-for` du client** : sans signature valable, `restoreClientAddress` retient l'adresse du reverse proxy seulement si `trustForwardedFor: true` (un proxy qu'on contrôle écrase cet en-tête avant Convex). Sinon, par exemple sur Convex Cloud où le client l'écrit lui-même, l'adresse devient la clé neutre `NEUTRAL_CLIENT_ADDRESS` (`0.0.0.0`) : une limite commune à ces appels, jamais une adresse choisie par le client.
+3. **Chemins serveur exclus, table purgée** (`@hgdc/auth/rate-limit`) : `/convex/token`, `/convex/jwks` et `/convex/.well-known/openid-configuration` arrivent du serveur du front, sans signature ; `HGDC_RATE_LIMIT` ne les limite jamais. better-auth ne vide jamais sa table `rateLimit` : `purgeAuthRateLimitBatch` le fait chaque heure.
+
+```ts
+// convex/auth.ts
+import { HGDC_RATE_LIMIT } from "@hgdc/auth/rate-limit"
+import { HGDC_IP_ADDRESS_OPTIONS } from "@hgdc/auth/server"
+// betterAuth({ ..., rateLimit: HGDC_RATE_LIMIT, advanced: { ..., ipAddress: HGDC_IP_ADDRESS_OPTIONS } })
+
+// convex/http.ts : sur toutes les routes de better-auth
+const trustForwardedFor = process.env.AUTH_TRUST_FORWARDED_FOR === "1"
+auth.handler(
+  await restoreClientAddress(restoreFetchMode(request), process.env.AUTH_PROXY_SECRET, { trustForwardedFor }),
+)
+
+// convex/authRateLimit.ts
+import { purgeAuthRateLimitArgs, purgeAuthRateLimitBatch } from "@hgdc/auth/rate-limit"
+export const purgeAuthRateLimit = internalMutation({
+  args: purgeAuthRateLimitArgs,
+  returns: v.null(),
+  // Type de retour écrit : `next` renvoie à cette mutation, TypeScript ne peut pas l'inférer.
+  handler: async (ctx, { cursor }): Promise<null> =>
+    await purgeAuthRateLimitBatch(
+      ctx,
+      { deleteMany: components.betterAuth.adapter.deleteMany, next: internal.authRateLimit.purgeAuthRateLimit },
+      cursor,
+    ),
+})
+
+// convex/crons.ts
+crons.hourly("purge-limite-connexion", { minuteUTC: 20 }, internal.authRateLimit.purgeAuthRateLimit, { cursor: null })
+```
+
+`AUTH_TRUST_FORWARDED_FOR` (nom au choix du produit) ne se pose que sur un déploiement derrière un reverse proxy qui écrase `x-forwarded-for`, et ne se recopie jamais vers un déploiement qui ne l'est pas.
+
 ## Clés JWKS statiques côté Convex
 
 Chaque appel HTTP à Convex avec un jeton (le rendu serveur de TanStack Start, `fetchAuthQuery`) fait vérifier ce jeton par le backend Convex, qui ne le met jamais en cache. Avec `getAuthConfigProvider()` seul, il va chercher les clés à `<site>/api/auth/convex/jwks` **à chaque appel** : sous charge, cette adresse répond 429 et la page tombe en erreur. Les clés se donnent donc en dur, par la variable `JWKS` du déploiement Convex :
