@@ -8,6 +8,7 @@ Connexion d'un produit de la famille à Account (OIDC) : bouton « Se connecter 
 | `@hgdc/auth/server` | `hgdcProvider` (plugin `genericOAuth`), `createAuthProxy`, `restoreFetchMode`, `createHgdcEntry`                                                                                                                                                                                                                                                                                             |
 | `@hgdc/auth/convex` | `requireIdentity`, `requireOrgMember`, `isAuthError`, `authErrorReason`, `AUTH_ERROR_MESSAGES`                                                                                                                                                                                                                                                                                               |
 | `@hgdc/auth/events` | Événements poussés par Account : `ACCOUNT_EVENTS_PATH`, `signAccountEvent`, `verifyAccountEvent`, `handleAccountEventRequest`, `accountEventSchema`, `accountEventIsStale`, `ACCOUNT_EVENT_RETENTION_MS`, et pour Convex `vAccountEvent`, `accountEventsTable`                                                                                                                               |
+| `@hgdc/auth/mcp`    | Serveurs MCP autorisés par Account : `MCP_PRODUCTS`, `mcpResource`, `mcpScopes`, `MCP_SCOPES`, `parseMcpScope`, `verifyMcpAccessToken`, `createHgdcJwks`, `mcpProtectedResourceMetadata`                                                                                                                                                                                                     |
 | `@hgdc/auth/react`  | `HgdcSignInButton`, `startHgdcSignIn`, `HgdcMark` (le H tricolore de la famille, `HGDC_MARK_SVG`)                                                                                                                                                                                                                                                                                            |
 
 Pairs : better-auth 1.6, convex 1.46+, React 19 (chacun facultatif selon l'import).
@@ -39,6 +40,48 @@ import { HgdcSignInButton } from "@hgdc/auth/react"
 ```
 
 Le bouton n'a pas de style propre : le produit le met en forme. L'attente est exposée par `aria-busy` et `data-pending`.
+
+## Protéger le serveur MCP d'un produit
+
+Account est le serveur d'autorisation (ADR 0009 d'Account). Le client MCP lit le document RFC 9728 du produit, s'enregistre chez Account, la personne choisit une organisation et consent, puis le client présente un JWT d'Account. Le produit le vérifie sans appeler Account :
+
+```ts
+import {
+  createHgdcJwks,
+  mcpProtectedResourceMetadata,
+  mcpResource,
+  McpTokenError,
+  verifyMcpAccessToken,
+} from "@hgdc/auth/mcp"
+import {
+  extractBearer,
+  protectedResourceMetadataResponse,
+  protectedResourceMetadataUrl,
+  unauthorized,
+} from "@hgdc/api/bearer"
+
+const keys = createHgdcJwks() // une fois par module
+const challenge = {
+  resourceMetadata: protectedResourceMetadataUrl(mcpResource("portal")),
+  scope: "portal:read portal:write",
+}
+
+// GET /.well-known/oauth-protected-resource/portal/mcp
+protectedResourceMetadataResponse(mcpProtectedResourceMetadata("portal", { resourceName: "Portal" }))
+
+// Chaque requête MCP
+const token = extractBearer(request)
+if (!token) return unauthorized(challenge)
+try {
+  const access = await verifyMcpAccessToken(token, { product: "portal", keys, require: "read" })
+  // access.userId, access.organizationId : vérifier encore que la personne est membre de l'organisation.
+} catch (error) {
+  if (error instanceof McpTokenError) return unauthorized({ ...challenge, error: error.bearerError })
+  throw error
+}
+```
+
+Règles : exiger `require: "write"` pour toute écriture ; ne jamais transmettre le jeton à une autre API ; ne jamais renvoyer `error.message` au client. Le jeton vaut 15 minutes : une révocation dans Account coupe le renouvellement tout de suite.
 
 ## Servir le produit sous un chemin
 

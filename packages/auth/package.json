@@ -31,6 +31,10 @@
       "types": "./dist/events.d.ts",
       "default": "./dist/events.js"
     },
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "default": "./dist/mcp.js"
+    },
     "./server": {
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"
