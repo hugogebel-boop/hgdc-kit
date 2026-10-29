@@ -39,6 +39,10 @@
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"
     },
+    "./rate-limit": {
+      "types": "./dist/rate-limit.d.ts",
+      "default": "./dist/rate-limit.js"
+    },
     "./react": {
       "types": "./dist/react.d.ts",
       "default": "./dist/react.js"
