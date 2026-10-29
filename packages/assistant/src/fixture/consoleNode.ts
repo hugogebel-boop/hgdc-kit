@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk"
 import { internalActionGeneric, type ActionBuilder, type DataModelFromSchemaDefinition } from "convex/server"
 
-import { createConsoleRunner } from "../console-node.ts"
+import { createConsoleRunner, type ConsoleRunnerConfig } from "../console-node.ts"
 import { vRunArgs } from "../console.ts"
 import type { ModelClient } from "../node.ts"
 import { TOOLS } from "./console.ts"
@@ -66,7 +66,7 @@ function fakeClient(): ModelClient {
   }
 }
 
-export const run = createConsoleRunner({
+const config: ConsoleRunnerConfig<typeof TOOLS> = {
   // Typé comme celui de `./_generated/server` d’un produit.
   internalAction: internalActionGeneric as ActionBuilder<DataModelFromSchemaDefinition<typeof schema>, "internal">,
   tools: TOOLS,
@@ -89,7 +89,12 @@ export const run = createConsoleRunner({
   }),
   // La demande compte comme non fiable : avec la lecture privée, la carte porte la mise en garde.
   taint: { untrusted: true },
-})
+}
+
+export const run = createConsoleRunner(config)
+
+/** Le même tour, arrêté après un seul appel au modèle (`maxSteps`). */
+export const runShort = createConsoleRunner({ ...config, maxSteps: 1 })
 
 /** Cible de la planification de `send` dans les tests : ne fait rien. */
 export const idle = internalActionGeneric({ args: vRunArgs, handler: async () => null })
