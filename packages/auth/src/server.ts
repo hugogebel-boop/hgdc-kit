@@ -27,6 +27,8 @@ export {
   visitorAddress,
 } from "./client-address.ts"
 
+export { convexPath, createMcpProxy, MAX_MCP_BODY_BYTES, type McpProxyOptions } from "./mcp-proxy.ts"
+
 /** En-tête qui porte le `sec-fetch-mode` du navigateur à travers le proxy. */
 export const FETCH_MODE_HEADER = "x-hgdc-fetch-mode"
 
