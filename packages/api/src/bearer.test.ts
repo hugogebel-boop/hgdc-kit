@@ -9,6 +9,7 @@ import {
   safeEqualHash,
   unauthorized,
   wwwAuthenticate,
+  asciiChallengeText,
 } from "./bearer.ts"
 
 describe("extractBearer", () => {
@@ -83,8 +84,24 @@ describe("défi et 401", () => {
       `Bearer resource_metadata="${metadata}", scope="mail:read mail:write"`,
     )
     expect(wwwAuthenticate({ error: "invalid_token", errorDescription: 'a "b"\r\nc' })).toBe(
-      'Bearer error="invalid_token", error_description="a \\"b\\"  c"',
+      'Bearer error="invalid_token", error_description="a b c"',
     )
+  })
+
+  it("en-tête en ASCII, message accentué dans le corps", async () => {
+    expect(asciiChallengeText("Clé d’API inconnue ou révoquée — « hgdc_mail_… »")).toBe(
+      "Cle d'API inconnue ou revoquee - hgdc_mail_...",
+    )
+    const response = unauthorized({
+      error: "invalid_token",
+      errorDescription: "Jeton d'accès refusé.",
+      realm: "Médias",
+      detail: "Jeton d'accès refusé.",
+    })
+    const header = response.headers.get("www-authenticate")!
+    expect(header).toBe(`Bearer realm="Medias", error="invalid_token", error_description="Jeton d'acces refuse."`)
+    expect(/^[ -~]*$/.test(header)).toBe(true)
+    expect(((await response.json()) as { detail: string }).detail).toBe("Jeton d'accès refusé.")
   })
 
   it("401 sans jeton, en problem+json", async () => {
@@ -101,7 +118,9 @@ describe("défi et 401", () => {
     expect(unauthorized({ error: "invalid_token" }).status).toBe(401)
     const forbidden = unauthorized({ error: "insufficient_scope", scope: "mail:write", resourceMetadata: metadata })
     expect(forbidden.status).toBe(403)
-    expect(forbidden.headers.get("www-authenticate")).toContain('error="insufficient_scope"')
+    expect(forbidden.headers.get("www-authenticate")).toBe(
+      `Bearer resource_metadata="${metadata}", scope="mail:write", error="insufficient_scope"`,
+    )
   })
 })
 

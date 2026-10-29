@@ -43,8 +43,27 @@ export async function safeEqualHash(a: string, b: string): Promise<boolean> {
   return diff === 0
 }
 
+/**
+ * Un texte de défi `WWW-Authenticate` en ASCII imprimable : RFC 6750 § 3 limite `error_description`
+ * et `scope` à %x20-21 / %x23-5B / %x5D-7E, et un en-tête HTTP hors ASCII est lu de travers (ou
+ * refusé) par bien des clients. Accents retirés (« accès » devient « acces »), apostrophes et tirets
+ * typographiques ramenés à `'` et `-`, guillemets, barres obliques inverses et autres caractères
+ * écartés, espaces resserrés. Le message accentué reste dans le corps problem+json (`detail`).
+ */
+export function asciiChallengeText(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[\u2018\u2019\u02BC]/g, "'")
+    .replace(/[\u2010-\u2015\u2212]/g, "-")
+    .replace(/\s+/g, " ")
+    .replace(/[^\x20-\x7E]|["\\]/g, "")
+    .replace(/ {2,}/g, " ")
+    .trim()
+}
+
 function quote(value: string): string {
-  return `"${value.replace(/[\\"]/g, "\\$&").replace(/[\r\n]/g, " ")}"`
+  return `"${asciiChallengeText(value)}"`
 }
 
 export type BearerError = "invalid_request" | "invalid_token" | "insufficient_scope"
@@ -59,7 +78,7 @@ export type ChallengeOptions = {
   errorDescription?: string
 }
 
-/** Valeur de l'en-tête `WWW-Authenticate` d'un défi Bearer. */
+/** Valeur de l'en-tête `WWW-Authenticate` d'un défi Bearer, toujours en ASCII (`asciiChallengeText`). */
 export function wwwAuthenticate(options: ChallengeOptions = {}): string {
   const params: string[] = []
   if (options.realm) params.push(`realm=${quote(options.realm)}`)
@@ -73,6 +92,8 @@ export function wwwAuthenticate(options: ChallengeOptions = {}): string {
 /**
  * La réponse d'un refus d'accès : 401 (jeton absent ou invalide) ou 403 (`insufficient_scope`),
  * en problem+json, avec le défi `WWW-Authenticate`. Sans jeton, pas de code `error` (RFC 6750 § 3.1).
+ * Pour `insufficient_scope`, `scope` nomme le scope qui manque (`mail:write`). `detail` garde ses
+ * accents ; `errorDescription` part en ASCII dans l'en-tête.
  */
 export function unauthorized(options: ChallengeOptions & { detail?: string } = {}): Response {
   const slug =

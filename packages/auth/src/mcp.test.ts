@@ -11,6 +11,7 @@ import {
   mcpProtectedResourceMetadata,
   mcpResource,
   mcpScopes,
+  mcpTokenChallenge,
   parseMcpScope,
   verifyMcpAccessToken,
   type McpTokenRejection,
@@ -208,6 +209,24 @@ describe("verifyMcpAccessToken", () => {
     expect((error as McpTokenError).bearerError).toBe("insufficient_scope")
     expect(await rejection(await sign(claims({ scope: "openid offline_access" })))).toBe("insufficient_scope")
     expect(await rejection(await sign(claims({ scope: undefined })))).toBe("insufficient_scope")
+  })
+
+  it("défi : 403 avec le scope qui manque, 401 pour un jeton invalide", async () => {
+    const refusal = async (token: string, extra: Partial<VerifyMcpAccessTokenOptions> = {}) => {
+      const error = await verifyMcpAccessToken(token, options(extra)).catch((e: unknown) => e)
+      expect(error).toBeInstanceOf(McpTokenError)
+      return mcpTokenChallenge(error as McpTokenError)
+    }
+    const noProductScope = await sign(claims({ scope: "openid status:read" }))
+    expect(await refusal(noProductScope)).toEqual({ error: "insufficient_scope", scope: "portal:read" })
+    expect(await refusal(await sign(claims({ scope: undefined })))).toEqual({
+      error: "insufficient_scope",
+      scope: "portal:read",
+    })
+    const reader = await sign(claims({ scope: "portal:read" }))
+    expect(await refusal(reader, { require: "write" })).toEqual({ error: "insufficient_scope", scope: "portal:write" })
+    expect(await refusal(await sign(claims({ iss: "https://evil.ch" })))).toEqual({ error: "invalid_token" })
+    expect(mcpTokenChallenge(new McpTokenError("insufficient_scope", "x"))).toEqual({ error: "insufficient_scope" })
   })
 
   it("refuse un jeton illisible ou trop long", async () => {
