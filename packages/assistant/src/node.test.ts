@@ -184,6 +184,17 @@ describe("runTurn", () => {
     expect(result.tools.filter((t) => t.status === "error")).toHaveLength(9)
   })
 
+  it("par défaut, 25 appels d'outils par étape passent, le suivant revient en erreur", async () => {
+    const calls = Array.from({ length: 26 }, (_, i) => ({ id: `t${i}`, name: "list_monitors", input: {} }))
+    const { client, requests } = fakeClient([{ tools: calls }, { text: "Fini." }])
+    const h = handlers()
+    await runTurn(base(client, { handlers: h }))
+    const toolResults = requests[1]!.messages.at(-1)!.content as Anthropic.ToolResultBlockParam[]
+    expect(h.read).toHaveBeenCalledTimes(25)
+    expect(toolResults[24]).not.toMatchObject({ is_error: true })
+    expect(toolResults[25]).toMatchObject({ is_error: true })
+  })
+
   it("un refus ou une panne du service ne touche pas l'historique ; la panne garde sa nature, sans détail", async () => {
     const refusal = fakeClient([{ text: "", stop: "refusal" }])
     expect(await runTurn(base(refusal.client))).toMatchObject({

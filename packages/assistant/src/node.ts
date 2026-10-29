@@ -274,8 +274,8 @@ function userTurn(text: string, notes: ReadonlyArray<string>): Anthropic.Message
 export async function runTurn(options: RunTurnOptions): Promise<TurnResult> {
   const now = options.now ?? Date.now
   const price = options.price ?? HAIKU_5_5.price
-  const maxSteps = options.maxSteps ?? 12
-  const maxCalls = options.maxToolCallsPerStep ?? 8
+  const maxSteps = options.maxSteps ?? 25
+  const maxCalls = options.maxToolCallsPerStep ?? 25
   const flushMs = options.flushMs ?? 300
   const maxResult = Math.min(options.maxToolResult ?? MAX_TOOL_RESULT, MAX_TOOL_RESULT)
   const maxBytes = Math.min(options.maxHistoryBytes ?? MAX_HISTORY_BYTES, MAX_HISTORY_BYTES)
