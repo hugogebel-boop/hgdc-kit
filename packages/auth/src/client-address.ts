@@ -12,6 +12,9 @@
  * better-auth. Sinon la requête garde l'adresse posée par le reverse proxy, comme sans proxy. Un
  * visiteur ne peut rien imposer : sans le secret, son en-tête est retiré et ignoré.
  *
+ * Un secret par produit (jamais partagé entre deux produits) : la signature ne couvre pas l'hôte, une
+ * paire signée pour un produit ne doit rien valoir chez un autre.
+ *
  * Seulement Web Crypto : le module tourne dans le runtime Convex comme sur Node.
  */
 
@@ -27,10 +30,11 @@ function isAddress(value: string): boolean {
 
 /**
  * Adresse du visiteur vue par le front : `x-real-ip`, posé par l'hébergeur (l'edge de Host ou
- * Vercel, qui écrasent ce qu'envoie le client), sinon la première entrée de `x-forwarded-for`.
+ * Vercel, qui écrasent ce qu'envoie le client). Jamais `x-forwarded-for` : chez un hébergeur qui ne
+ * l'écrase pas, le visiteur choisirait l'adresse signée. Sans `x-real-ip`, rien n'est signé.
  */
 export function visitorAddress(headers: Headers): string | undefined {
-  const candidate = headers.get("x-real-ip")?.trim() || headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+  const candidate = headers.get("x-real-ip")?.trim()
   return candidate && isAddress(candidate) ? candidate : undefined
 }
 

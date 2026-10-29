@@ -37,11 +37,13 @@ async function throughProxy(
 }
 
 describe("visitorAddress", () => {
-  it("prend x-real-ip, sinon la première entrée de x-forwarded-for", () => {
+  it("prend x-real-ip, jamais x-forwarded-for", () => {
     expect(visitorAddress(new Headers({ "x-real-ip": "203.0.113.7", "x-forwarded-for": "1.1.1.1" }))).toBe(
       "203.0.113.7",
     )
-    expect(visitorAddress(new Headers({ "x-forwarded-for": "2001:db8::1, 10.0.0.1" }))).toBe("2001:db8::1")
+    expect(visitorAddress(new Headers({ "x-real-ip": "2001:db8::1" }))).toBe("2001:db8::1")
+    // `x-forwarded-for` seul ne compte pas : le visiteur l'écrit chez un hébergeur qui ne l'écrase pas.
+    expect(visitorAddress(new Headers({ "x-forwarded-for": "2001:db8::1" }))).toBeUndefined()
   })
 
   it("refuse ce qui n'est pas une adresse", () => {
