@@ -248,6 +248,17 @@ describe("sans signature, jamais le x-forwarded-for du client (Convex Cloud)", (
     expect(restored.headers.get(RATE_LIMIT_ADDRESS_HEADER)).toBe("203.0.113.7")
   })
 
+  it("adresse que better-auth refuserait (1.2, 001.002.003.004) : clé neutre, jamais une limite qui saute", async () => {
+    for (const bad of ["1.2", "1:2", "001.002.003.004", ""]) {
+      const restored = await restoreClientAddress(
+        new Request(url, { headers: { "x-forwarded-for": bad } }),
+        undefined,
+        { trustForwardedFor: true },
+      )
+      expect(restored.headers.get(RATE_LIMIT_ADDRESS_HEADER), bad).toBe(NEUTRAL_CLIENT_ADDRESS)
+    }
+  })
+
   it("rateLimitAddress : signée, puis proxy de confiance, puis clé neutre", () => {
     expect(rateLimitAddress({ signed: "203.0.113.7", forwardedFor: "1.1.1.1", trustForwardedFor: true })).toBe(
       "203.0.113.7",

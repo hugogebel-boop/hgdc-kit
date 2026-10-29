@@ -9,3 +9,5 @@ Sign-in rate limit shared by every product.
 - New `@hgdc/auth/rate-limit`: `SERVER_AUTH_PATHS` (server-called paths never limited), `HGDC_RATE_LIMIT` (database storage, those paths excluded), `purgeAuthRateLimitArgs` and `purgeAuthRateLimitBatch` (hourly purge of the `rateLimit` table).
 
 Behaviour change: behind a trusted reverse proxy, pass `trustForwardedFor: true`, or unsigned calls share the neutral key.
+
+Requires the `rateLimit` table in the better-auth schema (present in the `@convex-dev/better-auth` component schema; regenerate a local schema). Invalid addresses (rejected by better-auth) now fall back to the neutral key instead of silently disabling the limit.

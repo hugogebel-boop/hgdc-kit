@@ -185,6 +185,10 @@ crons.hourly("purge-limite-connexion", { minuteUTC: 20 }, internal.authRateLimit
 
 `AUTH_TRUST_FORWARDED_FOR` (nom au choix du produit) ne se pose que sur un déploiement derrière un reverse proxy qui écrase `x-forwarded-for`, et ne se recopie jamais vers un déploiement qui ne l'est pas.
 
+Prérequis : la table `rateLimit` dans le schéma de better-auth. Le schéma du composant `@convex-dev/better-auth` l'a ; un schéma local (`convex/betterAuth/schema.ts`) doit être régénéré pour l'inclure, sinon chaque route `/api/auth` répond 500.
+
+Limite commune : sans adresse signée (secret absent d'un côté, horloge décalée de plus de 60 s) ni proxy de confiance, tous les appels partagent la clé neutre, soit 3 essais de connexion par 10 s pour tout le monde. Quelqu'un qui appelle Convex directement peut alors bloquer la connexion des autres quelques secondes. C'est le prix de ne jamais croire une adresse écrite par le client.
+
 ## Clés JWKS statiques côté Convex
 
 Chaque appel HTTP à Convex avec un jeton (le rendu serveur de TanStack Start, `fetchAuthQuery`) fait vérifier ce jeton par le backend Convex, qui ne le met jamais en cache. Avec `getAuthConfigProvider()` seul, il va chercher les clés à `<site>/api/auth/convex/jwks` **à chaque appel** : sous charge, cette adresse répond 429 et la page tombe en erreur. Les clés se donnent donc en dur, par la variable `JWKS` du déploiement Convex :

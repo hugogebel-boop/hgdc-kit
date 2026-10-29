@@ -20,14 +20,22 @@
  * Seulement Web Crypto : le module tourne dans le runtime Convex comme sur Node.
  */
 
+import { z } from "zod"
+
 export const CLIENT_ADDRESS_HEADER = "x-hgdc-client-address"
 export const CLIENT_ADDRESS_SIGNATURE_HEADER = "x-hgdc-client-address-signature"
 const MAX_AGE_SECONDS = 60
 const encoder = new TextEncoder()
 
-/** Une adresse IPv4 ou IPv6 plausible (better-auth la revalide). */
+const IPV4 = z.ipv4()
+const IPV6 = z.ipv6()
+
+/**
+ * Une adresse IPv4 ou IPv6 que better-auth accepte (même validation que son `isValidIP`). Une adresse
+ * qu'il refuserait lui ferait sauter la limite : elle devient la clé neutre.
+ */
 function isAddress(value: string): boolean {
-  return value.length <= 45 && /^[0-9a-f.:]+$/i.test(value) && /[.:]/.test(value)
+  return value.length <= 45 && (IPV4.safeParse(value).success || IPV6.safeParse(value).success)
 }
 
 /**
