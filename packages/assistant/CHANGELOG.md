@@ -1,5 +1,11 @@
 # @hgdc/assistant
 
+## 0.3.1
+
+### Patch Changes
+
+- 9cc4326: `runTurn`: default bounds raised to 25 steps and 25 tool calls per step (were 12 and 8), so a grouped request ("one call per item in the same reply") can propose many confirmation cards in one turn.
+
 ## 0.3.0
 
 ### Minor Changes
