@@ -314,6 +314,9 @@ export async function verifyMcpAccessToken(token: string, options: VerifyMcpAcce
   }
 }
 
+/** Délai de lecture des clés d'Account. */
+const JWKS_TIMEOUT_MS = 3000
+
 /**
  * Clés d'Account lues à `HGDC_JWKS_URL`, gardées en mémoire `ttlMs` (10 minutes). Un `kid` inconnu
  * relit la liste, au plus une fois par `minRefreshMs` (une minute) : une rotation de clé passe sans
@@ -341,7 +344,12 @@ export function createHgdcJwks(
   async function refresh(): Promise<void> {
     attemptedAt = now()
     try {
-      const response = await fetchImpl(url, { headers: { accept: "application/json" } })
+      const response = await fetchImpl(url, {
+        headers: { accept: "application/json" },
+        // Account lent ou détourné : ne pas faire attendre chaque requête du produit, ni suivre ailleurs.
+        redirect: "error",
+        signal: AbortSignal.timeout(JWKS_TIMEOUT_MS),
+      })
       if (!response.ok) return
       const body = (await response.json()) as { keys?: unknown }
       if (!Array.isArray(body.keys)) return
