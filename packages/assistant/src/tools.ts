@@ -21,6 +21,21 @@ export type ToolSpec = {
   /** Ce que le modèle lit pour choisir l'outil. */
   description: string
   input: z.ZodObject
+  /** Nom affiché par un client MCP (`@hgdc/api/mcp`) ; `label` à défaut. */
+  title?: string
+  /**
+   * Surcharge des indications MCP déduites de `kind` (`readOnlyHint`, `destructiveHint`,
+   * `idempotentHint`, `openWorldHint`) : un outil `write` qui envoie un e-mail est `openWorldHint`.
+   */
+  annotations?: {
+    title?: string
+    readOnlyHint?: boolean
+    destructiveHint?: boolean
+    idempotentHint?: boolean
+    openWorldHint?: boolean
+  }
+  /** Forme du résultat : `outputSchema` et `structuredContent` côté MCP. Ignoré par l'assistant. */
+  output?: z.ZodType
 }
 
 export type ToolSet = Readonly<Record<string, ToolSpec>>

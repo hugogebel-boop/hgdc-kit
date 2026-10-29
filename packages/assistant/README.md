@@ -27,6 +27,7 @@ bun add @hgdc/assistant @anthropic-ai/sdk
 - **La classe d'un outil décide de son chemin**, pas le produit : `read` passe par `runReadTool` (query), `write` par `runWriteTool`, `confirm` par `runProposeTool`, qui ne reçoit qu'un `ctx` en lecture seule et n'enregistre qu'une carte. L'action n'a lieu que dans `confirmAction`, appelée par la mutation publique de la personne qui clique, après une nouvelle description de la carte et la comparaison de son empreinte SHA-256. Une carte expire après 24 h.
 - **Crédits** : une réservation (3 crédits) prise dans la même transaction que le contrôle, ajustée au coût réel à la fin du tour, en micro-dollars entiers ; une réponse jamais finie garde sa réservation comme coût (`failStuckTurns`). Une conversation ne s'efface pas pendant une réponse.
 - **Bornes du tour** : 12 étapes, 8 appels d'outils par étape, 8 minutes, 20 000 caractères par résultat d'outil, 700 000 octets d'historique (au-delà, la conversation est pleine).
+- **Mêmes outils pour MCP** : le serveur MCP du produit (`createMcpHandler` de `@hgdc/api/mcp`) reprend le même `ToolSet`. Trois champs facultatifs d'un outil ne servent qu'à lui : `title` (nom affiché), `annotations` (surcharge des indications déduites de la classe) et `output` (schéma Zod du résultat).
 - **Événements de l'application** (confirmation, annulation, échec) : remis au modèle au tour suivant dans un bloc `<application_events>` séparé, que ni la demande ni un résultat d'outil ne peuvent imiter.
 
 ## Données et nLPD
