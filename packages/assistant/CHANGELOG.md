@@ -1,5 +1,11 @@
 # @hgdc/assistant
 
+## 0.3.2
+
+### Patch Changes
+
+- 150f748: `createConsoleRunner` accepts `maxSteps` (model calls per turn, engine default 12).
+
 ## 0.3.1
 
 ### Patch Changes
