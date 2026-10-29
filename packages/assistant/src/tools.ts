@@ -7,12 +7,14 @@ import { z } from "zod"
  * - `write` modifie sans rien envoyer ni détruire (brouillon, réglage réversible) ;
  * - `confirm` envoie, publie, supprime ou ne se rattrape pas : pendant le tour, il ne peut que
  *   décrire une carte (lecture seule) ; l'action n'a lieu qu'au clic « Confirmer », dans la
- *   mutation publique de la personne qui clique.
+ *   mutation publique de la personne qui clique ;
+ * - `send` envoie vers l'extérieur (e-mail, webhook, message) : toujours une carte, comme `confirm`,
+ *   et la garde « trifecta » de `runTurn` s'y applique (`private`, `untrusted`).
  * Aucune dépendance serveur : partagé par l'action Node (définitions envoyées au modèle) et les
  * fonctions Convex qui exécutent.
  */
 
-export type ToolKind = "read" | "write" | "confirm"
+export type ToolKind = "read" | "write" | "confirm" | "send"
 
 export type ToolSpec = {
   kind: ToolKind
@@ -36,6 +38,10 @@ export type ToolSpec = {
   }
   /** Forme du résultat : `outputSchema` et `structuredContent` côté MCP. Ignoré par l'assistant. */
   output?: z.ZodType
+  /** Rend des données privées de l'organisation (garde « trifecta » de `runTurn`). */
+  private?: boolean
+  /** Rend du contenu venu de tiers : page explorée, e-mail reçu (garde « trifecta »). */
+  untrusted?: boolean
 }
 
 export type ToolSet = Readonly<Record<string, ToolSpec>>

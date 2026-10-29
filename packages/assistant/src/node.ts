@@ -3,6 +3,8 @@ import { ConvexError } from "convex/values"
 
 import { addUsage, HAIKU_5_5, keyProvider, NO_USAGE, OPENROUTER_BASE_URL, requestMicros } from "./model.ts"
 import type { Model, Price, Usage } from "./model.ts"
+import { processEnv, usProcessingAllowed } from "./providers.ts"
+import type { ProviderEnv } from "./providers.ts"
 import {
   MAX_TOOL_RESULT,
   neutralizeEventsTag,
@@ -14,11 +16,14 @@ import {
   truncateResult,
 } from "./tools.ts"
 import type { ToolKind, ToolSet } from "./tools.ts"
+import { CLEAN, isTrifecta, routeCall, taintAfter, TRIFECTA_REFUSAL } from "./trifecta.ts"
+import type { Taint, TrifectaPolicy } from "./trifecta.ts"
 
 /*
- * La boucle de l'assistant, pour une action Node (`"use node"`) : Claude en flux avec le SDK
- * officiel d'Anthropic, chez Anthropic ou par OpenRouter selon la clé, outils vérifiés puis
- * aiguillés par leur classe (`read`, `write`, `confirm` vers `propose`), texte et pastilles
+ * La boucle de l'assistant, pour une action Node (`"use node"`) : un modèle en flux derrière
+ * l'interface du SDK d'Anthropic (Infomaniak ou Bedrock `eu.` par `sovereignClient` de
+ * `@hgdc/assistant/clients`), outils vérifiés puis aiguillés par leur classe (`read`, `write`,
+ * `confirm` et `send` vers `propose`, garde « trifecta »), texte et pastilles
  * poussés au fil de l'eau, coût compté en micro-dollars par requête. Le kit ne touche pas la base :
  * le produit passe ses trois gestionnaires (ses fonctions internes, avec la personne déjà vérifiée
  * par la mutation qui a planifié l'action) et `onProgress`.
@@ -35,12 +40,22 @@ export type ModelClient = {
 
 export type ClientChoice = { client: Anthropic; model: string; direct: boolean }
 
+/** Le refus d'Anthropic en direct et d'OpenRouter hors développement local. */
+export const US_PROCESSING_REFUSED =
+  "Anthropic en direct et OpenRouter traitent les données aux États-Unis : refusés hors développement local (ADR 0011). Branche Infomaniak ou Bedrock eu. (sovereignClient)."
+
 /**
  * Le client selon la clé : Anthropic directement, ou OpenRouter qui sert le même modèle avec
  * l'API au format Anthropic (jeton en `Authorization: Bearer`). `origin` et `title` identifient le
- * produit chez OpenRouter.
+ * produit chez OpenRouter. Lève une erreur hors développement local, sauf drapeau
+ * `ASSISTANT_ALLOW_US_PROCESSING=1` (`usProcessingAllowed`).
+ * @deprecated Traitement aux États-Unis. Utiliser `sovereignClient()` de `@hgdc/assistant/clients`.
  */
-export function clientFor(key: string, options: { origin: string; title: string; model?: Model }): ClientChoice {
+export function clientFor(
+  key: string,
+  options: { origin: string; title: string; model?: Model; env?: ProviderEnv },
+): ClientChoice {
+  if (!usProcessingAllowed(options.env ?? processEnv())) throw new Error(US_PROCESSING_REFUSED)
   const model = options.model ?? HAIKU_5_5
   if (keyProvider(key) === "openrouter") {
     return {
@@ -95,12 +110,17 @@ export function toolErrorText(error: unknown): string {
 
 /**
  * Essaie une clé avant de l'enregistrer. OpenRouter : `GET /v1/key` ; Anthropic : liste des modèles.
- * Rend le message à montrer en cas de refus, ou `null`.
+ * Rend le message à montrer en cas de refus, ou `null`. Toute clé est refusée hors développement
+ * local, sauf drapeau `ASSISTANT_ALLOW_US_PROCESSING=1`.
+ * @deprecated Traitement aux États-Unis : la plateforme passe par `sovereignClient()`.
  */
 export async function verifyKey(
   key: string,
   fetcher: (url: string, init: RequestInit) => Promise<Response> = fetch,
+  options: { env?: ProviderEnv } = {},
 ): Promise<string | null> {
+  if (!usProcessingAllowed(options.env ?? processEnv()))
+    return "Les clés Anthropic et OpenRouter ne sont plus acceptées : elles font traiter les données aux États-Unis."
   const trimmed = key.trim()
   const provider = keyProvider(trimmed)
   if (!provider) return "Colle une clé Anthropic (sk-ant-…) ou OpenRouter (sk-or-…)."
@@ -126,11 +146,18 @@ export async function verifyKey(
 
 export type ToolChipState = { id: string; label: string; status: "running" | "done" | "error" }
 
-export type ToolCall = { id: string; name: string; kind: ToolKind; input: Record<string, unknown> }
+export type ToolCall = {
+  id: string
+  name: string
+  kind: ToolKind
+  input: Record<string, unknown>
+  /** Le tour a déjà lu des données privées et du contenu non fiable (garde « trifecta ») : à passer à `runProposeTool`. */
+  trifecta: boolean
+}
 
 /**
  * Les trois gestionnaires du produit. Le moteur choisit selon la classe déclarée de l'outil, pas
- * selon le produit : un outil `confirm` ne passe que par `propose`, qui enregistre une carte.
+ * selon le produit : un outil `confirm` ou `send` ne passe que par `propose`, qui enregistre une carte.
  */
 export type ToolHandlers = {
   read: (call: ToolCall) => Promise<string>
@@ -184,6 +211,13 @@ export type RunTurnOptions = {
    */
   maxCostMicros?: number | null
   formal?: boolean
+  /**
+   * Garde « trifecta » : après un outil `private` et un outil `untrusted` dans le même tour, un outil
+   * `send` devient une carte avec mise en garde (`confirm`, défaut) ou est refusé (`block`).
+   */
+  trifecta?: TrifectaPolicy
+  /** État de départ du tour : `{ untrusted: true }` si la demande elle-même vient d'un inconnu. */
+  taint?: Partial<Taint>
   /** Horloge, pour les tests. */
   now?: () => number
 }
@@ -252,6 +286,7 @@ export async function runTurn(options: RunTurnOptions): Promise<TurnResult> {
   let lostSteps = 0
   const chips: ToolChipState[] = []
   let shown = ""
+  let taint: Taint = { ...CLEAN, ...options.taint }
 
   // Une seule écriture de progression à la fois, dans l'ordre ; un échec n'arrête pas le tour.
   let progress: Promise<void> = Promise.resolve()
@@ -374,21 +409,30 @@ export async function runTurn(options: RunTurnOptions): Promise<TurnResult> {
       for (const [index, call] of calls.entries()) {
         let outcome: Anthropic.ToolResultBlockParam
         const parsed = parseToolCall(options.tools, call.name, call.input)
+        const route = parsed.ok ? routeCall(parsed.kind, taint, options.trifecta) : null
         if (index >= maxCalls) {
           outcome = { type: "tool_result", tool_use_id: call.id, is_error: true, content: ENDINGS.tooManyCalls }
         } else if (now() >= deadline) {
           outcome = { type: "tool_result", tool_use_id: call.id, is_error: true, content: friendlyError("timeout") }
         } else if (!parsed.ok) {
           outcome = { type: "tool_result", tool_use_id: call.id, is_error: true, content: parsed.message }
+        } else if (route === "refuse") {
+          outcome = { type: "tool_result", tool_use_id: call.id, is_error: true, content: TRIFECTA_REFUSAL }
         } else {
           const handler =
-            parsed.kind === "read"
+            route === "read"
               ? options.handlers.read
-              : parsed.kind === "write"
+              : route === "write"
                 ? options.handlers.write
                 : options.handlers.propose
           try {
-            const content = await handler({ id: call.id, name: parsed.name, kind: parsed.kind, input: parsed.input })
+            const content = await handler({
+              id: call.id,
+              name: parsed.name,
+              kind: parsed.kind,
+              input: parsed.input,
+              trifecta: isTrifecta(taint),
+            })
             outcome = {
               type: "tool_result",
               tool_use_id: call.id,
@@ -402,6 +446,8 @@ export async function runTurn(options: RunTurnOptions): Promise<TurnResult> {
               content: toolResult(toolErrorText(error), maxResult),
             }
           }
+          // Ce que l'outil a rendu, même en erreur, est entré dans le tour.
+          taint = taintAfter(taint, options.tools[parsed.name] ?? {})
         }
         results.push(outcome)
         const chip = chips.find((c) => c.id === call.id)

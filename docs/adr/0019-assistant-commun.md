@@ -4,6 +4,8 @@ last_reviewed: 2026-10-18
 status: accepted
 ---
 
+> Complétée par l’[ADR 0022](0022-assistant-souverain-et-fabrique.md) : modèles en Suisse ou dans l’UE seulement (`clientFor` déprécié), fabrique des consoles, classe `send` et garde « trifecta ».
+
 # 0019. Assistant commun : `@hgdc/assistant` et `@hgdc/ui/assistant-view`
 
 ## Contexte

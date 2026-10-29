@@ -14,7 +14,7 @@ Le code commun de la H Collection (HGDC Host, Mail, Account…), publié sur npm
 | [`@hgdc/auth`](packages/auth)           | Bouton « Se connecter avec HGDC », client OIDC better-auth, proxy `/api/auth`, gardes Convex `requireOrgMember`                                         |
 | [`@hgdc/errors`](packages/errors)       | Remontée d'erreurs vers GlitchTip, nettoyée et non bloquante : Convex, navigateur, serveur Bun ou Node                                                  |
 | [`@hgdc/domains`](packages/domains)     | Domaines personnalisés : nom saisi, racine ou sous-domaine, preuve TXT, réponses DNS, enregistrements à afficher                                        |
-| [`@hgdc/assistant`](packages/assistant) | Moteur de l’assistant IA : outils typés, boucle Claude en flux, tables et gardes Convex, crédits, clé scellée                                           |
+| [`@hgdc/assistant`](packages/assistant) | Moteur de l’assistant IA : modèles en Suisse ou dans l’UE, outils typés, fabrique des consoles, tables et gardes Convex, crédits                        |
 | [`@hgdc/webhooks`](packages/webhooks)   | Webhooks signés (Standard Webhooks) : signature et vérification, secret `whsec_`, garde SSRF des adresses, calendrier de reprises                       |
 | [`@hgdc/api`](packages/api)             | API publiques des produits : clés `hgdc_<produit>_`, Bearer et RFC 9728, problem+json, pagination, limites de débit, serveur MCP sans état, OpenAPI 3.1 |
 | [`@hgdc/status`](packages/status)       | Intégrer une page de HGDC Status dans un site : chargement du composant web `<hgdc-status>`, composant React `HgdcStatus`                               |
