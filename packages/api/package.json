@@ -1,0 +1,58 @@
+{
+  "name": "@hgdc/api",
+  "version": "0.0.0",
+  "description": "API publiques des produits HGDC : clés hgdc_<produit>_ (somme de contrôle, SHA-256, scopes), Bearer et métadonnées RFC 9728, erreurs problem+json (RFC 9457) et dialectes Resend et Vercel, pagination par curseur, limites de débit, serveur MCP Streamable HTTP sans état, OpenAPI 3.1. Web Crypto seulement : Convex, navigateur, Bun et Node.",
+  "license": "UNLICENSED",
+  "homepage": "https://github.com/hugogebel-boop/hgdc-kit/tree/main/packages/api#readme",
+  "bugs": "https://github.com/hugogebel-boop/hgdc-kit/security/advisories/new",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hugogebel-boop/hgdc-kit.git",
+    "directory": "packages/api"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "exports": {
+    "./keys": {
+      "types": "./dist/keys.d.ts",
+      "default": "./dist/keys.js"
+    },
+    "./bearer": {
+      "types": "./dist/bearer.d.ts",
+      "default": "./dist/bearer.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "default": "./dist/errors.js"
+    },
+    "./pagination": {
+      "types": "./dist/pagination.d.ts",
+      "default": "./dist/pagination.js"
+    },
+    "./ratelimit": {
+      "types": "./dist/ratelimit.d.ts",
+      "default": "./dist/ratelimit.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "default": "./dist/mcp.js"
+    },
+    "./openapi": {
+      "types": "./dist/openapi.d.ts",
+      "default": "./dist/openapi.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  }
+}
