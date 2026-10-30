@@ -123,8 +123,12 @@ export function viewOrigin(product: string, view: ProductView): string {
   return view === "seul" ? soloOrigin(product) : APP_ORIGIN
 }
 
-/** Vue d'après le nom de la page (`location.hostname`) : `seul` sur `<mot>.hgdc.ch`, `app` sinon. */
+/**
+ * Vue d'après le nom de la page (`location.hostname`) : `seul` sur `<mot>.hgdc.ch` d'un produit servi
+ * sous `app.hgdc.ch`, `app` sinon (Account n'a qu'une vue).
+ */
 export function viewFromHostname(product: string, hostname: string): ProductView {
+  if (!isAppProduct(product)) return "app"
   return `https://${hostname.toLowerCase()}` === soloOrigin(product) ? "seul" : "app"
 }
 

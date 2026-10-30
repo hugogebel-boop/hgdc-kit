@@ -150,7 +150,7 @@ describe("createAuthProxy avec une base", () => {
 
   it("vue seule (x-hgdc-view: seul) : vers l'instance montée sous la base", async () => {
     const { calls, fetchImpl } = recorder()
-    const proxy = createAuthProxy("https://exemple.convex.site", fetchImpl, { basePath: BASE })
+    const proxy = createAuthProxy("https://exemple.convex.site", fetchImpl, { basePath: BASE, soloView: true })
     const seul = { headers: { "x-hgdc-view": "seul" } }
     await proxy(new Request("https://analytics.hgdc.cloud/analytics/api/auth/oauth2/callback/hgdc?code=1", seul))
     await proxy(new Request("https://analytics.hgdc.cloud/api/auth/get-session", seul))
@@ -163,6 +163,26 @@ describe("createAuthProxy avec une base", () => {
       "https://exemple.convex.site/analytics/api/auth/get-session",
       "https://exemple.convex.site/api/auth/x",
     ])
+  })
+
+  it("sans soloView, l'en-tête de vue ne change rien", async () => {
+    const { calls, fetchImpl } = recorder()
+    const proxy = createAuthProxy("https://exemple.convex.site", fetchImpl, { basePath: BASE })
+    await proxy(new Request("https://analytics.hgdc.cloud/api/auth/x", { headers: { "x-hgdc-view": "seul" } }))
+    expect(calls).toEqual(["https://exemple.convex.site/api/auth/x"])
+  })
+
+  it("chemin ambigu : 404 sans appel", async () => {
+    const { calls, fetchImpl } = recorder()
+    const proxy = createAuthProxy("https://exemple.convex.site", fetchImpl, { basePath: BASE, soloView: true })
+    for (const path of [
+      "/analytics//api/auth/x",
+      "/analytics%2Fapi/auth/x",
+      "/analytics/api%2fauth/x",
+      "/analytics/api/auth%5Cx",
+    ])
+      expect((await proxy(new Request(`https://app.hgdc.ch${path}`))).status).toBe(404)
+    expect(calls).toEqual([])
   })
 
   it("sans base, l'en-tête de vue ne change rien", async () => {
@@ -259,6 +279,43 @@ describe("createHgdcEntry avec appBasePath", () => {
     await entry(new Request("https://analytics.hgdc.cloud/analytics/auth/hgdc", { headers: { "x-hgdc-view": "seul" } }))
     await entry(new Request("https://analytics.hgdc.cloud/analytics/auth/hgdc"))
     expect(origins).toEqual(["https://analytics.hgdc.ch", "https://app.hgdc.ch"])
+  })
+
+  it("sans soloOrigin, l'en-tête de vue est ignoré ; soloOrigin sans base refusé", async () => {
+    const origins: Array<string | null> = []
+    const proxy = async (request: Request) => {
+      origins.push(request.headers.get("origin"))
+      return Response.json({ url: AUTHORIZE, redirect: true })
+    }
+    const entry = createHgdcEntry({
+      proxy,
+      errorCallbackURL: "/connexion",
+      appBasePath: BASE,
+      appOrigin: "https://app.hgdc.ch",
+    })
+    await entry(new Request("https://analytics.hgdc.cloud/analytics/auth/hgdc", { headers: { "x-hgdc-view": "seul" } }))
+    expect(origins).toEqual(["https://app.hgdc.ch"])
+    expect(() =>
+      createHgdcEntry({ proxy, errorCallbackURL: "/connexion", soloOrigin: "https://status.hgdc.ch" }),
+    ).toThrow(/soloOrigin demande appBasePath/)
+  })
+
+  it("vue seule, session ouverte : cookie de relecture à Path=/", async () => {
+    const { proxy } = setup({ session: true })
+    const entry = createHgdcEntry({
+      proxy,
+      errorCallbackURL: "/connexion",
+      appBasePath: BASE,
+      soloOrigin: "https://analytics.hgdc.ch",
+    })
+    const response = await entry(
+      new Request("https://analytics.hgdc.cloud/analytics/auth/hgdc?refresh=background&next=/", {
+        headers: { cookie: "a=b", "x-hgdc-view": "seul" },
+      }),
+    )
+    expect(response.headers.getSetCookie()).toEqual([
+      "hgdc-org-sync=/analytics; Path=/; Max-Age=60; SameSite=Lax; Secure",
+    ])
   })
 
   it("session ouverte : redirige sous la base", async () => {

@@ -47,6 +47,31 @@ export function requestView(request: Request): "app" | "seul" {
   return request.headers.get(VIEW_HEADER) === "seul" ? "seul" : "app"
 }
 
+/**
+ * Retire de l'en-tête `Cookie` tout cookie `__Secure-__Host-…` (ADR 0014 de la famille). better-auth
+ * lit certains cookies (jeton Convex du rendu serveur, `getSessionCookie`) d'abord sous le nom
+ * `__Secure-<préfixe>.<nom>` : avec un préfixe `__Host-`, ce nom commence par `__Secure-` et un
+ * nom voisin de `hgdc.ch` peut le poser pour tout le domaine. Aucun cookie légitime ne porte ce
+ * nom. À appliquer à chaque requête, avant le handler de Start :
+ *
+ * ```ts
+ * fetch: (request) => handler.fetch(withoutShadowCookies(request))
+ * ```
+ */
+export function withoutShadowCookies(request: Request): Request {
+  const header = request.headers.get("cookie")
+  if (!header || !/__Secure-__Host-/i.test(header)) return request
+  const kept = header
+    .split(";")
+    .filter((part) => !/^\s*__Secure-__Host-/i.test(part))
+    .join(";")
+    .trim()
+  const headers = new Headers(request.headers)
+  if (kept) headers.set("cookie", kept)
+  else headers.delete("cookie")
+  return new Request(request, { headers })
+}
+
 /** En-tête qui porte le `sec-fetch-mode` du navigateur à travers le proxy. */
 export const FETCH_MODE_HEADER = "x-hgdc-fetch-mode"
 
@@ -82,7 +107,7 @@ export function restoreFetchMode(request: Request): Request {
  * `/api/auth/x`), une seule fois, sur une frontière de segment. Un chemin sans la base (les appels
  * internes de `createHgdcEntry`) passe tel quel.
  *
- * Vue seule (`requestView`, ADR 0014) d'un produit servi sous un chemin : la requête part vers la
+ * Vue seule (`requestView`, ADR 0014) d'un produit servi sous un chemin, si `options.soloView` : la requête part vers la
  * seconde instance de better-auth, montée par Convex sous la base (`/analytics/api/auth/x`), dont
  * l'adresse de retour est sur `<mot>.hgdc.ch`. Un chemin sans la base y reçoit la base.
  *
@@ -93,14 +118,17 @@ export function restoreFetchMode(request: Request): Request {
 export function createAuthProxy(
   convexSiteUrl: string,
   fetchImpl: typeof fetch = fetch,
-  options: BasePathOptions & { addressSecret?: string } = {},
+  options: BasePathOptions & { addressSecret?: string; soloView?: boolean } = {},
 ): (request: Request) => Promise<Response> {
   const target = new URL(convexSiteUrl)
   const appBase = normalizeBasePath(options.basePath)
+  const soloView = appBase !== "" && options.soloView === true
   return async (request) => {
     const url = new URL(request.url)
+    // Chemin ambigu (segment vide, barre encodée) : jamais relayé, quelle que soit la lecture de Convex.
+    if (/\/\/|%2f|%5c|\\/i.test(url.pathname)) return new Response(null, { status: 404 })
     const inApp = appBase && url.pathname.startsWith(`${appBase}/`) ? url.pathname.slice(appBase.length) : url.pathname
-    const solo = appBase !== "" && requestView(request) === "seul"
+    const solo = soloView && requestView(request) === "seul"
     // Sous la base, Convex sert l'instance de la vue seule : la vue `app` n'y arrive jamais par une base doublée.
     if (appBase && !solo && inApp.startsWith(`${appBase}/`)) return new Response(null, { status: 404 })
     const upstreamPath = solo ? `${appBase}${inApp}` : inApp
@@ -258,10 +286,14 @@ export function createHgdcEntry(options: HgdcEntryOptions): (request: Request) =
   const basePath = (options.basePath ?? "/api/auth").replace(/\/+$/, "")
   const appOrigin = options.appOrigin ? new URL(options.appOrigin).origin : null
   const soloOrigin = options.soloOrigin ? new URL(options.soloOrigin).origin : null
+  if (soloOrigin && !appBase)
+    throw new Error("createHgdcEntry : soloOrigin demande appBasePath (build sous un chemin).")
 
   return async (request) => {
     const url = new URL(request.url)
-    const origin = (requestView(request) === "seul" ? soloOrigin : null) ?? appOrigin ?? url.origin
+    // Sans soloOrigin, l'en-tête de vue est ignoré : même règle que `soloView` du proxy.
+    const view = soloOrigin ? requestView(request) : "app"
+    const origin = (view === "seul" ? soloOrigin : null) ?? appOrigin ?? url.origin
     const frame = url.searchParams.get(HGDC_ENTRY_FRAME_PARAM)
     // Fin d'une relecture dans le cadre caché : rien à lire, rien à appeler.
     if (frame === "done") return frameDone()
@@ -287,10 +319,7 @@ export function createHgdcEntry(options: HgdcEntryOptions): (request: Request) =
         )
         cookies.push(...setCookies(session))
         if (session.ok && hasSessionBody(await readJson(session)))
-          return redirectTo(
-            `${appBase}${next}`,
-            background ? [...cookies, orgSyncCookie(url, appBase, requestView(request))] : cookies,
-          )
+          return redirectTo(`${appBase}${next}`, background ? [...cookies, orgSyncCookie(url, appBase, view)] : cookies)
       }
       if (speculative) return notForSpeculation()
 

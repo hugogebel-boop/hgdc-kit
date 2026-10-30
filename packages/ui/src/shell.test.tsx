@@ -663,19 +663,12 @@ describe("AppShell, accès au-dessus du compte", () => {
     const aside = screen.getByRole("complementary", { name: "Barre latérale" })
     const common = within(aside).getByRole("navigation", { name: "Accès communs" })
     const links = within(common).getAllByRole("link")
-    expect(links.map((link) => link.textContent)).toEqual([
-      "Documentation",
-      "Réglages",
-      "État du service",
-      "Ouvrir seul",
-    ])
+    expect(links.map((link) => link.textContent)).toEqual(["Documentation", "Réglages", "État du service"])
     expect(links.map((link) => link.getAttribute("href"))).toEqual([
       "https://docs.example/docs",
       "/reglages",
       // La page de statut de la coque par défaut.
       "https://status.hgdc.ch/documentation",
-      // L'autre vue du produit (ADR 0014), par son entrée.
-      "https://docs.hgdc.ch/auth/hgdc?next=%2F",
     ])
     expect(links[1]?.getAttribute("aria-current")).toBe("page")
     // Le compte suit immédiatement les accès communs.
@@ -694,7 +687,7 @@ describe("AppShell, accès au-dessus du compte", () => {
       within(aside())
         .getAllByRole("link")
         .map((link) => link.getAttribute("href")),
-    ).toEqual(["https://status.example/host", "https://host.hgdc.ch/auth/hgdc?next=%2F"])
+    ).toEqual(["https://status.example/host"])
     unmount()
     render(
       <AppShell product="host" nav={null} links={{ status: false }} account={account}>
@@ -715,7 +708,7 @@ describe("AppShell, accès au-dessus du compte", () => {
       within(aside)
         .getAllByRole("link")
         .map((link) => link.textContent),
-    ).toEqual(["État du service", "Ouvrir seul", "Ancien pied"])
+    ).toEqual(["État du service", "Ancien pied"])
   })
 })
 
@@ -752,10 +745,35 @@ describe("AppShell, vue seule et réglage « Barre des produits » (ADR 0014)", 
     expect(again.container.querySelector("[data-product-rail]")).toBeNull()
   })
 
+  it("vue app : « Ouvrir seul » vers l'entrée de la vue seule", () => {
+    render(
+      <AppShell product="docs" view="app" nav={null}>
+        Page
+      </AppShell>,
+    )
+    expect(screen.getByRole("link", { name: "Ouvrir seul" }).getAttribute("href")).toBe(
+      "https://docs.hgdc.ch/auth/hgdc?next=%2F",
+    )
+  })
+
+  it("sans `view` (Account, produit à une vue) : barre présente, réglage et autre vue ignorés", () => {
+    window.localStorage.setItem("hgdc-product-bar", "never")
+    for (const product of ["account", "mail"] as const) {
+      const { container, unmount } = render(
+        <AppShell product={product} nav={null}>
+          Page
+        </AppShell>,
+      )
+      expect(container.querySelector("[data-product-rail]")).not.toBeNull()
+      expect(screen.queryByRole("link", { name: /Ouvrir/ })).toBeNull()
+      unmount()
+    }
+  })
+
   it("`productRail` explicite l'emporte sur le réglage", () => {
     window.localStorage.setItem("hgdc-product-bar", "never")
     const { container } = render(
-      <AppShell product="mail" productRail nav={null}>
+      <AppShell product="mail" view="app" productRail nav={null}>
         Page
       </AppShell>,
     )

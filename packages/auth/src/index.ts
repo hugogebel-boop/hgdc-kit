@@ -450,7 +450,9 @@ export function verifiedOrganizationsFromIdToken(idToken: string, expected: IdTo
 
 /**
  * Préfixe des cookies better-auth d'un produit (`hgdc-mail`) en cookie d'hôte : `__Host-hgdc-mail`.
- * À donner aussi à `convexBetterAuthReactStart({ cookiePrefix })` côté front.
+ * Seule source du préfixe : la même valeur va à `convexBetterAuthReactStart({ cookiePrefix })`
+ * côté front, sinon `getToken` ne trouve plus aucun jeton. Ordre de mise en place : l'edge accepte
+ * d'abord `__Host-hgdc-` sur ses relais, puis Convex et le front du produit ensemble.
  */
 export function hostCookiePrefix(prefix: string): string {
   if (!/^hgdc-[a-z]+$/.test(prefix))
@@ -477,6 +479,28 @@ export function hgdcCookieOptions(prefix: string): {
     cookiePrefix: hostCookiePrefix(prefix),
     useSecureCookies: false,
     defaultCookieAttributes: { secure: true, path: "/" },
+  }
+}
+
+type CookieShape = { name: string; attributes: { domain?: string; path?: string; secure?: boolean } }
+
+/**
+ * Vérifie, au chargement de `convex/auth.ts`, que les cookies sont restés des cookies d'hôte :
+ * un `defaultCookieAttributes` écrasé, `crossSubDomainCookies` ou un `advanced.cookies` les
+ * défont, et le navigateur rejette alors le cookie sans rien dire (plus aucune connexion).
+ *
+ * ```ts
+ * import { getCookies } from "better-auth/cookies"
+ * assertHostCookies(getCookies(options))
+ * ```
+ */
+export function assertHostCookies(cookies: Record<string, CookieShape>): void {
+  for (const { name, attributes } of Object.values(cookies)) {
+    const ok = name.startsWith("__Host-") && attributes.secure === true && attributes.path === "/" && !attributes.domain
+    if (!ok)
+      throw new Error(
+        `assertHostCookies : « ${name} » n'est pas un cookie d'hôte (__Host-, Secure, Path=/, sans Domain).`,
+      )
   }
 }
 

@@ -37,7 +37,7 @@ import {
   PAGE_PENDING_MS,
   PagePending,
 } from "./page-pending.tsx"
-import { viewFromHostname, soloHref, type ProductView } from "./addresses.ts"
+import { soloHref, type ProductView } from "./addresses.ts"
 import { ProductBadge } from "./product-badge.tsx"
 import { productBarShown, useProductBarPreference, useProductBarSync } from "./product-bar.ts"
 import { otherViewHref, otherViewLabel } from "./products.ts"
@@ -538,18 +538,6 @@ function ShellCommonLinks({
   )
 }
 
-/** Vue de la page : celle donnée par le serveur, sinon le nom de la page après l'hydratation. */
-function useProductView(product: FamilyProduct, view: ProductView | undefined): ProductView {
-  const fromHost = useSyncExternalStore(
-    noSubscription,
-    () => viewFromHostname(product, window.location.hostname),
-    () => "app" as const,
-  )
-  return view ?? fromHost
-}
-
-const noSubscription = () => () => {}
-
 /**
  * « Ouvrir seul » (vers `<mot>.hgdc.ch`) ou « Ouvrir dans app.hgdc.ch », discret, sous les accès communs.
  * Le chemin courant n'est lu qu'au clic : le lien rendu par le serveur mène à l'accueil.
@@ -948,14 +936,14 @@ export function AppShell({
   organization?: ReactNode
   /**
    * `false` : pas de barre des produits (un écran hors de la famille). L'organisation passe alors
-   * sous la marque, dans la barre latérale. Absent : selon la vue et le réglage « Barre des produits »
-   * d'Account (ADR 0014), relu par la coque.
+   * sous la marque, dans la barre latérale. Absent : présente, ou, si `view` est donné, selon la vue
+   * et le réglage « Barre des produits » d'Account (ADR 0014), relu par la coque.
    */
   productRail?: boolean
   /**
-   * Vue de la page : `app` sous `app.hgdc.ch/<mot>`, `seul` sur `<mot>.hgdc.ch`. À donner depuis le
-   * serveur (`requestView` de `@hgdc/auth/server`) pour un premier rendu juste ; absent : le nom de
-   * la page, `app` au rendu serveur.
+   * Vue de la page : `app` sous `app.hgdc.ch/<mot>`, `seul` sur `<mot>.hgdc.ch` (ADR 0014). Donnée
+   * par le serveur (`requestView` de `@hgdc/auth/server`), la même au rendu et dans le navigateur.
+   * Absent : un produit qui n'a qu'une vue, barre présente et pas de lien vers l'autre vue.
    */
   view?: ProductView | undefined
   /** Adresse d'Account dans la barre des produits (un Account local en développement). */
@@ -1020,11 +1008,10 @@ export function AppShell({
   statusPage?: string | false | undefined
 }): React.JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false)
-  const view = useProductView(product, viewOption)
   const preference = useProductBarPreference()
   // Relu chez Account seulement par un produit passé aux deux vues (il donne `view`, ADR 0014).
   useProductBarSync(productRailOption === undefined && viewOption !== undefined)
-  const productRail = productRailOption ?? productBarShown(view, preference)
+  const productRail = productRailOption ?? (viewOption === undefined || productBarShown(viewOption, preference))
   // Barre des produits élargie : la barre latérale se plie le temps du survol (ADR 0011).
   const [railPeek, setRailPeek] = useState(false)
   useToggleShortcut()
@@ -1106,7 +1093,7 @@ export function AppShell({
       <ShellCommonLinks
         links={links ?? {}}
         statusPageUrl={statusPageUrl}
-        otherView={<OtherViewLink product={product} view={view} />}
+        otherView={viewOption === undefined ? null : <OtherViewLink product={product} view={viewOption} />}
       />
       {account ?? sidebarFooter}
     </>

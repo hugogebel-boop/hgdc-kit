@@ -80,6 +80,8 @@ describe("vues d'un produit (ADR 0014)", () => {
     expect(viewFromHostname("Mail", "MAIL.hgdc.ch")).toBe("seul")
     for (const host of ["app.hgdc.ch", "mail.hgdc.cloud", "mail.hgdc.ch.evil.ch", "host.hgdc.ch", "localhost"])
       expect(viewFromHostname("mail", host)).toBe("app")
+    // Account n'a qu'une vue : son propre nom n'en fait pas une vue seule.
+    expect(viewFromHostname("account", "account.hgdc.ch")).toBe("app")
   })
 
   it("refuse un mot qui fabriquerait un autre hôte", () => {
