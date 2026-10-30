@@ -1022,7 +1022,8 @@ export function AppShell({
   const [menuOpen, setMenuOpen] = useState(false)
   const view = useProductView(product, viewOption)
   const preference = useProductBarPreference()
-  useProductBarSync(productRailOption === undefined)
+  // Relu chez Account seulement par un produit passé aux deux vues (il donne `view`, ADR 0014).
+  useProductBarSync(productRailOption === undefined && viewOption !== undefined)
   const productRail = productRailOption ?? productBarShown(view, preference)
   // Barre des produits élargie : la barre latérale se plie le temps du survol (ADR 0011).
   const [railPeek, setRailPeek] = useState(false)
