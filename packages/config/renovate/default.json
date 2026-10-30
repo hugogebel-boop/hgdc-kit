@@ -16,6 +16,8 @@
       "matchPackageNames": [
         "@hgdc/*",
         "@anthropic-ai/sdk",
+        "@better-auth/oauth-provider",
+        "@better-auth/passkey",
         "@changesets/cli",
         "@convex-dev/better-auth",
         "@convex-dev/rate-limiter",
