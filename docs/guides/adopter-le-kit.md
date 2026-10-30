@@ -100,6 +100,16 @@ jobs:
 
 Jamais pour un dépôt public, le kit compris : un runner auto-hébergé exécuterait le code de n'importe quelle PR venue d'un fork.
 
+Une PR qui ne touche que la doc n'a pas besoin du check. L'entrée `skip-paths` (expression de `grep -E`) le laisse finir vert sans rien installer quand tous les fichiers changés y répondent ; le statut `check / check` est rendu, alors qu'un `paths-ignore` laisserait la PR bloquée. À réserver aux fichiers que `bun run check` ne lit pas :
+
+```yaml
+jobs:
+  check:
+    uses: hugogebel-boop/hgdc-kit/.github/workflows/check.yml@<sha> # main
+    with:
+      skip-paths: '^docs/|\.md$'
+```
+
 Recherche de secrets (gitleaks sur tout l'historique, binaire vérifié par sa somme SHA-256) : un second job, sur la même machine.
 
 ```yaml
