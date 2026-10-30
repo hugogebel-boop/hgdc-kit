@@ -113,7 +113,7 @@ const BASE = "/analytics" // même valeur que la base de Vite et du routeur
 export const proxyAuth = createAuthProxy(convexSiteUrl, fetch, { basePath: BASE })
 
 // Entrée : redirige vers `/analytics/<next>` et `/analytics/<errorCallbackURL>`. `appOrigin` : derrière un
-// relais, la fonction voit l’hôte relayé ; sans elle, better-auth refuse l’entrée dès qu’un cookie est présent.
+// relais, la fonction voit l'hôte relayé ; sans elle, better-auth refuse l'entrée dès qu'un cookie est présent.
 const entry = createHgdcEntry({
   proxy: proxyAuth,
   errorCallbackURL: "/connexion?erreur=refus",
@@ -130,6 +130,15 @@ const entry = createHgdcEntry({
 - `normalizeBasePath` valide la base (segments `[A-Za-z0-9._~-]`, pas de `//`, `..`, requête, espace, antislash) et lève sinon : une base vient de la configuration, jamais d'une requête.
 - Le proxy ne retire la base qu'une fois, sur une frontière de segment ; un chemin sans la base (les appels internes de l'entrée) passe tel quel.
 - Reste à la charge du produit : `redirect({ href })`, balises `<link>` et réponses HTTP qui sortent du routeur passent par la base ; préfixe de cookies distinct par produit (les produits partagent l'hôte et ses cookies). Le cookie `HGDC_ORG_SYNC_COOKIE`, le cadre caché et la règle de préchargement de `@hgdc/ui/product-switch` visent encore la racine de l'hôte : la relecture en arrière-plan n'est pas prête pour un produit sous un chemin.
+
+## Vue seule sur `<mot>.hgdc.ch` (ADR 0014 de la famille)
+
+Un produit servi sous `app.hgdc.ch/<mot>` l'est aussi seul sur `https://<mot>.hgdc.ch` : la passerelle relaie vers le même build, base comprise, et pose `x-hgdc-view: seul` (`VIEW_HEADER`, `requestView`). À adopter dans cet ordre (l'edge accepte déjà `__Host-hgdc-`) :
+
+1. **Cookies d'hôte** : `advanced: { ...hgdcCookieOptions("hgdc-<mot>"), … }` côté Convex, `assertHostCookies(getCookies(options))` à la création de l'instance, `cookiePrefix: hostCookiePrefix("hgdc-<mot>")` dans `convexBetterAuthReactStart`, `withoutShadowCookies(request)` en tête du `fetch` de l'entrée serveur.
+2. **Seconde instance côté Convex** : `viewAuthSites("<mot>", { siteUrl, basePath })` donne `app` (inchangée) et `solo` (`https://<mot>.hgdc.ch`, better-auth à `/<mot>/api/auth`). Monter `registerRoutes` deux fois ; l'instance seule répond 404 tant que `soloEnabled` est faux.
+3. **Front** : `createAuthProxy(url, fetch, { basePath, soloView: true })`, `createHgdcEntry({ …, soloOrigin })`, CSRF des fonctions serveur sur l'origine de la vue seule (`viewOrigin` de `@hgdc/ui/addresses`), `AppShell view` et, au navigateur en vue seule, `createBrowserHistory({ createHref: (href) => soloHref(basePath, href) })`.
+4. **Account** : adresse de retour `https://<mot>.hgdc.ch/<mot>/api/auth/oauth2/callback/hgdc` ajoutée au client OAuth ; puis le mot dans `SOLO_PRODUCTS` de la passerelle.
 
 ## Proxy `/api/auth` (TanStack Start + Convex)
 

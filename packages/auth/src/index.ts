@@ -504,6 +504,46 @@ export function assertHostCookies(cookies: Record<string, CookieShape>): void {
   }
 }
 
+/** Adresse publique d'une instance de better-auth : `baseURL`, `basePath` éventuel, origines de confiance. */
+export type AuthSite = { baseURL: string; basePath?: string; trustedOrigins: string[] }
+
+/**
+ * Les deux instances de better-auth d'un produit servi sous `app.hgdc.ch/<mot>` (ADR 0014 de la
+ * famille), côté Convex. Même base, même secret, mêmes JWKS : seules l'adresse de retour OAuth et
+ * l'origine de confiance changent.
+ *
+ * - `app` : `SITE_URL` (`https://app.hgdc.ch`) ; sous une base, `baseURL` porte la base et `/api/auth`
+ *   (Convex reçoit `/api/auth/*`, le produit remet la base avant better-auth).
+ * - `solo` : `https://<mot>.hgdc.ch`, better-auth à `/<mot>/api/auth` (le proxy garde la base en vue
+ *   seule, `createAuthProxy({ soloView: true })`). Origine constante, jamais tirée de la requête.
+ *   `basePath` est toujours posé (`registerRoutes` le lit à l'analyse du module) ; sans base
+ *   (développement), `soloEnabled` est faux, l'instance n'a ni adresse ni origine : la répondre 404.
+ *
+ * ```ts
+ * const sites = viewAuthSites("mail", { siteUrl: process.env.SITE_URL, basePath: process.env.HGDC_BASE_PATH })
+ * ```
+ */
+export function viewAuthSites(
+  product: string,
+  env: { siteUrl?: string | undefined; basePath?: string | undefined },
+): { app: AuthSite; solo: AuthSite; soloEnabled: boolean } {
+  if (!/^[a-z]+$/.test(product)) throw new Error(`viewAuthSites : produit invalide « ${product} ».`)
+  const base = normalizeBasePath(env.basePath)
+  const siteUrl = env.siteUrl ? new URL(env.siteUrl).origin : ""
+  const app: AuthSite = {
+    baseURL: siteUrl && base ? `${siteUrl}${base}/api/auth` : siteUrl,
+    trustedOrigins: siteUrl ? [siteUrl] : [],
+  }
+  // Même règle que `soloOrigin` de `@hgdc/ui/addresses` (vérifié par les tests).
+  const origin = `https://${product}.hgdc.ch`
+  const basePath = `/${product}/api/auth`
+  const soloEnabled = base === `/${product}`
+  const solo: AuthSite = soloEnabled
+    ? { baseURL: origin, basePath, trustedOrigins: [origin] }
+    : { baseURL: "", basePath, trustedOrigins: [] }
+  return { app, solo, soloEnabled }
+}
+
 /**
  * Durée d'une session d'un produit, sans prolongation (`session: { expiresIn: SESSION_TTL_SECONDS,
  * disableSessionRefresh: true }`) : les organisations sont relues à chaque connexion, donc au
