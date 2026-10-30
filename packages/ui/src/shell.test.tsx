@@ -712,6 +712,75 @@ describe("AppShell, accès au-dessus du compte", () => {
   })
 })
 
+describe("AppShell, vue seule et réglage « Barre des produits » (ADR 0014)", () => {
+  afterEach(() => window.localStorage.clear())
+
+  it("vue seule : pas de barre des produits, lien vers app.hgdc.ch", () => {
+    const { container } = render(
+      <AppShell product="mail" view="seul" nav={null}>
+        Page
+      </AppShell>,
+    )
+    expect(container.querySelector("[data-product-rail]")).toBeNull()
+    expect(screen.getByRole("link", { name: "Ouvrir dans app.hgdc.ch" }).getAttribute("href")).toBe(
+      "https://app.hgdc.ch/mail/auth/hgdc?next=%2F",
+    )
+  })
+
+  it("« Toujours » montre la barre en vue seule, « Jamais » la retire sous app.hgdc.ch", () => {
+    window.localStorage.setItem("hgdc-product-bar", "always")
+    const { container, unmount } = render(
+      <AppShell product="mail" view="seul" nav={null}>
+        Page
+      </AppShell>,
+    )
+    expect(container.querySelector("[data-product-rail]")).not.toBeNull()
+    unmount()
+    window.localStorage.setItem("hgdc-product-bar", "never")
+    const again = render(
+      <AppShell product="mail" view="app" nav={null}>
+        Page
+      </AppShell>,
+    )
+    expect(again.container.querySelector("[data-product-rail]")).toBeNull()
+  })
+
+  it("vue app : « Ouvrir seul » vers l'entrée de la vue seule", () => {
+    render(
+      <AppShell product="docs" view="app" nav={null}>
+        Page
+      </AppShell>,
+    )
+    expect(screen.getByRole("link", { name: "Ouvrir seul" }).getAttribute("href")).toBe(
+      "https://docs.hgdc.ch/auth/hgdc?next=%2F",
+    )
+  })
+
+  it("sans `view` (Account, produit à une vue) : barre présente, réglage et autre vue ignorés", () => {
+    window.localStorage.setItem("hgdc-product-bar", "never")
+    for (const product of ["account", "mail"] as const) {
+      const { container, unmount } = render(
+        <AppShell product={product} nav={null}>
+          Page
+        </AppShell>,
+      )
+      expect(container.querySelector("[data-product-rail]")).not.toBeNull()
+      expect(screen.queryByRole("link", { name: /Ouvrir/ })).toBeNull()
+      unmount()
+    }
+  })
+
+  it("`productRail` explicite l'emporte sur le réglage", () => {
+    window.localStorage.setItem("hgdc-product-bar", "never")
+    const { container } = render(
+      <AppShell product="mail" view="app" productRail nav={null}>
+        Page
+      </AppShell>,
+    )
+    expect(container.querySelector("[data-product-rail]")).not.toBeNull()
+  })
+})
+
 describe("AppShell, assistant", () => {
   function stubWide(wide: boolean): void {
     vi.stubGlobal(

@@ -4,6 +4,7 @@ import ArrowLeft01Icon from "@hugeicons/core-free-icons/ArrowLeft01Icon"
 import ArrowRight01Icon from "@hugeicons/core-free-icons/ArrowRight01Icon"
 import BookOpen01Icon from "@hugeicons/core-free-icons/BookOpen01Icon"
 import Cancel01Icon from "@hugeicons/core-free-icons/Cancel01Icon"
+import LinkSquare02Icon from "@hugeicons/core-free-icons/LinkSquare02Icon"
 import Menu01Icon from "@hugeicons/core-free-icons/Menu01Icon"
 import PanelLeftCloseIcon from "@hugeicons/core-free-icons/PanelLeftCloseIcon"
 import PanelLeftOpenIcon from "@hugeicons/core-free-icons/PanelLeftOpenIcon"
@@ -36,7 +37,10 @@ import {
   PAGE_PENDING_MS,
   PagePending,
 } from "./page-pending.tsx"
+import { soloHref, type ProductView } from "./addresses.ts"
 import { ProductBadge } from "./product-badge.tsx"
+import { productBarShown, useProductBarPreference, useProductBarSync } from "./product-bar.ts"
+import { otherViewHref, otherViewLabel } from "./products.ts"
 import { ProductRail } from "./product-rail.tsx"
 import { useProductSwitch } from "./product-switch.ts"
 import { ProductRailShownContext, ShellLeaveContext, StatusPageContext } from "./shell-placement.ts"
@@ -496,9 +500,12 @@ const COMMON_LINKS = [
 function ShellCommonLinks({
   links,
   statusPageUrl,
+  otherView,
 }: {
   links: AppShellLinks
   statusPageUrl: string | null
+  /** Lien vers l'autre vue du produit (ADR 0014), en dernier ; il ne suffit pas à montrer la liste. */
+  otherView?: ReactNode
 }): React.JSX.Element | null {
   const resolved = {
     documentation: links.documentation,
@@ -525,8 +532,25 @@ function ShellCommonLinks({
     <nav aria-label="Accès communs">
       <ul data-slot="app-shell-links" className="grid gap-0.5">
         {items}
+        {otherView}
       </ul>
     </nav>
+  )
+}
+
+/**
+ * « Ouvrir seul » (vers `<mot>.hgdc.ch`) ou « Ouvrir dans app.hgdc.ch », discret, sous les accès communs.
+ * Le chemin courant n'est lu qu'au clic : le lien rendu par le serveur mène à l'accueil.
+ */
+function OtherViewLink({ product, view }: { product: FamilyProduct; view: ProductView }): React.JSX.Element | null {
+  const href = otherViewHref(product, view)
+  if (!href) return null
+  const onClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    const path = soloHref(`/${product}`, `${window.location.pathname}${window.location.search}`)
+    event.currentTarget.href = otherViewHref(product, view, path) ?? href
+  }
+  return (
+    <SidebarNavItem icon={LinkSquare02Icon} label={otherViewLabel(view)} render={<a href={href} onClick={onClick} />} />
   )
 }
 
@@ -885,7 +909,8 @@ export const PRODUCT_LEAVE_DELAY_MS = 100
 export function AppShell({
   product,
   organization,
-  productRail = true,
+  productRail: productRailOption,
+  view: viewOption,
   accountHref,
   nav,
   links,
@@ -911,9 +936,16 @@ export function AppShell({
   organization?: ReactNode
   /**
    * `false` : pas de barre des produits (un écran hors de la famille). L'organisation passe alors
-   * sous la marque, dans la barre latérale.
+   * sous la marque, dans la barre latérale. Absent : présente, ou, si `view` est donné, selon la vue
+   * et le réglage « Barre des produits » d'Account (ADR 0014), relu par la coque.
    */
   productRail?: boolean
+  /**
+   * Vue de la page : `app` sous `app.hgdc.ch/<mot>`, `seul` sur `<mot>.hgdc.ch` (ADR 0014). Donnée
+   * par le serveur (`requestView` de `@hgdc/auth/server`), la même au rendu et dans le navigateur.
+   * Absent : un produit qui n'a qu'une vue, barre présente et pas de lien vers l'autre vue.
+   */
+  view?: ProductView | undefined
   /** Adresse d'Account dans la barre des produits (un Account local en développement). */
   accountHref?: string | undefined
   /** `SidebarNav` et ses `SidebarNavItem`. */
@@ -976,6 +1008,10 @@ export function AppShell({
   statusPage?: string | false | undefined
 }): React.JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false)
+  const preference = useProductBarPreference()
+  // Relu chez Account seulement par un produit passé aux deux vues (il donne `view`, ADR 0014).
+  useProductBarSync(productRailOption === undefined && viewOption !== undefined)
+  const productRail = productRailOption ?? (viewOption === undefined || productBarShown(viewOption, preference))
   // Barre des produits élargie : la barre latérale se plie le temps du survol (ADR 0011).
   const [railPeek, setRailPeek] = useState(false)
   useToggleShortcut()
@@ -1054,7 +1090,11 @@ export function AppShell({
   const footer = (
     <>
       {account !== undefined ? sidebarFooter : null}
-      <ShellCommonLinks links={links ?? {}} statusPageUrl={statusPageUrl} />
+      <ShellCommonLinks
+        links={links ?? {}}
+        statusPageUrl={statusPageUrl}
+        otherView={viewOption === undefined ? null : <OtherViewLink product={product} view={viewOption} />}
+      />
       {account ?? sidebarFooter}
     </>
   )
