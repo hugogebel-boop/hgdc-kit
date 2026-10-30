@@ -34,6 +34,19 @@ export {
 
 export { convexPath, createMcpProxy, MAX_MCP_BODY_BYTES, type McpProxyOptions } from "./mcp-proxy.ts"
 
+/**
+ * Vue demandée (ADR 0014 de la famille), posée et écrasée par la passerelle sur chaque relais :
+ * `seul` pour `<mot>.hgdc.ch`, `app` pour `app.hgdc.ch/<mot>`. Elle choisit entre deux origines
+ * constantes du produit, jamais une adresse. En direct sur l'origine relayée, un client peut la
+ * choisir, mais ce nom n'a aucun cookie de session : il ne choisit que pour lui.
+ */
+export const VIEW_HEADER = "x-hgdc-view"
+
+/** Vue d'une requête : `seul` seulement si `VIEW_HEADER` vaut exactement `seul`. */
+export function requestView(request: Request): "app" | "seul" {
+  return request.headers.get(VIEW_HEADER) === "seul" ? "seul" : "app"
+}
+
 /** En-tête qui porte le `sec-fetch-mode` du navigateur à travers le proxy. */
 export const FETCH_MODE_HEADER = "x-hgdc-fetch-mode"
 
@@ -69,6 +82,10 @@ export function restoreFetchMode(request: Request): Request {
  * `/api/auth/x`), une seule fois, sur une frontière de segment. Un chemin sans la base (les appels
  * internes de `createHgdcEntry`) passe tel quel.
  *
+ * Vue seule (`requestView`, ADR 0014) d'un produit servi sous un chemin : la requête part vers la
+ * seconde instance de better-auth, montée par Convex sous la base (`/analytics/api/auth/x`), dont
+ * l'adresse de retour est sur `<mot>.hgdc.ch`. Un chemin sans la base y reçoit la base.
+ *
  * `options.addressSecret` (secret partagé avec Convex) : l'adresse du visiteur part signée, et
  * `restoreClientAddress` la rend à better-auth côté Convex (`client-address.ts`). Absent : comme
  * avant, Convex ne voit que l'adresse du front, la même pour tous les visiteurs.
@@ -82,8 +99,11 @@ export function createAuthProxy(
   const appBase = normalizeBasePath(options.basePath)
   return async (request) => {
     const url = new URL(request.url)
-    const upstreamPath =
-      appBase && url.pathname.startsWith(`${appBase}/`) ? url.pathname.slice(appBase.length) : url.pathname
+    const inApp = appBase && url.pathname.startsWith(`${appBase}/`) ? url.pathname.slice(appBase.length) : url.pathname
+    const solo = appBase !== "" && requestView(request) === "seul"
+    // Sous la base, Convex sert l'instance de la vue seule : la vue `app` n'y arrive jamais par une base doublée.
+    if (appBase && !solo && inApp.startsWith(`${appBase}/`)) return new Response(null, { status: 404 })
+    const upstreamPath = solo ? `${appBase}${inApp}` : inApp
     const headers = new Headers(request.headers)
     for (const name of ["transfer-encoding", "content-length", "connection"]) headers.delete(name)
     headers.set("accept-encoding", "application/json")
@@ -136,6 +156,11 @@ export type HgdcEntryOptions = {
    * connexion dès qu'un cookie est présent. Absent : l'origine de la requête.
    */
   appOrigin?: string
+  /**
+   * Origine publique de la vue seule (`https://analytics.hgdc.ch`, ADR 0014), prise à la place
+   * d'`appOrigin` quand la requête vient de `<mot>.hgdc.ch` (`requestView`). Absent : pas de vue seule.
+   */
+  soloOrigin?: string
 }
 
 const STRIPPED_ON_INTERNAL_CALL = [
@@ -232,10 +257,11 @@ export function createHgdcEntry(options: HgdcEntryOptions): (request: Request) =
   if (!errorCallbackURL) throw new Error("createHgdcEntry : errorCallbackURL doit être un chemin du produit.")
   const basePath = (options.basePath ?? "/api/auth").replace(/\/+$/, "")
   const appOrigin = options.appOrigin ? new URL(options.appOrigin).origin : null
+  const soloOrigin = options.soloOrigin ? new URL(options.soloOrigin).origin : null
 
   return async (request) => {
     const url = new URL(request.url)
-    const origin = appOrigin ?? url.origin
+    const origin = (requestView(request) === "seul" ? soloOrigin : null) ?? appOrigin ?? url.origin
     const frame = url.searchParams.get(HGDC_ENTRY_FRAME_PARAM)
     // Fin d'une relecture dans le cadre caché : rien à lire, rien à appeler.
     if (frame === "done") return frameDone()
@@ -261,7 +287,10 @@ export function createHgdcEntry(options: HgdcEntryOptions): (request: Request) =
         )
         cookies.push(...setCookies(session))
         if (session.ok && hasSessionBody(await readJson(session)))
-          return redirectTo(`${appBase}${next}`, background ? [...cookies, orgSyncCookie(url, appBase)] : cookies)
+          return redirectTo(
+            `${appBase}${next}`,
+            background ? [...cookies, orgSyncCookie(url, appBase, requestView(request))] : cookies,
+          )
       }
       if (speculative) return notForSpeculation()
 
@@ -308,11 +337,13 @@ function frameDone(): Response {
 /**
  * Limité au chemin du produit (`/analytics`) et portant ce chemin : sous une origine partagée
  * (`app.hgdc.ch/<produit>`), seul le produit d’arrivée le voit, et sa page sait où ouvrir le cadre.
+ * En vue seule (`<mot>.hgdc.ch`, ADR 0014), l’origine n’est qu’au produit et l’adresse affichée n’a
+ * plus la base : `Path=/`.
  */
-function orgSyncCookie(url: URL, appBase: string): string {
+function orgSyncCookie(url: URL, appBase: string, view: "app" | "seul"): string {
   const secure = url.protocol === "https:" ? "; Secure" : ""
   const value = appBase || "1"
-  return `${HGDC_ORG_SYNC_COOKIE}=${value}; Path=${appBase || "/"}; Max-Age=${HGDC_ORG_SYNC_COOKIE_MAX_AGE}; SameSite=Lax${secure}`
+  return `${HGDC_ORG_SYNC_COOKIE}=${value}; Path=${view === "seul" ? "/" : appBase || "/"}; Max-Age=${HGDC_ORG_SYNC_COOKIE_MAX_AGE}; SameSite=Lax${secure}`
 }
 
 export type HgdcProviderOptions = {

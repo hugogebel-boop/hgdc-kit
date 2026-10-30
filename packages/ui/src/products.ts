@@ -8,7 +8,7 @@ import Rocket01Icon from "@hugeicons/core-free-icons/Rocket01Icon"
 import UserCircleIcon from "@hugeicons/core-free-icons/UserCircleIcon"
 import type { IconSvgElement } from "@hugeicons/react"
 
-import { APP_ORIGIN, APP_PRODUCTS } from "./addresses.ts"
+import { APP_ORIGIN, APP_PRODUCTS, isAppProduct, soloOrigin, type ProductView } from "./addresses.ts"
 import { HGDC_EMAIL_ACCENT, type EmailAccent } from "./email-palette.ts"
 import { isFamilyProduct, type FamilyProduct } from "./family-svg.ts"
 
@@ -249,4 +249,24 @@ export function productRailEntries(
     products: (options.catalog ?? HGDC_PRODUCTS).filter(isProductOpen).map((item) => entry(item, item.entryHref, true)),
     account: entry(HGDC_ACCOUNT, options.accountHref ?? HGDC_ACCOUNT.entryHref, false),
   }
+}
+
+/**
+ * Lien vers l'autre vue du même produit (ADR 0014) : depuis `app.hgdc.ch/<mot>`, « Ouvrir seul » vers
+ * `<mot>.hgdc.ch` ; depuis `<mot>.hgdc.ch`, « Ouvrir dans app.hgdc.ch ». Passe par l'entrée
+ * (`/auth/hgdc?next=<chemin>`) : la session de l'autre origine s'ouvre sans clic si celle
+ * d'Account vit. `path` est un chemin du produit, sans la base ; un autre texte mène à l'accueil.
+ * `null` pour un produit qui n'a pas deux vues.
+ */
+export function otherViewHref(word: string, view: ProductView, path = "/"): string | null {
+  const key = word.toLowerCase()
+  if (!isAppProduct(key)) return null
+  const next = path.startsWith("/") && !path.startsWith("//") && !path.includes("\\") ? path : "/"
+  const target = view === "app" ? soloOrigin(key) : `${APP_ORIGIN}/${key}`
+  return `${target}${PRODUCT_ENTRY_PATH}?next=${encodeURIComponent(next)}`
+}
+
+/** Libellé du lien vers l'autre vue. */
+export function otherViewLabel(view: ProductView): string {
+  return view === "app" ? "Ouvrir seul" : "Ouvrir dans app.hgdc.ch"
 }

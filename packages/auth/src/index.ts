@@ -449,6 +449,38 @@ export function verifiedOrganizationsFromIdToken(idToken: string, expected: IdTo
 }
 
 /**
+ * Préfixe des cookies better-auth d'un produit (`hgdc-mail`) en cookie d'hôte : `__Host-hgdc-mail`.
+ * À donner aussi à `convexBetterAuthReactStart({ cookiePrefix })` côté front.
+ */
+export function hostCookiePrefix(prefix: string): string {
+  if (!/^hgdc-[a-z]+$/.test(prefix))
+    throw new Error(`hostCookiePrefix : préfixe invalide « ${prefix} », attendu « hgdc-<mot> ».`)
+  return `__Host-${prefix}`
+}
+
+/**
+ * Réglages `advanced` de better-auth pour des cookies `__Host-` (ADR 0014 de la famille) : `Secure`,
+ * `Path=/`, sans `Domain`, garanti par le navigateur. Un nom voisin de `hgdc.ch` ne peut plus poser
+ * un cookie du même nom pour tout le domaine (connexion forcée). better-auth n'ajoute `__Secure-`
+ * que si `useSecureCookies` est vrai : on l'éteint et on remet `secure` sur chaque cookie.
+ *
+ * ```ts
+ * advanced: { ...hgdcCookieOptions("hgdc-mail"), ipAddress: HGDC_IP_ADDRESS_OPTIONS }
+ * ```
+ */
+export function hgdcCookieOptions(prefix: string): {
+  cookiePrefix: string
+  useSecureCookies: false
+  defaultCookieAttributes: { secure: true; path: "/" }
+} {
+  return {
+    cookiePrefix: hostCookiePrefix(prefix),
+    useSecureCookies: false,
+    defaultCookieAttributes: { secure: true, path: "/" },
+  }
+}
+
+/**
  * Durée d'une session d'un produit, sans prolongation (`session: { expiresIn: SESSION_TTL_SECONDS,
  * disableSessionRefresh: true }`) : les organisations sont relues à chaque connexion, donc au
  * moins une fois tous les 7 jours.

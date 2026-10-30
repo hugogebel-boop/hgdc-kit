@@ -1,7 +1,18 @@
 import { describe, expect, it } from "vitest"
 
-import { APP_PRODUCTS, isAppProduct, normalizeProductBasePath, productAddresses, productBasePath } from "./addresses.ts"
-import { PRODUCT_ORIGINS } from "./products.ts"
+import {
+  APP_PRODUCTS,
+  CONSOLE_ORIGINS,
+  isAppProduct,
+  normalizeProductBasePath,
+  productAddresses,
+  productBasePath,
+  soloHref,
+  soloOrigin,
+  viewFromHostname,
+  viewOrigin,
+} from "./addresses.ts"
+import { otherViewHref, PRODUCT_ORIGINS } from "./products.ts"
 
 describe("adresses d'un produit (@hgdc/ui/addresses)", () => {
   it("production : tout se déduit du mot", () => {
@@ -55,5 +66,64 @@ describe("adresses d'un produit (@hgdc/ui/addresses)", () => {
     expect(isAppProduct("Status")).toBe(true)
     expect(isAppProduct("portal")).toBe(true)
     expect(isAppProduct("account")).toBe(false)
+  })
+})
+
+describe("vues d'un produit (ADR 0014)", () => {
+  it("deux origines constantes", () => {
+    expect(viewOrigin("mail", "seul")).toBe("https://mail.hgdc.ch")
+    expect(viewOrigin("mail", "app")).toBe("https://app.hgdc.ch")
+  })
+
+  it("la vue du navigateur vient du nom exact de la page", () => {
+    expect(viewFromHostname("mail", "mail.hgdc.ch")).toBe("seul")
+    expect(viewFromHostname("Mail", "MAIL.hgdc.ch")).toBe("seul")
+    for (const host of ["app.hgdc.ch", "mail.hgdc.cloud", "mail.hgdc.ch.evil.ch", "host.hgdc.ch", "localhost"])
+      expect(viewFromHostname("mail", host)).toBe("app")
+  })
+
+  it("refuse un mot qui fabriquerait un autre hôte", () => {
+    expect(() => soloOrigin("evil.ch/x")).toThrow(/produit invalide/)
+    expect(() => soloOrigin("")).toThrow(/produit invalide/)
+  })
+
+  it("liste fermée des origines des consoles", () => {
+    expect(CONSOLE_ORIGINS).toContain("https://app.hgdc.ch")
+    expect(CONSOLE_ORIGINS).toContain("https://iassistant.hgdc.ch")
+    expect(CONSOLE_ORIGINS).not.toContain("https://account.hgdc.ch")
+    expect(CONSOLE_ORIGINS).toHaveLength(APP_PRODUCTS.length + 1)
+  })
+})
+
+describe("adresse affichée en vue seule (soloHref)", () => {
+  it("retire la base sur une frontière de segment", () => {
+    expect(soloHref("/mail", "/mail/o/acme?x=1#h")).toBe("/o/acme?x=1#h")
+    expect(soloHref("/mail", "/mail")).toBe("/")
+    expect(soloHref("/mail", "/mail/")).toBe("/")
+    expect(soloHref("/mail", "/mail?x=1")).toBe("/?x=1")
+    expect(soloHref("/mail", "/mailbox")).toBe("/mailbox")
+    expect(soloHref("/mail", "/o/acme")).toBe("/o/acme")
+    expect(soloHref("", "/o/acme")).toBe("/o/acme")
+  })
+
+  it("ne fabrique jamais une adresse externe", () => {
+    expect(soloHref("/mail", "/mail//evil.ch")).toBe("/mail//evil.ch")
+    expect(soloHref("/mail", "/mail/\\evil.ch")).toBe("/mail/\\evil.ch")
+  })
+})
+
+describe("lien vers l'autre vue (otherViewHref)", () => {
+  it("passe par l'entrée de l'autre origine, chemin encodé", () => {
+    expect(otherViewHref("mail", "app", "/o/acme?x=1")).toBe("https://mail.hgdc.ch/auth/hgdc?next=%2Fo%2Facme%3Fx%3D1")
+    expect(otherViewHref("Mail", "seul", "/o/acme")).toBe("https://app.hgdc.ch/mail/auth/hgdc?next=%2Fo%2Facme")
+  })
+
+  it("un chemin douteux mène à l'accueil", () => {
+    for (const path of ["//evil.ch", "https://evil.ch", "/\\evil.ch", "evil"])
+      expect(otherViewHref("mail", "app", path)).toBe("https://mail.hgdc.ch/auth/hgdc?next=%2F")
+  })
+
+  it("Account n'a qu'une vue", () => {
+    expect(otherViewHref("account", "app")).toBeNull()
   })
 })

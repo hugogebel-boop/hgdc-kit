@@ -101,3 +101,52 @@ export function productAddresses(product: string, env: AddressOverrides = {}): P
     withBase: (path: string) => `${basePath}${path}`,
   }
 }
+
+// ── Deux vues d'un même build (ADR 0014 de la famille) ─────────────────────────────────
+
+/**
+ * Vue d'un produit : `app` sous `https://app.hgdc.ch/<mot>` (barre des produits), `seul` sur
+ * `https://<mot>.hgdc.ch` (le produit seul). Même build : la passerelle ajoute la base sur
+ * `<mot>.hgdc.ch`, toute adresse `/<mot>/…` y reste valide.
+ */
+export type ProductView = "app" | "seul"
+
+/** Origine de la vue seule d'un produit : `https://mail.hgdc.ch`. */
+export function soloOrigin(product: string): string {
+  const word = product.toLowerCase()
+  if (!/^[a-z]+$/.test(word)) throw new Error(`@hgdc/ui/addresses : produit invalide « ${product} »`)
+  return `https://${word}.hgdc.ch`
+}
+
+/** Origine publique d'une vue : une constante, jamais tirée de la requête. */
+export function viewOrigin(product: string, view: ProductView): string {
+  return view === "seul" ? soloOrigin(product) : APP_ORIGIN
+}
+
+/** Vue d'après le nom de la page (`location.hostname`) : `seul` sur `<mot>.hgdc.ch`, `app` sinon. */
+export function viewFromHostname(product: string, hostname: string): ProductView {
+  return `https://${hostname.toLowerCase()}` === soloOrigin(product) ? "seul" : "app"
+}
+
+/**
+ * Origines publiques des consoles, pour une liste fermée (CORS d'Account) : `app.hgdc.ch` et la vue
+ * seule de chaque produit servi sous `app.hgdc.ch`.
+ */
+export const CONSOLE_ORIGINS: ReadonlyArray<string> = [APP_ORIGIN, ...APP_PRODUCTS.map(soloOrigin)]
+
+/**
+ * Adresse affichée en vue seule : la base retirée (`/mail/o/acme` devient `/o/acme`). À donner au
+ * routeur dans le navigateur, sur `<mot>.hgdc.ch` seulement :
+ * `createBrowserHistory({ createHref: (href) => soloHref(basePath, href) })`. Le serveur reçoit
+ * toujours la base (la passerelle l'ajoute) ; un chemin qui la garde reste valide.
+ */
+export function soloHref(basePath: string, href: string): string {
+  const base = normalizeProductBasePath(basePath)
+  if (!base || !href.startsWith(base)) return href
+  const rest = href.slice(base.length)
+  if (rest === "") return "/"
+  if (rest.startsWith("?") || rest.startsWith("#")) return `/${rest}`
+  // `/mailbox` n'est pas sous `/mail` ; `//x` resterait une adresse externe.
+  if (!rest.startsWith("/") || rest.startsWith("//") || rest.includes("\\")) return href
+  return rest
+}
