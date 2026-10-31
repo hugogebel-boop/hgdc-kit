@@ -23,7 +23,9 @@
     "src",
     "template",
     "docs.schema.json",
-    "!src/**/*.test.ts"
+    "!src/**/*.test.ts",
+    "!template/.astro",
+    "!template/.build"
   ],
   "exports": {
     "./core/*": "./src/core/*.ts",
