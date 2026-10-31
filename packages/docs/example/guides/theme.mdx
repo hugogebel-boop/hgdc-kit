@@ -1,0 +1,37 @@
+---
+title: Thème et logo
+description: Poser ta couleur, ton logo et ton favicon dans docs.json.
+---
+
+Le site suit la DA de HGDC par défaut : gris neutres, coins arrondis, Inter pour le texte. Tu changes trois choses : la couleur, le logo et le favicon.
+
+## Couleur
+
+```json
+{ "colors": { "primary": "#0f766e" } }
+```
+
+La couleur sert aux liens, à l'onglet actif et aux renvois de l'assistant. Sa teinte est gardée ; sa luminosité est ajustée pour que les liens restent lisibles (contraste de 4,5:1 au moins), en clair comme en sombre.
+
+Pour une couleur différente en mode sombre, ajoute `"dark": "#5eead4"`.
+
+<Note>
+  Dans la console, **Réglages › Thème** montre l'effet d'une couleur en clair et en sombre, son contraste sur un fond
+  blanc, et prépare la ligne à copier dans `docs.json`.
+</Note>
+
+## Logo
+
+```json
+{ "logo": { "light": "/images/logo-clair.svg", "dark": "/images/logo-sombre.svg" } }
+```
+
+Le chemin part de la racine du dossier de la doc. Un SVG carré ou large, de 32 pixels de haut environ, rend le mieux. Une seule image : `"logo": "/images/logo.svg"`.
+
+## Favicon
+
+```json
+{ "favicon": "/images/favicon.svg" }
+```
+
+Sans favicon, le site n'en annonce pas d'autre que `/favicon.svg` s'il existe.

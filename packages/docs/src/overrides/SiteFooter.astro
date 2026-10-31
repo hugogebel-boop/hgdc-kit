@@ -1,0 +1,97 @@
+---
+import { Icon as StarlightIcon } from "@astrojs/starlight/components"
+import data from "virtual:hgdc-docs/config"
+
+import { socialNetwork } from "../core/config.ts"
+import { withBase } from "../core/navigation.ts"
+import Icon from "./Icon.astro"
+import PoweredBy from "./PoweredBy.astro"
+import { appLink } from "./sections.ts"
+import ThemeToggle from "./ThemeToggle.astro"
+
+/**
+ * Pied de page du site, à droite de la barre latérale. En haut, le produit (logo, phrase,
+ * bouton vers l'application, réseaux) et les colonnes de `footer.links` ; en bas, « © année
+ * titulaire », « Propulsé par » et le choix du thème. Hors « Propulsé par », tout vient de docs.json.
+ */
+const logo = typeof data.config.logo === "string" ? { light: data.config.logo } : data.config.logo
+const src = (path: string) => withBase(data.base, path.startsWith("/") ? path : `/${path}`)
+const socials = Object.entries(data.config.footer?.socials ?? {}).flatMap(([key, href]) => {
+  const network = socialNetwork(key)
+  return network ? [{ ...network, href }] : []
+})
+const columns = data.config.footer?.links ?? []
+const app = appLink(data.config)
+const owner = data.config.footer?.copyright ?? data.config.name
+const year = new Date().getFullYear()
+---
+
+<footer class="hd-site-footer" data-pagefind-ignore>
+  <div class="hd-site-footer__top">
+    <div class="hd-site-footer__about">
+      <a class="hd-brand hd-brand--footer" href={`${data.base}/`}>
+        {
+          logo && (
+            <span class="hd-brand__mark">
+              <img class="hd-brand__light" src={src(logo.light)} alt="" width="20" height="20" loading="lazy" />
+              <img class="hd-brand__dark" src={src(logo.dark ?? logo.light)} alt="" width="20" height="20" loading="lazy" />
+            </span>
+          )
+        }
+        <span class="hd-brand__name">{data.config.name}</span>
+      </a>
+      {data.config.description && <p class="hd-site-footer__lede">{data.config.description}</p>}
+      {
+        app && (
+          <a class="hd-pill hd-pill--ghost hd-site-footer__app" href={app.href}>
+            {app.label}
+            <Icon name="arrow-up-right" size={16} />
+          </a>
+        )
+      }
+      {
+        socials.length > 0 && (
+          <ul class="hd-socials" aria-label="Réseaux">
+            {socials.map((social) => (
+              <li>
+                <a class="hd-icon-button" href={social.href} rel="me noopener" aria-label={social.label} title={social.label}>
+                  <StarlightIcon name={social.icon as "github"} size="1.1rem" />
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </div>
+    {
+      columns.length > 0 && (
+        <nav class="hd-site-footer__columns" aria-label="Pied de page">
+          {columns.map((column, index) => (
+            <div class="hd-site-footer__column">
+              {column.header && (
+                <h2 class="hd-site-footer__heading" id={`hd-footer-col-${index}`}>
+                  {column.header}
+                </h2>
+              )}
+              <ul aria-labelledby={column.header ? `hd-footer-col-${index}` : undefined}>
+                {column.items.map((item) => (
+                  <li>
+                    <a class="hd-site-footer__link" href={withBase(data.base, item.href)}>
+                      {item.icon && <img src={src(item.icon)} alt="" width="18" height="18" loading="lazy" />}
+                      <span>{item.label}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </nav>
+      )
+    }
+  </div>
+  <div class="hd-site-footer__bottom">
+    <p class="hd-site-footer__legal">© {year} {owner}</p>
+    <PoweredBy />
+    <ThemeToggle variant="segmented" />
+  </div>
+</footer>

@@ -1,0 +1,45 @@
+---
+import data from "virtual:hgdc-docs/config"
+
+import Icon from "./Icon.astro"
+import { assistantEnabled } from "./sections.ts"
+
+/**
+ * Contenu et table des matières côte à côte. La colonne du contenu garde une largeur de
+ * lecture ; la table colle sous l'en-tête. Elle laisse la place à l'assistant quand il est ouvert.
+ */
+const { toc } = Astro.locals.starlightRoute
+const assistant = assistantEnabled(data.config)
+---
+
+<div class:list={["hd-columns", { "hd-columns--toc": toc }]}>
+  <div class="hd-columns__main main-pane">
+    <slot />
+    {
+      assistant && (
+        <form class="hd-askbar" data-askbar data-pagefind-ignore>
+          <label class="sr-only" for="hd-askbar-input">Pose une question à l'assistant</label>
+          <input
+            id="hd-askbar-input"
+            data-askbar-input
+            type="text"
+            maxlength="1000"
+            placeholder="Pose une question…"
+            autocomplete="off"
+          />
+          <kbd class="hd-kbd" data-shortcut aria-hidden="true">Ctrl I</kbd>
+          <button type="submit" class="hd-send" aria-label="Envoyer la question"><Icon name="arrow-up" size={16} /></button>
+        </form>
+      )
+    }
+  </div>
+  {
+    toc && (
+      <aside class="hd-columns__toc" aria-label="Sur cette page">
+        <div class="hd-toc-scroll">
+          <slot name="right-sidebar" />
+        </div>
+      </aside>
+    )
+  }
+</div>

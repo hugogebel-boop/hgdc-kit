@@ -1,0 +1,68 @@
+---
+title: Navigation, onglets et versions
+sidebarTitle: Navigation
+description: Organiser les pages en groupes, en onglets et en versions dans docs.json.
+---
+
+La navigation se décrit dans `docs.json`, sous `navigation`. Choisis **une** forme : `pages`, `groups`, `tabs` ou `versions`.
+
+## Pages et groupes
+
+Pour une petite doc, une liste de groupes suffit. Un groupe peut contenir d'autres groupes.
+
+```json
+{
+  "navigation": {
+    "groups": [
+      { "group": "Démarrer", "pages": ["index", "installation"] },
+      {
+        "group": "Guides",
+        "pages": ["guides/facturer", { "group": "Avancé", "expanded": false, "pages": ["guides/webhooks"] }]
+      }
+    ]
+  }
+}
+```
+
+Une page s'écrit sans extension ni `/` au début : `guides/facturer` pour `guides/facturer.mdx`. Une page citée mais absente fait échouer le build, avec la liste de ce qui manque.
+
+## Onglets
+
+Au-delà d'une vingtaine de pages, sépare les grandes parties en onglets : guides, référence, explications. Les onglets s'affichent en haut de la barre latérale ; chacun a ses propres groupes.
+
+```json
+{
+  "navigation": {
+    "tabs": [
+      { "tab": "Guides", "groups": [{ "group": "Démarrer", "pages": ["index"] }] },
+      { "tab": "Référence", "groups": [{ "group": "API", "pages": ["reference/api"] }] }
+    ]
+  }
+}
+```
+
+<Tip>
+  Cette doc suit le découpage Diataxis : des guides pour faire, une référence pour vérifier, des explications pour
+  comprendre.
+</Tip>
+
+## Versions
+
+Quand ton produit garde plusieurs versions en service, chacune peut avoir sa doc. Le visiteur passe de l'une à l'autre avec un menu en haut de la barre latérale.
+
+```json
+{
+  "navigation": {
+    "versions": [
+      { "version": "v2", "default": true, "groups": [{ "group": "Démarrer", "pages": ["index"] }] },
+      { "version": "v1", "groups": [{ "group": "Démarrer", "pages": ["v1/index"] }] }
+    ]
+  }
+}
+```
+
+La version par défaut est celle que lisent l'assistant en priorité et l'index `llms.txt`. Les autres y figurent dans une section « Optional ».
+
+## Précédent et suivant
+
+En bas de chaque page, les liens Précédent et Suivant suivent l'ordre de la navigation, sans sortir de l'onglet ouvert.

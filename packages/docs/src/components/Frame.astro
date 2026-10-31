@@ -1,0 +1,11 @@
+---
+interface Props {
+  caption?: string
+}
+const { caption } = Astro.props
+---
+
+<figure class="hgdc-frame">
+  <slot />
+  {caption && <figcaption>{caption}</figcaption>}
+</figure>

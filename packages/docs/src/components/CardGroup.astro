@@ -1,0 +1,8 @@
+---
+interface Props {
+  cols?: number
+}
+const { cols = 2 } = Astro.props
+---
+
+<div class="hgdc-card-group not-content" style={`--hgdc-cols:${Math.min(Math.max(cols, 1), 4)}`}><slot /></div>

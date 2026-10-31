@@ -1,0 +1,74 @@
+---
+title: API de l'assistant
+sidebarTitle: API de l'assistant
+description: La requête que le widget envoie, la réponse et les codes d'erreur.
+---
+
+Le widget du site appelle une seule route. Tu peux l'appeler toi-même pour intégrer l'assistant dans ton application, depuis une page servie par une adresse déclarée dans la console.
+
+## Requête
+
+```http
+POST https://docs.hgdc.ch/api/v1/ask
+Content-Type: application/json
+Origin: https://docs.acme.ch
+```
+
+```json
+{
+  "project": "k57a8m2x9q4n1b3c5d7e9f0g2h4j6k8m",
+  "question": "Comment publier ma doc ?",
+  "page": "/guides/publier/",
+  "previous": ["j97f2k8m1q4n6b3c5d7e9f0g2h4j6k8m"]
+}
+```
+
+| Champ      | Rôle                                                                                                                                            |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `project`  | Identifiant du projet.                                                                                                                          |
+| `question` | 2 à 1 000 caractères.                                                                                                                           |
+| `page`     | Chemin de la page ouverte. Ses passages sont légèrement favorisés.                                                                              |
+| `previous` | Les `id` des réponses précédentes de la conversation, 3 au plus. L'assistant relit lui-même ce qu'il a répondu, dans les deux dernières heures. |
+
+L'en-tête `Origin` doit être l'adresse du site ou un des domaines déclarés dans **Réglages › Domaines**. Chaque visiteur a droit à 6 questions par minute et 40 par jour.
+
+## Réponse
+
+```json
+{
+  "id": "j97f…",
+  "status": "answered",
+  "answer": "Importe le dépôt dans Host[^1], puis synchronise le projet dans la console[^2].",
+  "sources": [
+    {
+      "n": 1,
+      "title": "Publier avec Host",
+      "section": "Avec Host",
+      "url": "https://docs.acme.ch/guides/publier/#avec-host"
+    },
+    {
+      "n": 2,
+      "title": "Publier avec Host",
+      "section": "Relier la console",
+      "url": "https://docs.acme.ch/guides/publier/#relier-la-console"
+    }
+  ]
+}
+```
+
+`answer` est du Markdown simple ; `[^n]` renvoie à la source `n`. `status` vaut `no_answer` quand la doc ne répond pas : `sources` est alors vide.
+
+## Erreurs
+
+| Code HTTP | `error.code`         | Quand                                               |
+| --------- | -------------------- | --------------------------------------------------- |
+| 400       | `invalid_request`    | Corps illisible ou question trop courte.            |
+| 403       | `origin_not_allowed` | La page n'est pas servie par une adresse du projet. |
+| 403       | `assistant_disabled` | L'assistant est coupé dans la console.              |
+| 404       | `project_not_found`  | Identifiant inconnu.                                |
+| 409       | `not_indexed`        | Le site n'a pas encore été synchronisé.             |
+| 429       | `rate_limited`       | Trop de questions en une minute.                    |
+| 429       | `quota_exceeded`     | Le quota mensuel de l'organisation est atteint.     |
+| 503       | `unavailable`        | Le modèle ne répond pas. Réessayer plus tard.       |
+
+Chaque erreur porte aussi `error.message`, une phrase en français à montrer telle quelle.

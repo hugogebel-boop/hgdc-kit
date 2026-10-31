@@ -1,0 +1,23 @@
+---
+import Icon from "../overrides/Icon.astro"
+import NamedIcon from "../overrides/NamedIcon.astro"
+
+interface Props {
+  title: string
+  defaultOpen?: boolean
+  /** Icône nommée devant le titre, comme chez Mintlify. */
+  icon?: string
+}
+const { title, defaultOpen = false, icon } = Astro.props
+---
+
+<details class="hgdc-accordion" open={defaultOpen}>
+  <summary
+    ><Icon name="chevron-right" size={16} class="hgdc-accordion__chevron" /><NamedIcon
+      name={icon}
+      size={16}
+      class="hgdc-accordion__icon"
+    /><span>{title}</span></summary
+  >
+  <div class="hgdc-accordion__body"><slot /></div>
+</details>

@@ -1,0 +1,39 @@
+---
+title: Bienvenue dans Docs
+sidebarTitle: Bienvenue
+description: Ta documentation en MDX, publiée par Host, avec recherche, llms.txt et un assistant IA qui cite ses sources.
+---
+
+Docs transforme un dossier de pages MDX en site de documentation. Tu écris dans ton dépôt Git, Host publie le site à chaque push, et la console `docs.hgdc.ch` branche un assistant qui répond à tes visiteurs à partir de ta doc, et de rien d'autre.
+
+<CardGroup cols={2}>
+  <Card title="Ta première doc" href="/demarrer/premiere-doc/">
+    Un dossier, un fichier `docs.json` et une page : ton site tourne en local en cinq minutes.
+  </Card>
+  <Card title="Publier avec Host" href="/guides/publier/">
+    Relie le dépôt à Host : chaque push met le site à jour.
+  </Card>
+  <Card title="L'assistant IA" href="/guides/assistant/">
+    Il répond aux questions de tes visiteurs et cite les pages qu'il a utilisées.
+  </Card>
+  <Card title="Pour les agents" href="/guides/agents/">
+    `llms.txt`, une version Markdown de chaque page et un serveur MCP en lecture.
+  </Card>
+</CardGroup>
+
+## Ce que tu obtiens
+
+- **Un site rapide et lisible** : navigation par onglets et groupes, versions, mode clair et sombre, mise en page pensée pour le téléphone.
+- **La recherche** : `Ctrl K` sur chaque page, sans service externe. L'index est construit avec le site.
+- **Tes couleurs** : une couleur dans `docs.json` suffit. Le contraste des liens est ajusté pour rester lisible.
+- **Un assistant sourcé** : il cherche dans tes pages, répond en quelques phrases et renvoie vers les sections exactes. S'il ne trouve rien, il le dit.
+- **Une doc lisible par les IA** : `llms.txt`, `llms-full.txt`, un bouton « Copier pour un LLM » et un serveur MCP.
+
+## Compatible avec Mintlify
+
+Le fichier `docs.json` reprend celui de Mintlify : nom, couleurs, logo, navigation en onglets, groupes et versions. Les composants les plus courants (`<Note>`, `<Steps>`, `<Card>`, `<Tabs>`…) fonctionnent sans import. Une doc Mintlify se reprend en général sans réécrire les pages.
+
+<Tip title="Tout reste en Suisse quand c'est possible">
+  Le site est servi par Host. Les questions des visiteurs sont gardées 90 jours au plus. Voir [Données et
+  confidentialité](/explications/donnees/).
+</Tip>

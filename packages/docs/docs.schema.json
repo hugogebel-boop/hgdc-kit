@@ -1,0 +1,378 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 300
+    },
+    "project": {
+      "type": "string",
+      "pattern": "^[a-z0-9]{8,64}$"
+    },
+    "language": {
+      "default": "fr",
+      "type": "string",
+      "enum": ["fr", "en", "de", "it"]
+    },
+    "base": {
+      "type": "string",
+      "pattern": "^(?:\\/[a-z0-9][a-z0-9_-]*)+$"
+    },
+    "colors": {
+      "type": "object",
+      "properties": {
+        "primary": {
+          "type": "string",
+          "pattern": "^#(?:[0-9a-f]{3}|[0-9a-f]{6})$"
+        },
+        "light": {
+          "type": "string",
+          "pattern": "^#(?:[0-9a-f]{3}|[0-9a-f]{6})$"
+        },
+        "dark": {
+          "type": "string",
+          "pattern": "^#(?:[0-9a-f]{3}|[0-9a-f]{6})$"
+        }
+      },
+      "required": ["primary"]
+    },
+    "logo": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "light": {
+              "type": "string"
+            },
+            "dark": {
+              "type": "string"
+            },
+            "href": {
+              "type": "string"
+            }
+          },
+          "required": ["light"]
+        }
+      ]
+    },
+    "favicon": {
+      "type": "string"
+    },
+    "navigation": {
+      "type": "object",
+      "properties": {
+        "versions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              },
+              "default": {
+                "type": "boolean"
+              },
+              "tabs": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "tab": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "groups": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/$defs/__schema0"
+                      }
+                    },
+                    "pages": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^(?!\\/)(?!.*\\.\\.)[a-z0-9][a-z0-9/_-]*$"
+                          },
+                          {
+                            "$ref": "#/$defs/__schema0"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": ["tab"]
+                }
+              },
+              "groups": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/__schema0"
+                }
+              },
+              "pages": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^(?!\\/)(?!.*\\.\\.)[a-z0-9][a-z0-9/_-]*$"
+                    },
+                    {
+                      "$ref": "#/$defs/__schema0"
+                    }
+                  ]
+                }
+              }
+            },
+            "required": ["version"]
+          }
+        },
+        "tabs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "tab": {
+                "type": "string",
+                "minLength": 1
+              },
+              "groups": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/__schema0"
+                }
+              },
+              "pages": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^(?!\\/)(?!.*\\.\\.)[a-z0-9][a-z0-9/_-]*$"
+                    },
+                    {
+                      "$ref": "#/$defs/__schema0"
+                    }
+                  ]
+                }
+              }
+            },
+            "required": ["tab"]
+          }
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema0"
+          }
+        },
+        "pages": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!\\/)(?!.*\\.\\.)[a-z0-9][a-z0-9/_-]*$"
+              },
+              {
+                "$ref": "#/$defs/__schema0"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "navbar": {
+      "type": "object",
+      "properties": {
+        "links": {
+          "maxItems": 5,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "href": {
+                "type": "string",
+                "format": "uri"
+              }
+            },
+            "required": ["label", "href"]
+          }
+        },
+        "primary": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string"
+            },
+            "href": {
+              "type": "string",
+              "format": "uri"
+            }
+          },
+          "required": ["label", "href"]
+        }
+      }
+    },
+    "app": {
+      "type": "object",
+      "properties": {
+        "href": {
+          "type": "string",
+          "format": "uri"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        }
+      },
+      "required": ["href"]
+    },
+    "footer": {
+      "type": "object",
+      "properties": {
+        "socials": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "links": {
+          "maxItems": 6,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "header": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "items": {
+                "minItems": 1,
+                "maxItems": 12,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 60
+                    },
+                    "href": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "icon": {
+                      "type": "string",
+                      "pattern": "^\\/(?!\\/)[\\w./-]+$"
+                    }
+                  },
+                  "required": ["label", "href"]
+                }
+              }
+            },
+            "required": ["items"]
+          }
+        },
+        "copyright": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        }
+      }
+    },
+    "redirects": {
+      "maxItems": 500,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "pattern": "^\\/(?!\\/)[A-Za-z0-9._~\\-/%]*$"
+          },
+          "destination": {
+            "type": "string",
+            "minLength": 1
+          },
+          "permanent": {
+            "type": "boolean"
+          }
+        },
+        "required": ["source", "destination"]
+      }
+    },
+    "assistant": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "default": true,
+          "type": "boolean"
+        },
+        "endpoint": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    }
+  },
+  "required": ["name", "navigation"],
+  "$defs": {
+    "__schema0": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pages": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!\\/)(?!.*\\.\\.)[a-z0-9][a-z0-9/_-]*$"
+              },
+              {
+                "$ref": "#/$defs/__schema0"
+              }
+            ]
+          }
+        },
+        "expanded": {
+          "type": "boolean"
+        }
+      },
+      "required": ["group", "pages"]
+    }
+  },
+  "$id": "https://docs.hgdc.ch/docs.schema.json",
+  "title": "docs.json de HGDC Docs"
+}

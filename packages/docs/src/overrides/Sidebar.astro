@@ -1,0 +1,114 @@
+---
+import data from "virtual:hgdc-docs/config"
+
+import Icon from "./Icon.astro"
+import { appLink, docsSections, sectionHref } from "./sections.ts"
+import SidebarList from "./SidebarList.astro"
+import ThemeToggle from "./ThemeToggle.astro"
+
+/**
+ * Barre latérale : la version (s'il y en a plusieurs), puis les groupes de docs.json. Sur
+ * téléphone, le même panneau sert de menu : il reprend les onglets et les liens de
+ * l'en-tête, le bouton vers l'application et le choix du thème.
+ */
+const { tabs, versions, current } = docsSections(data.tree, Astro.locals.hgdcSection ?? 0)
+const tabPosition = current.version.tabs.indexOf(current.tab)
+const versionHref = (version: (typeof versions)[number]) =>
+  sectionHref(data.base, (version.tabs[tabPosition] ?? version.tabs[0]!).items)
+const links = data.config.navbar?.links ?? []
+const primary = data.config.navbar?.primary
+const app = appLink(data.config)
+---
+
+<div class="hd-mobile-only hd-sidebar-head">
+  <a class="hd-brand" href={`${data.base}/`}><span class="hd-brand__name">{data.config.name}</span></a>
+  <button type="button" class="hd-icon-button" popovertarget="starlight__sidebar" popovertargetaction="hide" aria-label="Fermer le menu">
+    <Icon name="x" />
+  </button>
+</div>
+{
+  app && (
+    <a class="hd-mobile-only hd-pill hd-pill--primary hd-sidebar-app" href={app.href}>
+      {app.label}
+      <Icon name="arrow-up-right" size={16} />
+    </a>
+  )
+}
+
+{
+  versions.length > 1 && (
+    <label class="hd-version">
+      <span class="sr-only">Version de la documentation</span>
+      <select data-hgdc-version>
+        {versions.map((version) => (
+          <option value={versionHref(version)} selected={version === current.version}>
+            {version.label}
+            {version.isDefault ? " (actuelle)" : ""}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+{
+  tabs.length > 1 && (
+    <nav class="hd-mobile-only hd-sidebar-tabs" aria-label="Sections de la documentation">
+      {tabs.map((tab) => (
+        <a href={sectionHref(data.base, tab.items)} aria-current={tab === current.tab ? "page" : undefined}>
+          {tab.label}
+        </a>
+      ))}
+    </nav>
+  )
+}
+
+<SidebarList entries={Astro.locals.starlightRoute.sidebar} />
+
+<div class="hd-mobile-only hd-sidebar-footer">
+  {
+    (links.length > 0 || primary) && (
+      <nav class="hd-sidebar-links" aria-label="Liens">
+        {links.map((link) => (
+          <a href={link.href}>{link.label}</a>
+        ))}
+        {primary && (
+          <a class="hd-pill hd-pill--primary" href={primary.href}>
+            {primary.label}
+          </a>
+        )}
+      </nav>
+    )
+  }
+  <ThemeToggle variant="segmented" />
+</div>
+
+<script>
+  for (const select of document.querySelectorAll<HTMLSelectElement>("[data-hgdc-version]"))
+    select.addEventListener("change", () => window.location.assign(select.value))
+
+  // La barre garde sa position de défilement d'une page à l'autre, et l'élément courant
+  // reste visible à l'arrivée.
+  const pane = document.querySelector<HTMLElement>(".sidebar-pane")
+  if (pane) {
+    const KEY = "hd-sidebar-scroll"
+    try {
+      const saved = Number(sessionStorage.getItem(KEY))
+      if (saved) pane.scrollTop = saved
+    } catch {
+      // Stockage refusé : la barre repart du haut.
+    }
+    const current = pane.querySelector<HTMLElement>('[aria-current="page"]')
+    if (current) {
+      const box = pane.getBoundingClientRect()
+      const item = current.getBoundingClientRect()
+      if (item.top < box.top || item.bottom > box.bottom) current.scrollIntoView({ block: "center" })
+    }
+    addEventListener("pagehide", () => {
+      try {
+        sessionStorage.setItem(KEY, String(pane.scrollTop))
+      } catch {
+        // Rien à faire.
+      }
+    })
+  }
+</script>

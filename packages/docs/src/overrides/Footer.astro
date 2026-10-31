@@ -1,0 +1,107 @@
+---
+import data from "virtual:hgdc-docs/config"
+
+import Icon from "./Icon.astro"
+
+// « Cette page t'a aidé ? » au bas de chaque page, envoyé à la console (`/api/v1/feedback`).
+// Sans projet relié, rien n'est affiché : il n'y a personne pour lire les réponses.
+const { pagination } = Astro.locals.starlightRoute
+const endpoint = new URL("/api/v1/feedback", data.config.assistant?.endpoint ?? data.apiEndpoint).toString()
+---
+
+{
+  data.config.project && (
+    <hgdc-feedback class="hgdc-feedback not-content" data-endpoint={endpoint} data-project={data.config.project} data-pagefind-ignore>
+      <div data-step="ask">
+        <p class="hgdc-feedback__question">Cette page t'a aidé ?</p>
+        <div class="hgdc-feedback__choices">
+          <button type="button" data-helpful="true"><Icon name="thumbs-up" size={16} />Oui</button>
+          <button type="button" data-helpful="false"><Icon name="thumbs-down" size={16} />Non</button>
+        </div>
+      </div>
+      <form data-step="comment" hidden>
+        <label for="hgdc-feedback-comment">Qu'est-ce qui manquait ou pourrait être plus clair ? (facultatif)</label>
+        <textarea id="hgdc-feedback-comment" name="comment" rows="3" maxlength="1000"></textarea>
+        <div class="hgdc-feedback__choices">
+          <button type="submit">Envoyer</button>
+          <button type="button" data-skip>Passer</button>
+        </div>
+      </form>
+      <p data-step="done" class="hgdc-feedback__done" role="status" hidden>Merci, c'est noté.</p>
+    </hgdc-feedback>
+  )
+}
+{
+  (pagination.prev || pagination.next) && (
+    <nav class="hd-pagination not-content" aria-label="Pages voisines" data-pagefind-ignore>
+      {pagination.prev && (
+        <a class="hd-pagination__link" href={pagination.prev.href} rel="prev">
+          <span class="hd-pagination__hint"><Icon name="chevron-left" size={14} />Précédent</span>
+          <span class="hd-pagination__title">{pagination.prev.label}</span>
+        </a>
+      )}
+      {pagination.next && (
+        <a class="hd-pagination__link hd-pagination__link--next" href={pagination.next.href} rel="next">
+          <span class="hd-pagination__hint">Suivant<Icon name="chevron-right" size={14} /></span>
+          <span class="hd-pagination__title">{pagination.next.label}</span>
+        </a>
+      )}
+    </nav>
+  )
+}
+
+<script>
+  import { enhanceContent } from "../widget/code.ts"
+
+  enhanceContent()
+
+  class HgdcFeedback extends HTMLElement {
+    #helpful: boolean | null = null
+
+    connectedCallback() {
+      for (const button of this.querySelectorAll<HTMLButtonElement>("[data-helpful]"))
+        button.addEventListener("click", () => this.#choose(button.dataset.helpful === "true"))
+      const form = this.querySelector("form")!
+      form.addEventListener("submit", (event) => {
+        event.preventDefault()
+        const comment = new FormData(form).get("comment")
+        void this.#send(typeof comment === "string" ? comment.trim() : "")
+      })
+      this.querySelector("[data-skip]")?.addEventListener("click", () => void this.#send(""))
+    }
+
+    #show(step: "ask" | "comment" | "done") {
+      for (const element of this.querySelectorAll<HTMLElement>("[data-step]")) element.hidden = element.dataset.step !== step
+      if (step === "comment") this.querySelector("textarea")?.focus()
+    }
+
+    #choose(helpful: boolean) {
+      this.#helpful = helpful
+      // Un oui part tout de suite ; un non attend le commentaire (ou « Passer ») : un seul envoi par avis.
+      if (helpful) void this.#send("")
+      else this.#show("comment")
+    }
+
+    async #send(comment: string) {
+      if (this.#helpful === null) return
+      try {
+        await fetch(this.dataset.endpoint!, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            project: this.dataset.project,
+            page: location.pathname,
+            helpful: this.#helpful,
+            ...(comment ? { comment } : {}),
+          }),
+          keepalive: true,
+        })
+      } catch {
+        // Un retour perdu ne gêne pas la lecture : rien à afficher.
+      }
+      this.#show("done")
+    }
+  }
+  customElements.define("hgdc-feedback", HgdcFeedback)
+</script>
+

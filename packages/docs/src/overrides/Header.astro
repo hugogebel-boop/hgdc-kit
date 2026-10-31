@@ -1,0 +1,104 @@
+---
+import Search from "virtual:starlight/components/Search"
+import data from "virtual:hgdc-docs/config"
+
+import { appLink, assistantEnabled, docsSections, sectionHref } from "./sections.ts"
+import Icon from "./Icon.astro"
+import ThemeToggle from "./ThemeToggle.astro"
+
+/**
+ * En-tête, comme chez Mintlify : produit à gauche, onglets de docs.json au centre, puis la
+ * recherche, l'assistant, les liens de `navbar` et le thème. Sur téléphone, le menu, le
+ * produit, la recherche, l'assistant et « Ouvrir <produit> » : le reste passe dans le menu.
+ *
+ * Le nom du produit mène à l'accueil de la doc (on reste dans le site qu'on lit, comme le
+ * logo de tout site) ; le chemin vers l'application est le bouton « Ouvrir <produit> » (`app`).
+ */
+const { tabs, current } = docsSections(data.tree, Astro.locals.hgdcSection ?? 0)
+const home = `${data.base}/`
+const logo = typeof data.config.logo === "string" ? { light: data.config.logo } : data.config.logo
+const src = (path: string) => `${data.base}${path.startsWith("/") ? path : `/${path}`}`
+const links = data.config.navbar?.links ?? []
+const primary = data.config.navbar?.primary
+const assistant = assistantEnabled(data.config)
+const app = appLink(data.config)
+---
+
+<div class="hd-header">
+  <div class="hd-header__start">
+    <button
+      type="button"
+      class="hd-icon-button hd-menu-button"
+      popovertarget="starlight__sidebar"
+      aria-label="Menu de la documentation"
+      aria-controls="starlight__sidebar"
+    >
+      <Icon name="menu" />
+    </button>
+    <a class="hd-brand" href={logo?.href ?? home}>
+      {
+        logo && (
+          <span class="hd-brand__mark">
+            <img class="hd-brand__light" src={src(logo.light)} alt="" width="24" height="24" />
+            <img class="hd-brand__dark" src={src(logo.dark ?? logo.light)} alt="" width="24" height="24" />
+          </span>
+        )
+      }
+      <span class="hd-brand__name">{data.config.name}</span>
+    </a>
+  </div>
+
+  {
+    tabs.length > 1 && (
+      <nav class="hd-header__tabs" aria-label="Sections de la documentation">
+        {tabs.map((tab) => (
+          <a href={sectionHref(data.base, tab.items)} aria-current={tab === current.tab ? "page" : undefined}>
+            {tab.label}
+          </a>
+        ))}
+      </nav>
+    )
+  }
+
+  <div class="hd-header__end">
+    <Search />
+    {
+      assistant && (
+        <button
+          type="button"
+          class="hd-icon-button"
+          data-hgdc-ask
+          aria-label="Demander à l'assistant"
+          title="Demander à l'assistant (Ctrl I)"
+        >
+          <Icon name="sparkles" />
+        </button>
+      )
+    }
+    {
+      (links.length > 0 || primary) && (
+        <nav class="hd-header__links" aria-label="Liens">
+          {links.map((link) => (
+            <a class="hd-pill hd-pill--ghost" href={link.href}>
+              {link.label}
+            </a>
+          ))}
+          {primary && (
+            <a class="hd-pill hd-pill--primary" href={primary.href}>
+              {primary.label}
+            </a>
+          )}
+        </nav>
+      )
+    }
+    <ThemeToggle variant="button" />
+    {
+      app && (
+        <a class="hd-pill hd-pill--primary hd-app-button" href={app.href}>
+          {app.label}
+          <Icon name="arrow-up-right" size={16} />
+        </a>
+      )
+    }
+  </div>
+</div>
