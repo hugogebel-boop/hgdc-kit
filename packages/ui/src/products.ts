@@ -136,6 +136,7 @@ export const HGDC_PRODUCTS: ReadonlyArray<HgdcCatalogProduct> = [
   product("Analytics", "Tes visiteurs mesurés, sans cookies ni bannière.", Analytics01Icon, "live"),
   product("Docs", "Ta documentation en ligne, avec un assistant qui y répond.", BookOpen01Icon, "live"),
   product("IAssistant", "Une bulle de chat IA sur ton site, qui répond à tes visiteurs.", BubbleChatIcon, "preview"),
+  product("ID", "Bientôt disponible.", UserCircleIcon, "soon"),
 ]
 
 /** Vrai si le produit répond déjà (en service ou en préversion). */

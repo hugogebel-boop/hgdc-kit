@@ -30,7 +30,8 @@ describe("identité H Collection", () => {
         .replace(/^<svg[^>]*>/, "")
         .replace(/<\/svg>$/, "")
       expect(PRODUCT_BADGE_SVG[product]).toContain(picto)
-      expect(PRODUCT_BADGE_SVG[product]).not.toContain('fill="#fff"')
+      // La croix d'ID est blanche par dessin, posée sur un carré rouge qui fait toute l'icône.
+      expect(PRODUCT_BADGE_SVG[product].includes('fill="#fff"')).toBe(product === "id")
       expect(PRODUCT_BADGE_SVG[product]).not.toMatch(/<circle cx="32" cy="32" r="32"|<path d="M32 0C/)
       expect(PRODUCT_BADGE_SVG[product]).toContain('<svg x="0" y="0" width="64" height="64"')
     }
