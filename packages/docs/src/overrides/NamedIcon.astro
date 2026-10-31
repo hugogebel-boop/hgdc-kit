@@ -1,0 +1,16 @@
+---
+import lucide from "@iconify-json/lucide/icons.json"
+
+import { namedIconSvg, type IconSet } from "../core/named-icons.ts"
+
+/** Icône nommée d'un composant (`icon="rocket"`), rendue au build : rien si le nom est inconnu. */
+interface Props {
+  name: string | undefined
+  size?: number
+  class?: string
+}
+const { name, size = 16, class: className } = Astro.props
+const svg = namedIconSvg(lucide as IconSet, name, size)
+---
+
+{svg && <span class:list={["hd-named-icon-wrap", className]} set:html={svg} />}

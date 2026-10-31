@@ -1,0 +1,52 @@
+---
+title: Serveur MCP
+description: Transport, méthodes et outils du serveur MCP en lecture d'un projet.
+---
+
+Le serveur suit le [Model Context Protocol](https://modelcontextprotocol.io), transport Streamable HTTP, sans session : chaque requête est indépendante.
+
+```text
+POST https://docs.hgdc.ch/mcp/<identifiant du projet>
+Content-Type: application/json
+Accept: application/json, text/event-stream
+```
+
+Il répond en JSON (`application/json`), jamais en flux. `GET` et `DELETE` répondent 405. Versions du protocole acceptées : `2025-11-25`, `2025-06-18`, `2025-03-26`.
+
+## Méthodes
+
+| Méthode      | Réponse                                                   |
+| ------------ | --------------------------------------------------------- |
+| `initialize` | Nom du serveur, capacités (`tools`) et consignes d'usage. |
+| `ping`       | Objet vide.                                               |
+| `tools/list` | Les trois outils ci-dessous.                              |
+| `tools/call` | Le résultat de l'outil, en texte.                         |
+
+Une notification (message sans `id`) reçoit un 202 sans corps.
+
+## Outils
+
+### search_docs
+
+| Paramètre | Type           | Rôle                              |
+| --------- | -------------- | --------------------------------- |
+| `query`   | texte          | Question ou mots-clés.            |
+| `limit`   | entier, 1 à 10 | Nombre de passages, 5 par défaut. |
+
+Rend les passages trouvés, chacun avec son titre, sa section, son adresse et son texte.
+
+### get_page
+
+| Paramètre | Type  | Rôle                                                             |
+| --------- | ----- | ---------------------------------------------------------------- |
+| `path`    | texte | Chemin de la page (`/guides/publier/`), ou son adresse complète. |
+
+Rend la page en Markdown, précédée de son adresse.
+
+### list_pages
+
+Sans paramètre. Rend la liste des pages publiées.
+
+## Limites
+
+Le serveur est public et en lecture seule : il ne donne accès qu'à ce que le site publie déjà. Chaque projet accepte 300 requêtes par minute, chaque visiteur 60. Au-delà, la réponse est un 429.

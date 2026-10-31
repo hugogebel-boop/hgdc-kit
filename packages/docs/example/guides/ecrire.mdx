@@ -1,0 +1,95 @@
+---
+title: Écrire en MDX
+description: Titres, liens, images, code et métadonnées d'une page.
+---
+
+Chaque page est un fichier `.mdx` (ou `.md`) : du Markdown, plus des composants. Le chemin du fichier donne l'adresse de la page : `guides/publier.mdx` devient `/guides/publier/`.
+
+## Métadonnées
+
+Le haut de la page, entre deux lignes `---`, décrit la page.
+
+```mdx
+---
+title: Publier avec Host
+sidebarTitle: Publier
+description: Mettre la doc en ligne et brancher l'assistant.
+---
+```
+
+| Champ          | Rôle                                                                         |
+| -------------- | ---------------------------------------------------------------------------- |
+| `title`        | Titre de la page, obligatoire. Aussi le titre de l'onglet du navigateur.     |
+| `sidebarTitle` | Libellé plus court dans la barre latérale.                                   |
+| `description`  | Une phrase. Reprise par les moteurs de recherche, `llms.txt` et l'assistant. |
+
+## Titres et sections
+
+Commence les sections à `##`. Chaque titre reçoit une ancre (`#publier-avec-host`) : c'est elle que l'assistant cite dans ses sources. Un titre clair donne donc une source claire.
+
+<Tip>
+  Une section par question qu'on te pose. L'assistant découpe la doc par titre : une section courte et nommée simplement
+  est retrouvée plus souvent.
+</Tip>
+
+## Liens
+
+Les liens internes s'écrivent avec le chemin de la page : `[Publier](/guides/publier/)`. Pour une section : `[le domaine](/guides/publier/#ton-domaine)`.
+
+## Images
+
+Range les images dans `images/`, `img/`, `logo/`, `assets/` ou `static/`, et cite-les avec un chemin qui commence par `/`. Seuls les médias de ces dossiers, le logo et le favicon de `docs.json`, et tout le dossier `public/` (servi à la racine) sont publiés : un fichier oublié ailleurs dans le dépôt ne part jamais en ligne.
+
+```mdx
+![Le tableau de bord](/images/tableau-de-bord.png)
+```
+
+Pour une légende, entoure l'image d'un cadre :
+
+```mdx
+<Frame caption="Le tableau de bord après la première publication">
+  ![Le tableau de bord](/images/tableau-de-bord.png)
+</Frame>
+```
+
+## Code
+
+Les blocs de code sont colorés et ont un bouton Copier. Indique le langage après les trois accents graves :
+
+````mdx
+```bash
+npm run build
+```
+````
+
+Après le langage, comme chez Mintlify : un nom de fichier, affiché dans l'en-tête du bloc, puis des options.
+
+| Option       | Effet                                                     |
+| ------------ | --------------------------------------------------------- |
+| `lines`      | Numéros de ligne                                          |
+| `wrap`       | Les lignes longues reviennent à la ligne                  |
+| `expandable` | Un bloc long reste replié, avec « Afficher tout le code » |
+| `nocopy`     | Pas de bouton Copier                                      |
+
+```ts docs.config.ts lines expandable
+// Exemple : un fichier de configuration, numéroté et replié au-delà de dix lignes.
+export const site = {
+  name: "Ma doc",
+  language: "fr",
+  theme: { primary: "#7c3aed" },
+  navigation: [
+    { group: "Démarrer", pages: ["index", "installation"] },
+    { group: "Guides", pages: ["guides/ecrire", "guides/publier"] },
+    { group: "Référence", pages: ["reference/api"] },
+  ],
+  search: true,
+  assistant: true,
+  feedback: true,
+}
+```
+
+Dans l'éditeur, ces options se cochent dans le menu « … » du bloc.
+
+## Ce qui n'est pas publié
+
+Les fichiers qui commencent par `_` (comme `_brouillon.mdx`), `README.md`, `CHANGELOG.md` et les dossiers `node_modules`, `dist` ou cachés ne deviennent pas des pages.

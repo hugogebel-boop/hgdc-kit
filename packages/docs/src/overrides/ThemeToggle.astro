@@ -1,0 +1,90 @@
+---
+import Icon from "./Icon.astro"
+
+/**
+ * Thème : un bouton clair / sombre dans l'en-tête, et le choix à trois (système, clair,
+ * sombre) au pied de page et dans le menu. Clair par défaut. Clé `starlight-theme`, lue avant
+ * la première peinture par `ThemeProvider.astro` : aucun éclair au chargement.
+ */
+interface Props {
+  variant: "button" | "segmented"
+}
+const { variant } = Astro.props
+const choices = [
+  { value: "auto", label: "Système", icon: "monitor" },
+  { value: "light", label: "Clair", icon: "sun" },
+  { value: "dark", label: "Sombre", icon: "moon" },
+] as const
+---
+
+{
+  variant === "button" ? (
+    <button type="button" class="hd-icon-button hd-theme-button" data-hd-theme-toggle aria-label="Passer au thème sombre">
+      <Icon name="moon" class="hd-theme-button__moon" />
+      <Icon name="sun" class="hd-theme-button__sun" />
+    </button>
+  ) : (
+    <div class="hd-theme-choice" role="radiogroup" aria-label="Thème">
+      {choices.map((choice) => (
+        <button type="button" role="radio" aria-checked="false" data-hd-theme-choice={choice.value} aria-label={choice.label} title={choice.label}>
+          <Icon name={choice.icon} size={16} />
+        </button>
+      ))}
+    </div>
+  )
+}
+
+<script>
+  const KEY = "starlight-theme"
+  const stored = (): string => {
+    try {
+      return localStorage.getItem(KEY) || "light"
+    } catch {
+      return "light"
+    }
+  }
+  const system = () => (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
+  const apply = (choice: string) => {
+    try {
+      localStorage.setItem(KEY, choice)
+    } catch {
+      // Stockage refusé : le thème vaut pour la page affichée.
+    }
+    const theme = choice === "auto" ? system() : choice
+    document.documentElement.dataset.theme = theme
+    document.documentElement.dataset.hdTheme = theme
+    sync()
+  }
+  const sync = () => {
+    const choice = stored()
+    const dark = document.documentElement.dataset.theme === "dark"
+    for (const button of document.querySelectorAll<HTMLButtonElement>("[data-hd-theme-toggle]"))
+      button.setAttribute("aria-label", dark ? "Passer au thème clair" : "Passer au thème sombre")
+    for (const radio of document.querySelectorAll<HTMLButtonElement>("[data-hd-theme-choice]")) {
+      const checked = radio.dataset.hdThemeChoice === choice
+      radio.setAttribute("aria-checked", String(checked))
+      radio.tabIndex = checked ? 0 : -1
+    }
+  }
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>("[data-hd-theme-toggle]"))
+    button.addEventListener("click", () => apply(document.documentElement.dataset.theme === "dark" ? "light" : "dark"))
+  for (const group of document.querySelectorAll<HTMLElement>(".hd-theme-choice")) {
+    const radios = [...group.querySelectorAll<HTMLButtonElement>("[data-hd-theme-choice]")]
+    for (const radio of radios) radio.addEventListener("click", () => apply(radio.dataset.hdThemeChoice!))
+    // Groupe de boutons radio : les flèches déplacent le choix, Tab sort du groupe.
+    group.addEventListener("keydown", (event) => {
+      const step = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 0
+      if (!step) return
+      event.preventDefault()
+      const index = radios.findIndex((radio) => radio.getAttribute("aria-checked") === "true")
+      const next = radios[(index + step + radios.length) % radios.length]!
+      apply(next.dataset.hdThemeChoice!)
+      next.focus()
+    })
+  }
+  matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
+    if (stored() === "auto") apply("auto")
+  })
+  sync()
+</script>

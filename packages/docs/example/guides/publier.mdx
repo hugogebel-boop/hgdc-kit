@@ -1,0 +1,79 @@
+---
+title: Publier avec Host
+sidebarTitle: Publier
+description: Mettre la doc en ligne avec Host, activer Docs en un clic et brancher l'assistant.
+---
+
+Host construit ton site à chaque push et le sert depuis son serveur. La console `docs.hgdc.ch` relit ensuite le site publié pour indexer l'assistant.
+
+## Mettre la doc en ligne
+
+<Steps>
+  <Step title="Importer le dépôt">
+    Dans Host, crée un projet à partir de ton dépôt GitHub. Host reconnaît une doc Docs (un `docs.json` et le paquet
+    `@hgdc/docs` dans `package.json`) : il la construit avec `hgdc-docs build` et publie le dossier `dist/`. Aucun
+    fichier de configuration à ajouter.
+  </Step>
+  <Step title="Fusionner la pull request de Host">
+    Host propose une pull request qui ajoute son workflow de déploiement. Fusionne-la : la doc part en production.
+  </Step>
+  <Step title="Pousser">
+    Chaque push sur la branche principale publie le site en production. Les autres branches ont leur préversion.
+  </Step>
+</Steps>
+
+## Activer Docs
+
+<Steps>
+  <Step title="Cliquer sur « Activer Docs »">
+    Sur la vue d'ensemble du projet dans Host, la carte **Assistant et recherche avec Docs** propose **Activer Docs**.
+    Host crée le projet dans la console, dans la même organisation. Il faut être admin de l'organisation, et la doc doit
+    déjà être en production.
+  </Step>
+  <Step title="Publier une fois de plus">
+    Pousse une modification. Ce build reçoit l'identifiant du projet de la console : le site le porte sans que tu le
+    recopies dans `docs.json`.
+  </Step>
+  <Step title="Laisser faire">
+    À chaque mise en production, Host prévient la console, qui relit `/_hgdc/corpus.json` et indexe les pages en
+    quelques secondes. La carte de Host affiche **Docs est activé** et mène à la console. En plus, la console relit le
+    site tous les quarts d'heure : un appel perdu se rattrape seul.
+  </Step>
+</Steps>
+
+<Note>
+  Le projet apparaît dans la console dès que tu t'y connectes avec ton compte HGDC. Ses réglages (domaines, assistant)
+  s'y changent comme pour n'importe quel projet.
+</Note>
+
+## Ton domaine
+
+Le domaine se branche dans Host, comme pour n'importe quel site : Host annonce la nouvelle adresse à la console à la mise en production suivante. Si la doc répond sur plusieurs adresses (`docs.acme.ch` et `aide.acme.ch`), ajoute les autres dans **Réglages › Domaines** : l'assistant ne répond qu'aux pages servies par ces adresses.
+
+## Relier un projet existant
+
+Le dossier `dist/` est un site statique, il se dépose chez n'importe quel hébergeur. Hors de Host, ou pour un projet créé directement dans la console, relie la doc à la main.
+
+<Steps>
+  <Step title="Créer le projet dans la console">
+    Sur `docs.hgdc.ch`, ouvre ton organisation, puis **Nouveau projet**. Donne l'adresse de production du site, par exemple `https://docs.acme.ch`.
+  </Step>
+  <Step title="Copier l'identifiant dans docs.json">
+    La console affiche une ligne à copier. Ajoute-la dans `docs.json`, puis publie :
+
+    ```json
+    { "project": "k57a8m2x9q4n1b3c5d7e9f0g2h4j6k8m" }
+    ```
+
+    Sans cet identifiant, le site fonctionne mais l'assistant reste caché, et la console refuse d'indexer un site qui ne porte pas le sien.
+
+  </Step>
+  <Step title="Synchroniser">
+    Clique sur **Synchroniser** dans l'aperçu du projet. La console lit `/_hgdc/corpus.json` sur ton site et indexe chaque page, puis relit le site tous les quarts d'heure.
+  </Step>
+</Steps>
+
+<Warning title="Adresse publique seulement">
+  La console n'accepte qu'une adresse `https://` avec un nom de domaine public. Elle ne suit pas les redirections :
+  donne l'adresse finale du site.
+</Warning>

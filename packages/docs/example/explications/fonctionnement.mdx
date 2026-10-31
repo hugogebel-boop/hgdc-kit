@@ -1,0 +1,36 @@
+---
+title: Comment ça marche
+description: Du push au site publié, puis à l'assistant qui répond.
+---
+
+Docs tient en trois pièces : un modèle de site, Host qui le publie, et la console qui l'indexe pour l'assistant.
+
+## 1. Le modèle de site
+
+Le paquet `@hgdc/docs` contient un site Astro Starlight complet. `hgdc-docs build` lit ton `docs.json`, prend tes pages MDX et construit un site statique. Rien ne tourne côté serveur : le site est rapide et ne tombe pas en panne avec la console.
+
+Pendant le build, chaque page est aussi convertie en Markdown à partir du HTML final. Les composants sont donc déjà rendus : ce que lit un agent est exactement ce que voit un visiteur.
+
+## 2. La publication par Host
+
+Host lance le build dans GitHub Actions à chaque push, puis sert le dossier `dist/` sur ton domaine. La doc est une source comme une autre : préversion par branche, retour arrière, domaine.
+
+## 3. L'indexation par la console
+
+La console relit `/_hgdc/corpus.json` sur le site publié : tous les quarts d'heure, ou quand tu cliques sur **Synchroniser**. Elle vérifie que le corpus porte bien l'identifiant du projet, puis :
+
+1. découpe chaque page en passages, un par section (titre `##` ou plus fin) ;
+2. compare avec l'index existant, passage par passage : seuls les passages nouveaux sont traités ;
+3. calcule leur représentation vectorielle (embedding), qui permet de retrouver une reformulation ;
+4. supprime les passages qui ne sont plus publiés.
+
+Un build identique au précédent ne change rien à l'index.
+
+## 4. La réponse
+
+Une question passe par deux recherches : par mots (les termes exacts, comme `docs.json`) et par sens (les reformulations). Les deux classements sont fusionnés, les six meilleurs passages sont donnés au modèle Claude, qui répond en citant ceux qu'il utilise.
+
+<Note>
+  L'index d'un projet est fermé aux autres : une recherche ne voit que les passages de son propre projet, vérifiés deux
+  fois.
+</Note>

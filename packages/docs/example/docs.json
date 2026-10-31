@@ -1,0 +1,185 @@
+{
+  "$schema": "../packages/site/docs.schema.json",
+  "name": "Docs",
+  "description": "Écrire une documentation en MDX, la publier avec Host et y brancher un assistant IA qui cite ses sources.",
+  "project": "jn7dj6vzkgs7n2d16kqjtb99yd8gbdw0",
+  "language": "fr",
+  "colors": {
+    "primary": "#7c3aed"
+  },
+  "logo": {
+    "light": "/images/logo-clair.svg",
+    "dark": "/images/logo-sombre.svg"
+  },
+  "favicon": "/images/favicon.svg",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Démarrer",
+            "pages": ["index", "demarrer/premiere-doc", "guides/publier"]
+          },
+          {
+            "group": "Écrire",
+            "pages": ["guides/ecrire", "guides/composants", "guides/navigation", "guides/theme"]
+          },
+          {
+            "group": "Assistant et agents",
+            "pages": ["guides/assistant", "guides/agents"]
+          }
+        ]
+      },
+      {
+        "tab": "Référence",
+        "groups": [
+          {
+            "group": "Configuration",
+            "pages": ["reference/docs-json", "reference/cli"]
+          },
+          {
+            "group": "API",
+            "pages": ["reference/api-assistant", "reference/mcp"]
+          }
+        ]
+      },
+      {
+        "tab": "Explications",
+        "groups": [
+          {
+            "group": "Sous le capot",
+            "pages": ["explications/fonctionnement", "explications/donnees"]
+          }
+        ]
+      }
+    ]
+  },
+  "assistant": {
+    "enabled": true
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "HGDC",
+        "href": "https://hgdc.ch"
+      }
+    ]
+  },
+  "app": {
+    "href": "https://docs.hgdc.ch"
+  },
+  "footer": {
+    "links": [
+      {
+        "header": "Documentation",
+        "items": [
+          {
+            "label": "Démarrer",
+            "href": "/"
+          },
+          {
+            "label": "Écrire une page",
+            "href": "/guides/ecrire/"
+          },
+          {
+            "label": "Référence de docs.json",
+            "href": "/reference/docs-json/"
+          },
+          {
+            "label": "CLI",
+            "href": "/reference/cli/"
+          },
+          {
+            "label": "API de l'assistant",
+            "href": "/reference/api-assistant/"
+          },
+          {
+            "label": "llms.txt",
+            "href": "/llms.txt"
+          }
+        ]
+      },
+      {
+        "header": "Aide",
+        "items": [
+          {
+            "label": "État du service",
+            "href": "https://status.hgdc.ch/documentation"
+          },
+          {
+            "label": "Écrire au support",
+            "href": "mailto:support@hgdc.ch"
+          },
+          {
+            "label": "Signaler une faille",
+            "href": "https://hgdc.ch/.well-known/security.txt"
+          }
+        ]
+      },
+      {
+        "header": "La H Collection",
+        "items": [
+          {
+            "label": "Account",
+            "href": "https://account.hgdc.ch",
+            "icon": "/images/famille/account.svg"
+          },
+          {
+            "label": "Host",
+            "href": "https://host.hgdc.ch",
+            "icon": "/images/famille/host.svg"
+          },
+          {
+            "label": "Mail",
+            "href": "https://mail.hgdc.ch",
+            "icon": "/images/famille/mail.svg"
+          },
+          {
+            "label": "Portal",
+            "href": "https://portal.hgdc.ch",
+            "icon": "/images/famille/portal.svg"
+          },
+          {
+            "label": "Status",
+            "href": "https://status.hgdc.ch",
+            "icon": "/images/famille/status.svg"
+          },
+          {
+            "label": "Analytics",
+            "href": "https://analytics.hgdc.ch",
+            "icon": "/images/famille/analytics.svg"
+          }
+        ]
+      },
+      {
+        "header": "HGDC",
+        "items": [
+          {
+            "label": "L'entreprise",
+            "href": "https://hgdc.ch"
+          },
+          {
+            "label": "Contact",
+            "href": "https://hgdc.ch/contact"
+          },
+          {
+            "label": "Mentions légales",
+            "href": "https://hgdc.ch/mentions-legales"
+          },
+          {
+            "label": "Confidentialité",
+            "href": "https://hgdc.ch/confidentialite"
+          }
+        ]
+      }
+    ],
+    "copyright": "HGDC"
+  },
+  "redirects": [
+    {
+      "source": "/guides/elements",
+      "destination": "/guides/composants/"
+    }
+  ]
+}

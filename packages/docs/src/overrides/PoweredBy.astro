@@ -1,0 +1,34 @@
+---
+import docsDark from "../assets/hgdc/docs-dark.svg?url"
+import docsLight from "../assets/hgdc/docs.svg?url"
+import markDark from "../assets/hgdc/hcollection-icon-dark.svg?url"
+import markLight from "../assets/hgdc/hcollection-icon.svg?url"
+
+/**
+ * « Propulsé par Docs | Collection », comme le pied des pages publiques de Status. Les logos
+ * sont ceux de `@hgdc/ui/family/` (le site ne dépend pas du kit, qui demande React) : les
+ * reprendre de là quand ils changent. En `<img>`, pas en SVG en ligne : les deux thèmes
+ * partagent les mêmes `id` de dégradé.
+ */
+---
+
+<div class="hd-powered">
+  <span>Propulsé par</span>
+  <span class="hd-powered__brands">
+    <a class="hd-powered__link" href="https://docs.hgdc.ch" aria-label="Docs">
+      <span class="hd-powered__icon">
+        <img class="hd-brand__light" src={docsLight} alt="" width="20" height="20" />
+        <img class="hd-brand__dark" src={docsDark} alt="" width="20" height="20" />
+      </span>
+      <span aria-hidden="true">Docs</span>
+    </a>
+    <span class="hd-powered__rule" aria-hidden="true"></span>
+    <a class="hd-powered__link hd-powered__link--family" href="https://hgdc.ch" aria-label="H Collection">
+      <span class="hd-powered__icon hd-powered__icon--mark">
+        <img class="hd-brand__light" src={markLight} alt="" width="20" height="20" />
+        <img class="hd-brand__dark" src={markDark} alt="" width="20" height="20" />
+      </span>
+      <span aria-hidden="true">Collection</span>
+    </a>
+  </span>
+</div>

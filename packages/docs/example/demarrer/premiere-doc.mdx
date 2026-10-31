@@ -1,0 +1,70 @@
+---
+title: Ta première doc en cinq minutes
+sidebarTitle: Ta première doc
+description: Créer le dossier, écrire docs.json et une page, puis voir le site en local.
+---
+
+Il te faut Node.js 22 ou plus récent, ou Bun. Tout le reste s'installe avec le paquet `@hgdc/docs`.
+
+<Steps>
+  <Step title="Créer le dossier">
+    Un dépôt Git à part, ou un dossier `docs/` dans le dépôt de ton produit.
+
+    ```bash
+    mkdir docs && cd docs
+    npm init -y
+    npm install --save-dev @hgdc/docs
+    ```
+
+  </Step>
+  <Step title="Écrire docs.json">
+    À la racine du dossier. Seuls `name` et `navigation` sont obligatoires.
+
+    ```json
+    {
+      "name": "Documentation Acme",
+      "colors": { "primary": "#0f766e" },
+      "navigation": {
+        "groups": [{ "group": "Démarrer", "pages": ["index", "installation"] }]
+      }
+    }
+    ```
+
+  </Step>
+  <Step title="Écrire les pages">
+    Une page par entrée de la navigation : `index.mdx` et `installation.mdx`. Chaque page commence par un titre.
+
+    ```mdx
+    ---
+    title: Installation
+    description: Installer Acme en deux minutes.
+    ---
+
+    Lance la commande suivante :
+    ```
+
+  </Step>
+  <Step title="Voir le site">
+    Ajoute les scripts dans `package.json`, puis lance `npm run dev`.
+
+    ```json
+    {
+      "scripts": {
+        "dev": "hgdc-docs dev",
+        "build": "hgdc-docs build"
+      }
+    }
+    ```
+
+    Le site s'ouvre sur `http://localhost:4321` et se recharge à chaque modification.
+
+  </Step>
+</Steps>
+
+<Note>`hgdc-docs build` écrit le site dans `dist/`. Ajoute `dist/` et `.hgdc-docs/` à ton `.gitignore`.</Note>
+
+## Et ensuite
+
+- [Publier avec Host](/guides/publier/) pour mettre le site en ligne.
+- [Écrire en MDX](/guides/ecrire/) pour les titres, les liens, les images et le code.
+- [docs.json](/reference/docs-json/) pour toutes les options.

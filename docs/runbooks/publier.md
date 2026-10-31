@@ -17,7 +17,9 @@ Vérifier : `npm view @hgdc/config version` et le badge « Provenance » sur npm
 
 npm ne déclare un _trusted publisher_ que sur un paquet qui existe déjà. En CI, `scripts/publish.ts` saute donc tout paquet absent de npm (avertissement « Premier envoi manuel » dans le journal de `release.yml`) : la release des autres paquets passe, et la première version part du poste, sans provenance.
 
-### En attente : `@hgdc/errors` et `@hgdc/docs`
+### Historique : `@hgdc/errors` et `@hgdc/docs`
+
+`@hgdc/docs` vit maintenant dans le kit (`packages/docs`, ADR 0023) : la section ci-dessous ne vaut que pour l'histoire de ses premiers envois, ses versions suivantes passent par la release du kit. Son trusted publisher npm pointe encore sur `hgdc-docs` : à redéclarer sur `hgdc-kit` / `release.yml`, d'ici là chaque version part du poste par la voie du jeton ci-dessous.
 
 `@hgdc/errors` vit ici ; `@hgdc/docs` dans le dépôt privé `hgdc-docs` (`packages/site`). Les deux partent en une fois, avec la même session npm. Prérequis : la PR « chore: release » qui porte `@hgdc/errors` 0.1.0 est fusionnée, les deux dépôts sont clonés côte à côte (`kit/` et `docs/`).
 

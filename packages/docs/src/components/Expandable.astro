@@ -1,0 +1,15 @@
+---
+import Icon from "../overrides/Icon.astro"
+
+/** Partie repliée, souvent les propriétés d'un objet sous un champ d'API, comme chez Mintlify. */
+interface Props {
+  title?: string
+  defaultOpen?: boolean
+}
+const { title = "propriétés", defaultOpen = false } = Astro.props
+---
+
+<details class="hd-expandable" open={defaultOpen}>
+  <summary><Icon name="chevron-right" size={14} class="hd-expandable__chevron" /><span>{title}</span></summary>
+  <div class="hd-expandable__body"><slot /></div>
+</details>

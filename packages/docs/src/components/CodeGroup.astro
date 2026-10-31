@@ -1,0 +1,17 @@
+---
+// Plusieurs blocs de code en onglets, nommés d'après le titre de chaque bloc (```bash npm).
+// Sans JavaScript, seul le premier bloc s'affiche ; le script ajoute les onglets.
+// `dropdown` (Mintlify) : une liste déroulante à la place des onglets.
+interface Props {
+  dropdown?: boolean
+}
+const { dropdown = false } = Astro.props
+---
+
+<hd-code-group class="hgdc-code-group not-content" data-dropdown={dropdown ? "" : undefined}><slot /></hd-code-group>
+
+<script>
+  import { defineCodeGroup } from "../widget/code.ts"
+
+  defineCodeGroup()
+</script>

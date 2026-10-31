@@ -1,0 +1,9 @@
+---
+interface Props {
+  /** Comme Mintlify : `p` (par défaut), `h2` ou `h3`, la taille des titres d'étape. */
+  titleSize?: "p" | "h2" | "h3"
+}
+const { titleSize = "p" } = Astro.props
+---
+
+<ol class="hgdc-steps" data-title-size={titleSize === "p" ? undefined : titleSize}><slot /></ol>

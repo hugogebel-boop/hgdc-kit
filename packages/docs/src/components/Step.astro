@@ -1,0 +1,16 @@
+---
+import NamedIcon from "../overrides/NamedIcon.astro"
+
+interface Props {
+  title: string
+  /** Icône nommée à la place du numéro, comme chez Mintlify. */
+  icon?: string
+}
+const { title, icon } = Astro.props
+---
+
+<li class="hgdc-step" data-icon={icon ? "" : undefined}>
+  <NamedIcon name={icon} size={14} class="hgdc-step__icon" />
+  <p class="hgdc-step__title">{title}</p>
+  <div class="hgdc-step__body"><slot /></div>
+</li>

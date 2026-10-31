@@ -1,0 +1,7 @@
+---
+import TableOfContents from "virtual:starlight/components/TableOfContents"
+
+// Table des matières seule : sur téléphone, comme chez Mintlify, la page se lit sans elle.
+---
+
+{Astro.locals.starlightRoute.toc && <TableOfContents />}

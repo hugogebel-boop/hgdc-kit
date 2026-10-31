@@ -1,0 +1,58 @@
+---
+title: llms.txt et MCP
+sidebarTitle: Pour les agents
+description: Rendre la doc lisible par les outils d'IA, avec llms.txt, des pages en Markdown et un serveur MCP.
+---
+
+Les assistants de code et les agents lisent la documentation pour écrire du code juste. Docs leur donne trois portes d'entrée, sans rien à configurer.
+
+## llms.txt
+
+Chaque site publie à sa racine :
+
+- `/llms.txt` : l'index de la doc au format [llmstxt.org](https://llmstxt.org), une ligne par page avec sa description, rangées par onglet et par groupe. Le même fichier répond aussi sur `/.well-known/llms.txt`.
+- `/llms-full.txt` : toute la doc en un seul fichier Markdown.
+
+## Une page en Markdown
+
+Chaque page existe aussi en Markdown à la même adresse suivie de `.md` : `/guides/publier.md` pour `/guides/publier/`. Les pages l'annoncent dans leur `<head>` avec `rel="alternate"`.
+
+En haut de chaque page, **Copier pour un LLM** copie ce Markdown. Le menu à côté ouvre la page dans Claude ou ChatGPT, ou affiche le Markdown.
+
+## Serveur MCP
+
+Chaque projet a un serveur MCP en lecture seule. L'adresse est dans l'aperçu du projet, dans la console :
+
+```text
+https://docs.hgdc.ch/mcp/<identifiant du projet>
+```
+
+Dans Claude Code :
+
+```bash
+claude mcp add --transport http acme-docs https://docs.hgdc.ch/mcp/<identifiant du projet>
+```
+
+Dans Cursor (`.cursor/mcp.json`) :
+
+```json
+{ "mcpServers": { "acme-docs": { "url": "https://docs.hgdc.ch/mcp/<identifiant du projet>" } } }
+```
+
+Dans VS Code (`.vscode/mcp.json`) :
+
+```json
+{ "servers": { "acme-docs": { "type": "http", "url": "https://docs.hgdc.ch/mcp/<identifiant du projet>" } } }
+```
+
+L'aperçu du projet donne ces lignes déjà remplies. Le serveur reste ouvert quand l'assistant du site est coupé : il ne fait que chercher, sans modèle.
+
+Le serveur propose trois outils :
+
+| Outil         | Rôle                                                                                         |
+| ------------- | -------------------------------------------------------------------------------------------- |
+| `search_docs` | Cherche dans la doc et rend les passages les plus proches, avec l'adresse de chaque section. |
+| `get_page`    | Rend une page complète en Markdown, à partir de son chemin.                                  |
+| `list_pages`  | Liste les pages avec leur titre et leur chemin.                                              |
+
+Le détail du protocole est dans la [référence MCP](/reference/mcp/).

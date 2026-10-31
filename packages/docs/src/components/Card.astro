@@ -1,0 +1,19 @@
+---
+import Icon from "../overrides/Icon.astro"
+import NamedIcon from "../overrides/NamedIcon.astro"
+
+interface Props {
+  title: string
+  href?: string
+  /** Icône nommée, comme chez Mintlify : Lucide, ou un nom Font Awesome courant (`core/named-icons.ts`). */
+  icon?: string
+}
+const { title, href, icon } = Astro.props
+const Tag = href ? "a" : "div"
+---
+
+<Tag class:list={["hgdc-card", { "hgdc-card--link": href }]} href={href}>
+  <NamedIcon name={icon} size={20} class="hgdc-card__icon" />
+  <span class="hgdc-card__title">{title}{href && <Icon name="arrow-right" size={16} class="hgdc-card__arrow" />}</span>
+  <div class="hgdc-card__body"><slot /></div>
+</Tag>

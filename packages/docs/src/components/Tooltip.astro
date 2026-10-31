@@ -1,0 +1,25 @@
+---
+/**
+ * Info-bulle sur un mot, comme chez Mintlify : au survol ou au clavier (focus), sans script.
+ * `headline` en titre, `cta` et `href` pour un lien en bas de la bulle.
+ */
+interface Props {
+  tip: string
+  headline?: string
+  cta?: string
+  href?: string
+}
+const { tip, headline, cta, href } = Astro.props
+---
+
+<span class="hd-tooltip" tabindex="0"
+  ><slot /><span class="hd-tooltip__tip" role="tooltip"
+    >{headline && <strong class="hd-tooltip__headline">{headline}</strong>}<span>{tip}</span>{
+      cta && href && (
+        <a class="hd-tooltip__cta" href={href}>
+          {cta}
+        </a>
+      )
+    }</span
+  ></span
+>
