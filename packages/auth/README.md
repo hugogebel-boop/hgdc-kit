@@ -326,6 +326,18 @@ export const Route = createRootRouteWithContext<…>()({
 
 Une absence de session n'est jamais gardée. Déconnexion : recharger la page, ou `session.clear()`.
 
+## Fournisseur Convex de la racine
+
+`HgdcConvexAuthProvider` (`@hgdc/auth/convex-react`) remplace `ConvexBetterAuthProvider` de `@convex-dev/better-auth/react`, avec les mêmes propriétés. Depuis better-auth 1.6.18, le client de `createAuthClient` ne correspond plus au type `AuthClient` de l'adaptateur 0.12, qui en déduit `never` ; l'objet reste le même à l'exécution. Le composant fait la conversion une fois pour la famille : aucun cast dans un produit.
+
+```tsx
+import { HgdcConvexAuthProvider } from "@hgdc/auth/convex-react"
+
+;<HgdcConvexAuthProvider client={convexQueryClient.convexClient} authClient={authClient} initialToken={token}>
+  …
+</HgdcConvexAuthProvider>
+```
+
 ## Garder une fonction Convex
 
 ```ts
