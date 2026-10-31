@@ -40,6 +40,12 @@ describe("alignManifest", () => {
     expect(findDrift(aligned, stack)).toEqual([])
   })
 
+  it("laisse les dépendances workspace: du dépôt", () => {
+    const manifest: Manifest = { dependencies: { react: "workspace:*" } }
+    expect(alignManifest(manifest, stack)).toEqual(manifest)
+    expect(findDrift(manifest, stack)).toEqual([])
+  })
+
   it("ne modifie pas le manifeste d'origine", () => {
     const manifest: Manifest = { dependencies: { react: "^19.2.0" } }
     alignManifest(manifest, stack)
