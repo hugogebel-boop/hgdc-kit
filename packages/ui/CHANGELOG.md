@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.47.1
+
+### Patch Changes
+
+- 3b608a5: `app-shell.tsx` et `assistant-view.tsx` découpés en modules de moins de 400 lignes (rail, navigation, groupes, accès communs, assistant de la coque, chargement). Aucun changement de comportement ni d'export : les deux fichiers réexportent la même API, le rendu serveur est identique octet pour octet.
+
 ## 0.47.0
 
 ### Minor Changes
