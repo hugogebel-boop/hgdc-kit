@@ -18,7 +18,7 @@
     "stack": "bun packages/config/src/cli.ts check",
     "check": "bun run stack && bun run format:check && bun run typecheck && bun run lint && bun run test && bun run build",
     "changeset": "changeset",
-    "version": "changeset version && bun install",
+    "version": "bun scripts/stack-versions.ts pre && changeset version && bun scripts/stack-versions.ts post && bun install",
     "release": "bun run build && bun scripts/publish.ts"
   },
   "devDependencies": {

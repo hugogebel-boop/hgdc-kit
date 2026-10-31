@@ -1,7 +1,7 @@
 import type { Auth, UserIdentity } from "convex/server"
 import { ConvexError } from "convex/values"
 
-import { HGDC_ISSUER, HGDC_PROVIDER_ID, highestRole, ORG_ROLES, type OrgRole } from "./index.ts"
+import { acceptedIssuers, HGDC_ISSUER, HGDC_PROVIDER_ID, highestRole, ORG_ROLES, type OrgRole } from "./index.ts"
 
 export type AuthErrorCode = "UNAUTHENTICATED" | "FORBIDDEN"
 
@@ -226,6 +226,10 @@ function appIssuer(env: ConvexIssuerEnv): string {
  * l'audience de l'app : un id_token émis pour un autre client d'Account reste refusé par Convex.
  * Liste vide sans `HGDC_APP_CLIENT_ID`.
  *
+ * L'émetteur de production a deux noms le temps de la migration (`acceptedIssuers`, ADR 0015 de la
+ * famille) : un fournisseur par nom, tous avec les clés de l'émetteur configuré. Même serveur, même
+ * clé : seule l'adresse des clés change, une fois, quand `HGDC_ISSUER` change.
+ *
  * ```ts
  * providers: [...convexAuthProviders(provider, process.env), ...appAuthProviders(process.env)]
  * ```
@@ -234,7 +238,13 @@ export function appAuthProviders(env: ConvexIssuerEnv): AppAuthProvider[] {
   const clientId = optionalEnv(env, APP_CLIENT_ID_ENV)
   if (!clientId) return []
   const issuer = appIssuer(env)
-  return [{ type: "customJwt", issuer, jwks: `${issuer}/jwks`, algorithm: "RS256", applicationID: clientId }]
+  return acceptedIssuers(issuer).map((name) => ({
+    type: "customJwt",
+    issuer: name,
+    jwks: `${issuer}/jwks`,
+    algorithm: "RS256",
+    applicationID: clientId,
+  }))
 }
 
 /**
@@ -271,8 +281,11 @@ export function userIdOfAccount(row: unknown): string | null {
   return typeof row.userId === "string" && row.userId !== "" ? row.userId : null
 }
 
-/** Accès de l'app de bureau : émetteur de ses jetons et passage à l'utilisateur du produit. */
-export type AppAccess<Ctx> = { issuer: string; resolveUser: AccountUserResolver<Ctx> }
+/**
+ * Accès de l'app de bureau : émetteurs de ses jetons (les noms de l'émetteur d'Account,
+ * `acceptedIssuers`) et passage à l'utilisateur du produit.
+ */
+export type AppAccess<Ctx> = { issuer: string | readonly string[]; resolveUser: AccountUserResolver<Ctx> }
 
 /**
  * Accès de l'app de bureau à donner aux gardes, ou `undefined` sans `HGDC_APP_CLIENT_ID` : les
@@ -308,12 +321,13 @@ export type UserAccess = {
 export async function requireUser<Ctx extends { auth: Auth }>(ctx: Ctx, options: UserOption<Ctx>): Promise<UserAccess> {
   const app = options.app
   if (!app) return withSubject(await requireIdentity(ctx, options))
-  const appIssuerValue = normalizeIssuer(app.issuer)
+  const appIssuers = acceptedIssuers(app.issuer)
   const own = (typeof options.issuer === "string" ? [options.issuer] : options.issuer).map(normalizeIssuer)
-  if (own.includes(appIssuerValue)) throw new Error("requireUser : l'émetteur de l'app est aussi celui du produit.")
+  if (own.some((issuer) => appIssuers.includes(issuer)))
+    throw new Error("requireUser : l'émetteur de l'app est aussi celui du produit.")
   const identity = await ctx.auth.getUserIdentity()
   if (!identity) throw authError("no_session")
-  if (normalizeIssuer(identity.issuer) !== appIssuerValue) return withSubject(await requireIdentity(ctx, options))
+  if (!appIssuers.includes(normalizeIssuer(identity.issuer))) return withSubject(await requireIdentity(ctx, options))
   const userId = await app.resolveUser(ctx, identity.subject)
   if (!userId) throw authError("unknown_user")
   return { identity: { ...identity, subject: userId }, userId, via: "app", accountUserId: identity.subject }

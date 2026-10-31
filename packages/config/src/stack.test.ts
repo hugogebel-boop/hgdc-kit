@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs"
+
 import { describe, expect, it } from "vitest"
 import { alignManifest, findDrift, loadStack, parseManifest, parseStack, type Manifest } from "./stack.ts"
 
@@ -50,6 +52,19 @@ describe("loadStack", () => {
     const loaded = loadStack()
     expect(Object.keys(loaded).length).toBeGreaterThan(10)
     expect(loaded.typescript).toMatch(/^7\./)
+  })
+
+  it("fixe chaque paquet publié du kit à sa version (tenue par scripts/stack-versions.ts)", () => {
+    const loaded = loadStack()
+    const packages = readdirSync(new URL("../../", import.meta.url), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => {
+        const text = readFileSync(new URL(`../../${entry.name}/package.json`, import.meta.url), "utf8")
+        return JSON.parse(text) as { name: string; version: string; private?: boolean }
+      })
+      .filter((manifest) => !manifest.private)
+    expect(packages.length).toBeGreaterThan(5)
+    for (const { name, version } of packages) expect(loaded[name], name).toBe(version)
   })
 })
 

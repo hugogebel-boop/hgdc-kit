@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest"
 
-import { hasRole, highestRole, organizationsFromIdToken, parseHgdcProfile, planOrganizationSync } from "./index.ts"
+import {
+  acceptedIssuers,
+  HGDC_ACCEPTED_ISSUERS,
+  HGDC_ID_ISSUER,
+  HGDC_ISSUER,
+  hasRole,
+  highestRole,
+  organizationsFromIdToken,
+  parseHgdcProfile,
+  planOrganizationSync,
+} from "./index.ts"
 
 describe("highestRole", () => {
   it("garde le rôle le plus fort d'une liste better-auth", () => {
@@ -87,5 +97,24 @@ describe("planOrganizationSync", () => {
 
   it("retire une organisation quittée", () => {
     expect(planOrganizationSync([], [copy])).toEqual({ upsert: [], remove: ["o1"] })
+  })
+})
+
+describe("acceptedIssuers (ADR 0015 de la famille)", () => {
+  it("exactement deux noms pour l'émetteur de production, jamais un autre fournisseur", () => {
+    expect(HGDC_ACCEPTED_ISSUERS).toEqual(["https://account.hgdc.ch/api/auth", "https://id.hgdc.ch/api/auth"])
+    expect(HGDC_ACCEPTED_ISSUERS).toContain(HGDC_ISSUER)
+    expect(HGDC_ACCEPTED_ISSUERS).toContain(HGDC_ID_ISSUER)
+  })
+
+  it("l'un des noms donne les deux", () => {
+    expect(acceptedIssuers(HGDC_ISSUER)).toEqual(HGDC_ACCEPTED_ISSUERS)
+    expect(acceptedIssuers(`${HGDC_ID_ISSUER}/`)).toEqual([HGDC_ID_ISSUER, HGDC_ISSUER])
+  })
+
+  it("un autre émetteur reste seul", () => {
+    expect(acceptedIssuers("http://localhost:3200/api/auth/")).toEqual(["http://localhost:3200/api/auth"])
+    expect(acceptedIssuers(["https://evil.example/api/auth"])).toEqual(["https://evil.example/api/auth"])
+    expect(acceptedIssuers(["", " "])).toEqual([])
   })
 })

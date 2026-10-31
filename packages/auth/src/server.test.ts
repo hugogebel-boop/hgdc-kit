@@ -59,21 +59,25 @@ describe("createAuthProxy", () => {
 })
 
 describe("hgdcProvider", () => {
-  it("configure la découverte, PKCE et la vérification de l'émetteur", () => {
+  it("points OAuth de l'émetteur, PKCE, sans découverte ni émetteur strict de genericOAuth", () => {
     const config = hgdcProvider({ clientId: "id", clientSecret: "secret" })
     expect(config).toMatchObject({
       providerId: "hgdc",
-      issuer: "https://account.hgdc.ch/api/auth",
-      discoveryUrl: "https://account.hgdc.ch/api/auth/.well-known/openid-configuration",
-      requireIssuerValidation: true,
+      authorizationUrl: "https://account.hgdc.ch/api/auth/oauth2/authorize",
+      tokenUrl: "https://account.hgdc.ch/api/auth/oauth2/token",
+      userInfoUrl: "https://account.hgdc.ch/api/auth/oauth2/userinfo",
       pkce: true,
       scopes: [...HGDC_SCOPES],
     })
+    // genericOAuth comparerait iss strictement à l'un ou à l'autre (ADR 0015) : assertCallbackIssuer le fait.
+    expect(config.issuer).toBeUndefined()
+    expect(config.discoveryUrl).toBeUndefined()
+    expect(typeof config.tokenUrlParams).toBe("function")
   })
 
   it("accepte un émetteur de préproduction avec ou sans barre finale", () => {
     const config = hgdcProvider({ clientId: "id", clientSecret: "s", issuer: "http://localhost:3200/api/auth/" })
-    expect(config.discoveryUrl).toBe("http://localhost:3200/api/auth/.well-known/openid-configuration")
+    expect(config.tokenUrl).toBe("http://localhost:3200/api/auth/oauth2/token")
   })
 
   it("refuse une configuration sans secret", () => {
