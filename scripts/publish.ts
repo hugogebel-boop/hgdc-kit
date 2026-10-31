@@ -26,6 +26,23 @@ async function publishedVersions(name: string): Promise<string[] | null> {
   throw new Error(`${name} : npm view a échoué\n${result.stderr.toString()}`)
 }
 
+/**
+ * Le registre répond parfois 404 sur le PUT, ou sert une liste de versions en retard juste après un
+ * envoi. On réessaie en relisant la liste : une version devenue visible vaut succès. Si l'échec
+ * persiste, le script s'arrête (la sortie de npm, déjà affichée, dit pourquoi).
+ */
+async function publishWithRetry(tarball: string, pkg: PackageJson): Promise<void> {
+  const attempts = 5
+  for (let attempt = 1; ; attempt++) {
+    const result = await $`npm publish ${tarball} --access public ${provenance}`.nothrow()
+    if (result.exitCode === 0) return
+    if (attempt === attempts) throw new Error(`${pkg.name}@${pkg.version} : npm publish a échoué ${attempts} fois`)
+    console.log(`::warning title=Envoi npm réessayé::${pkg.name}@${pkg.version}, essai ${attempt}/${attempts} échoué`)
+    await Bun.sleep(30_000)
+    if ((await publishedVersions(pkg.name))?.includes(pkg.version)) return
+  }
+}
+
 await rm(".pack", { recursive: true, force: true })
 
 const tags: { name: string; tag: string }[] = []
@@ -52,7 +69,7 @@ for await (const manifestPath of new Glob("packages/*/package.json").scan()) {
   const packed = await $`tar -xOzf ${tarball} package/package.json`.text()
   if (packed.includes("workspace:")) throw new Error(`${id} : le protocole workspace: est resté dans le paquet`)
 
-  await $`npm publish ${tarball} --access public ${provenance}`
+  await publishWithRetry(tarball, pkg)
   tags.push({ name: pkg.name, tag: id })
 }
 
