@@ -312,6 +312,21 @@ describe("createHgdcEntry", () => {
     expect(calls).toHaveLength(0)
   })
 
+  // Relecture en arrière-plan sans session chez Account (ADR 0015, temps 2 : session d'ID perdue une
+  // fois) : « rien de neuf », jamais une déconnexion du produit.
+  it.each(["login_required", "interaction_required", "consent_required"])(
+    "cadre caché refusé par Account (%s) : réponse vide, la session du produit reste",
+    async (error) => {
+      const { calls, proxy } = fakeAuth({})
+      const response = await createHgdcEntry({ proxy, errorCallbackURL: "/sign-in?error=1" })(
+        visit(`/auth/hgdc?frame=done&error=${error}`, { cookie: "s=1" }),
+      )
+      expect(response.status).toBe(200)
+      expect(response.headers.get("set-cookie")).toBeNull()
+      expect(calls).toHaveLength(0)
+    },
+  )
+
   describe("préchargement (Speculation Rules)", () => {
     const prefetch = { "sec-purpose": "prefetch", cookie: "s=1" }
 

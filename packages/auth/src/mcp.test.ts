@@ -184,6 +184,9 @@ describe("verifyMcpAccessToken", () => {
 
   it("contrôle l'émetteur et les dates", async () => {
     expect(await rejection(await sign(claims({ iss: "https://evil.ch/api/auth" })))).toBe("wrong_issuer")
+    // Deux noms du même émetteur (ADR 0015) ; une barre finale reste refusée.
+    expect(await rejection(await sign(claims({ iss: "https://id.hgdc.ch/api/auth" })))).toBe("OK")
+    expect(await rejection(await sign(claims({ iss: "https://id.hgdc.ch/api/auth/" })))).toBe("wrong_issuer")
     expect(await rejection(await sign(claims({ iat: iat - 2000, exp: iat - 100 })))).toBe("expired")
     expect(await rejection(await sign(claims({ iat: iat + 600, exp: iat + 1200 })))).toBe("not_yet_valid")
     expect(await rejection(await sign(claims({ nbf: iat + 600 })))).toBe("not_yet_valid")

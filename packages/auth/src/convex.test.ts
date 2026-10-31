@@ -241,15 +241,27 @@ describe("jetons de l'app de bureau", () => {
   const resolveUser = async (_ctx: Ctx, accountUserId: string) => accounts[accountUserId] ?? null
   const app = appAccess<Ctx>(env, resolveUser)
 
-  it("déclare un fournisseur RS256 limité à l'audience de l'app, ou aucun sans client", () => {
+  it("déclare un fournisseur RS256 par nom de l'émetteur, mêmes clés, limité à l'audience de l'app", () => {
+    const provider = { type: "customJwt", jwks: `${ACCOUNT}/jwks`, algorithm: "RS256", applicationID: "app-client" }
     expect(appAuthProviders(env)).toEqual([
-      { type: "customJwt", issuer: ACCOUNT, jwks: `${ACCOUNT}/jwks`, algorithm: "RS256", applicationID: "app-client" },
+      { ...provider, issuer: ACCOUNT },
+      { ...provider, issuer: "https://id.hgdc.ch/api/auth" },
     ])
-    expect(appAuthProviders({ ...env, HGDC_ISSUER: "https://account.test/api/auth/" })[0]?.jwks).toBe(
-      "https://account.test/api/auth/jwks",
-    )
+    // Un Account d'essai garde un seul nom : jamais l'émetteur de production en plus.
+    expect(appAuthProviders({ ...env, HGDC_ISSUER: "https://account.test/api/auth/" })).toEqual([
+      { ...provider, issuer: "https://account.test/api/auth", jwks: "https://account.test/api/auth/jwks" },
+    ])
     expect(appAuthProviders({})).toEqual([])
     expect(appAccess({}, resolveUser)).toBeUndefined()
+  })
+
+  it("accepte l'id_token de l'app sous le nom d'ID de l'émetteur (ADR 0015)", async () => {
+    const access = await requireOrgMember(ctxFor("acc-ada", acme, "https://id.hgdc.ch/api/auth"), "acme", {
+      load,
+      issuer: ISSUER,
+      app,
+    })
+    expect(access).toMatchObject({ userId: "ada", via: "app", accountUserId: "acc-ada" })
   })
 
   it("traduit l'identifiant Account en utilisateur du produit", async () => {

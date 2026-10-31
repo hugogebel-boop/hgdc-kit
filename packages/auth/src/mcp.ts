@@ -1,4 +1,4 @@
-import { HGDC_ISSUER } from "./index.ts"
+import { acceptedIssuers, HGDC_ISSUER } from "./index.ts"
 
 /*
  * Serveurs MCP des produits, autorisés par Account (OAuth 2.1, spécification MCP 2026-07-28).
@@ -187,8 +187,11 @@ export type VerifyMcpAccessTokenOptions = {
   keys: { keys: readonly JsonWebKey[] } | McpKeyLookup
   /** Droit nécessaire pour l'appel : `write` refuse un jeton de lecture seule (403). Par défaut `read`. */
   require?: McpRight
-  /** Émetteur attendu, `HGDC_ISSUER` par défaut (un Account d'essai en a un autre). */
-  issuer?: string
+  /**
+   * Émetteur attendu, `HGDC_ISSUER` par défaut (un Account d'essai en a un autre). L'émetteur de
+   * production accepte ses deux noms (`acceptedIssuers`).
+   */
+  issuer?: string | readonly string[]
   /** Audience attendue, `mcpResource(product)` par défaut (un produit d'essai en a une autre). */
   resource?: string
   /** `false` pour un MCP sans organisation (Account). Par défaut, un jeton sans `org_id` est refusé. */
@@ -273,7 +276,7 @@ async function importRsaKey(jwk: JsonWebKey): Promise<CryptoKey> {
 export async function verifyMcpAccessToken(token: string, options: VerifyMcpAccessTokenOptions): Promise<McpAccess> {
   const { product } = options
   if (!isMcpProduct(product)) throw new Error(`@hgdc/auth : produit MCP inconnu (${JSON.stringify(product)}).`)
-  const issuer = options.issuer ?? HGDC_ISSUER
+  const issuers = acceptedIssuers(options.issuer ?? HGDC_ISSUER)
   const resource = options.resource ?? mcpResource(product)
   const now = Math.floor((options.now ?? Date.now()) / 1000)
 
@@ -299,7 +302,8 @@ export async function verifyMcpAccessToken(token: string, options: VerifyMcpAcce
   if (!valid) reject("bad_signature", "Signature invalide.")
 
   const claims = decodeJson(payloadPart)
-  if (claims.iss !== issuer) reject("wrong_issuer", "Jeton d'un autre émetteur.")
+  if (typeof claims.iss !== "string" || !issuers.includes(claims.iss))
+    reject("wrong_issuer", "Jeton d'un autre émetteur.")
   const audience = Array.isArray(claims.aud) && claims.aud.length === 1 ? claims.aud[0] : claims.aud
   if (audience !== resource) reject("wrong_audience", "Jeton destiné à une autre ressource.")
 

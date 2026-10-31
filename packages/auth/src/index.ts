@@ -3,8 +3,37 @@ import { z } from "zod"
 /** Identifiant du fournisseur dans `genericOAuth` et dans la table `account` des produits. */
 export const HGDC_PROVIDER_ID = "hgdc"
 
-/** Émetteur OIDC de HGDC Account (`iss` des jetons, base de la découverte). */
+/** Émetteur OIDC de HGDC Account (`iss` des jetons, base de la découverte et des points OAuth). */
 export const HGDC_ISSUER = "https://account.hgdc.ch/api/auth"
+
+/**
+ * Nom à venir du même émetteur (ADR 0015 de la famille). Accepté dès maintenant partout où `HGDC_ISSUER` l'est, pour que la bascule de l'émetteur ne coupe
+ * aucune connexion ; `HGDC_ISSUER` le deviendra au « temps 4 ».
+ */
+export const HGDC_ID_ISSUER = "https://id.hgdc.ch/api/auth"
+
+/**
+ * Les deux noms de l'émetteur de production pendant la migration vers ID (ADR 0015). Même serveur
+ * d'autorisation, même base, même clé de signature : jamais un autre fournisseur.
+ */
+export const HGDC_ACCEPTED_ISSUERS: readonly string[] = [HGDC_ISSUER, HGDC_ID_ISSUER]
+
+function withoutTrailingSlash(value: string): string {
+  return value.replace(/\/+$/, "")
+}
+
+/**
+ * Émetteurs à accepter quand on attend `expected` : les deux noms de l'émetteur de production
+ * (`HGDC_ACCEPTED_ISSUERS`) si `expected` en contient un, sinon `expected` seul (Account local ou
+ * d'essai, `HGDC_ISSUER` posé dans l'environnement). Sans barre finale, sans doublon.
+ */
+export function acceptedIssuers(expected: string | readonly string[]): string[] {
+  const given = (typeof expected === "string" ? [expected] : expected)
+    .map((issuer) => withoutTrailingSlash(issuer.trim()))
+    .filter((issuer) => issuer !== "")
+  const production = given.some((issuer) => HGDC_ACCEPTED_ISSUERS.includes(issuer))
+  return [...new Set(production ? [...given, ...HGDC_ACCEPTED_ISSUERS] : given)]
+}
 
 /** Portée qui ajoute les organisations de la personne et son rôle dans chacune. */
 export const ORGANIZATIONS_SCOPE = "organizations"
@@ -363,8 +392,11 @@ export class HgdcIdTokenError extends Error {
 }
 
 export type IdTokenExpectation = {
-  /** Émetteur attendu : `HGDC_ISSUER`, ou celui d'un Account de préproduction. */
-  issuer: string
+  /**
+   * Émetteur attendu : `HGDC_ISSUER`, ou celui d'un Account de préproduction. L'émetteur de
+   * production accepte ses deux noms (`acceptedIssuers`).
+   */
+  issuer: string | readonly string[]
   /** Identifiant du client du produit : l'audience du jeton. */
   clientId: string
   /** Instant présent en millisecondes (`Date.now()`). */
@@ -388,7 +420,7 @@ function payloadOf(idToken: string): Record<string, unknown> {
 /**
  * Contrôle de provenance et de fraîcheur d'un id_token lu dans la table `account` de better-auth,
  * avant d'en recopier quoi que ce soit (OpenID Connect Core 3.1.3.7) :
- * - `iss` égal à l'émetteur attendu ;
+ * - `iss` égal à l'émetteur attendu (ou à l'autre nom de l'émetteur de production, `acceptedIssuers`) ;
  * - `aud` contient `clientId`, et `azp` vaut `clientId` quand il y a plusieurs audiences ;
  * - `iat` de moins de `ID_TOKEN_MAX_AGE_SECONDS`, pas dans le futur, et `exp` non dépassé.
  *
@@ -404,12 +436,13 @@ export function verifyHgdcIdToken(
   idToken: string,
   expected: IdTokenExpectation,
 ): { claims: Record<string, unknown>; organizations: HgdcOrganization[]; issuedAt: number } {
-  if (!expected.issuer || !expected.clientId)
+  const issuers = acceptedIssuers(expected.issuer)
+  if (issuers.length === 0 || !expected.clientId)
     throw new Error("verifyHgdcIdToken : émetteur ou clientId attendu manquant (HGDC_CLIENT_ID ?).")
   const claims = payloadOf(idToken)
 
-  const issuer = typeof claims.iss === "string" ? claims.iss.replace(/\/+$/, "") : null
-  if (issuer !== expected.issuer.replace(/\/+$/, ""))
+  const issuer = typeof claims.iss === "string" ? withoutTrailingSlash(claims.iss) : null
+  if (issuer === null || !issuers.includes(issuer))
     throw new HgdcIdTokenError("wrong_issuer", "id_token d'un autre émetteur")
 
   const audience = Array.isArray(claims.aud) ? claims.aud : [claims.aud]

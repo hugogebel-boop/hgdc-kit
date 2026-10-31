@@ -57,6 +57,18 @@ describe("verifyHgdcIdToken : émetteur", () => {
     expect(rejection(token({ ...valid, iss: "https://autre.example/api/auth" }))).toBe("wrong_issuer")
   })
 
+  it("accepte les deux noms de l'émetteur de production (ADR 0015), dans les deux sens", () => {
+    expect(rejection(token({ ...valid, iss: "https://id.hgdc.ch/api/auth" }))).toBe("OK")
+    expect(rejection(token(valid), { ...expected, issuer: "https://id.hgdc.ch/api/auth" })).toBe("OK")
+  })
+
+  it("un Account local n'accepte jamais l'émetteur de production", () => {
+    const local = { ...expected, issuer: "http://localhost:3200/api/auth" }
+    expect(rejection(token(valid), local)).toBe("wrong_issuer")
+    expect(rejection(token({ ...valid, iss: "https://id.hgdc.ch/api/auth" }), local)).toBe("wrong_issuer")
+    expect(rejection(token({ ...valid, iss: "http://localhost:3200/api/auth" }), local)).toBe("OK")
+  })
+
   it("refuse un jeton sans émetteur", () => {
     expect(rejection(token({ ...valid, iss: undefined }))).toBe("wrong_issuer")
   })
