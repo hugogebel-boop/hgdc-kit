@@ -1,5 +1,12 @@
 # @hgdc/docs
 
+## 0.6.1
+
+### Patch Changes
+
+- 2f471b0: Pages de référence d'API : les champs de la réponse précèdent l'exemple, qui réunit la requête et la réponse.
+- a77b6ea: Le paquet n'embarque plus `template/.astro` ni `template/.build` (sorties d'un build local, présentes quand `bun run build` précède la publication).
+
 ## 0.6.0
 
 ### Minor Changes
