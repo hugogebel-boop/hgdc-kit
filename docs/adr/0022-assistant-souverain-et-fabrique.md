@@ -6,6 +6,8 @@ status: accepted
 
 # 0022. Assistant : modèles souverains seulement, fabrique des consoles, classe `send`
 
+> **Révisé le 2026-10-31** : OpenRouter et `clientFor` retirés de `@hgdc/assistant` 0.5.0 ; assistants sur Infomaniak ou Bedrock `eu.` seulement.
+
 ## Contexte
 
 L'[ADR 0019](0019-assistant-commun.md) a mis l'assistant des produits dans `@hgdc/assistant`, avec Claude chez Anthropic ou par OpenRouter (`clientFor`). Depuis, la famille a décidé (ADR 0011 du dépôt privé) que les données des clients sont traitées en Suisse (Infomaniak) ou dans l'UE (Claude par AWS Bedrock, profil `eu.`), jamais aux États-Unis. Portal et IAssistant passent déjà par ces fournisseurs, chacun avec sa copie d'un `modelClient`. Les consoles Host, Analytics, Docs, Status et Account appellent encore `clientFor`.

@@ -6,6 +6,8 @@ status: accepted
 
 > Complétée par l’[ADR 0022](0022-assistant-souverain-et-fabrique.md) : modèles en Suisse ou dans l’UE seulement (`clientFor` déprécié), fabrique des consoles, classe `send` et garde « trifecta ».
 
+> **Révisé le 2026-10-31** : OpenRouter et `clientFor` retirés de `@hgdc/assistant` 0.5.0 ; assistants sur Infomaniak ou Bedrock `eu.` seulement.
+
 # 0019. Assistant commun : `@hgdc/assistant` et `@hgdc/ui/assistant-view`
 
 ## Contexte
