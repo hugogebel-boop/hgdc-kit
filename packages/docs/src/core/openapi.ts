@@ -381,21 +381,22 @@ function operationSection(root: Json, operation: Operation, options: OpenApiOpti
     if (bodyType.includes("json"))
       curl.push(`  -d '${JSON.stringify(sample(root, bodySchema, new Set())).replaceAll("'", "'\\''")}'`)
   }
-  lines.push("### Exemple", "", "```bash", curl.join(" \\\n"), "```", "")
-
   const success = responses.find(([status]) => status.startsWith("2"))
+  let answer: { status: string; schema: unknown } | undefined
   if (success) {
     const response = resolve(root, success[1])
     const content = record(response.value.content)
     const type = content ? Object.keys(content).find((entry) => entry.includes("json")) : undefined
     const schema = type ? record(content?.[type])?.schema : undefined
-    if (schema) {
-      const fields = rows(root, schema, "", new Set(), 1)
-      if (fields.length > 0)
-        lines.push(`### Champs de la réponse ${code(success[0])}`, "", fieldTable(fields, false), "")
-      lines.push(`Réponse ${code(success[0])} :`, "", jsonBlock(sample(root, schema, new Set())), "")
-    }
+    if (schema) answer = { status: success[0], schema }
   }
+  if (answer) {
+    const fields = rows(root, answer.schema, "", new Set(), 1)
+    if (fields.length > 0)
+      lines.push(`### Champs de la réponse ${code(answer.status)}`, "", fieldTable(fields, false), "")
+  }
+  lines.push("### Exemple", "", "```bash", curl.join(" \\\n"), "```", "")
+  if (answer) lines.push(`Réponse ${code(answer.status)} :`, "", jsonBlock(sample(root, answer.schema, new Set())), "")
   return lines.join("\n")
 }
 
