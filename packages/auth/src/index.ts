@@ -16,7 +16,7 @@ export const HGDC_ID_ISSUER = "https://id.hgdc.ch/api/auth"
  * Les deux noms de l'émetteur de production pendant la migration vers ID (ADR 0015). Même serveur
  * d'autorisation, même base, même clé de signature : jamais un autre fournisseur.
  */
-export const HGDC_ACCEPTED_ISSUERS: readonly string[] = [HGDC_ISSUER, HGDC_ID_ISSUER]
+export const HGDC_ACCEPTED_ISSUERS: readonly string[] = Object.freeze([HGDC_ISSUER, HGDC_ID_ISSUER])
 
 function withoutTrailingSlash(value: string): string {
   return value.replace(/\/+$/, "")
