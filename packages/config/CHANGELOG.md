@@ -1,5 +1,11 @@
 # @hgdc/config
 
+## 0.5.4
+
+### Patch Changes
+
+- e7938b9: `hgdc-stack sync` et `check` laissent les dépendances `workspace:` : épingler un paquet du même dépôt cassait le lockfile (paquet en double).
+
 ## 0.5.3
 
 ### Patch Changes
