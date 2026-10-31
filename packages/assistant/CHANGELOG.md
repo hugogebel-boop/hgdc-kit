@@ -1,5 +1,11 @@
 # @hgdc/assistant
 
+## 0.5.0
+
+### Minor Changes
+
+- 0296556: Retire `clientFor` et le fournisseur OpenRouter : les assistants passent par Infomaniak ou Bedrock `eu.` (`sovereignClient`).
+
 ## 0.4.1
 
 ### Patch Changes
