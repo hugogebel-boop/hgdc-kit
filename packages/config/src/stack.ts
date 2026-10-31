@@ -56,12 +56,14 @@ export function loadStack(): Stack {
 /**
  * Écarts entre un manifeste et la stack. Un paquet absent du manifeste n'est pas un écart :
  * la stack fixe la version de ce qu'un produit utilise, pas la liste de ses dépendances.
- * `peerDependencies` est ignoré : une plage y est voulue.
+ * `peerDependencies` est ignoré : une plage y est voulue. Une dépendance `workspace:` aussi :
+ * c'est un paquet du même dépôt, l'épingler casse le lockfile (paquet en double).
  */
 export function findDrift(manifest: Manifest, stack: Stack): Drift[] {
   const drift: Drift[] = []
   for (const field of DEPENDENCY_FIELDS) {
     for (const [name, current] of Object.entries(manifest[field] ?? {})) {
+      if (isWorkspace(current)) continue
       const expected = stack[name]
       if (expected !== undefined && current !== expected) drift.push({ name, field, current, expected })
     }
@@ -75,7 +77,13 @@ export function alignManifest(manifest: Manifest, stack: Stack): Manifest {
   for (const field of DEPENDENCY_FIELDS) {
     const deps = manifest[field]
     if (!deps) continue
-    aligned[field] = Object.fromEntries(Object.entries(deps).map(([name, version]) => [name, stack[name] ?? version]))
+    aligned[field] = Object.fromEntries(
+      Object.entries(deps).map(([name, version]) => [name, isWorkspace(version) ? version : (stack[name] ?? version)]),
+    )
   }
   return aligned
+}
+
+function isWorkspace(specifier: string): boolean {
+  return specifier.startsWith("workspace:")
 }
