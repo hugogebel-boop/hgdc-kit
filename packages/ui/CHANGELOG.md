@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.48.0
+
+### Minor Changes
+
+- f9d05f9: `@hgdc/ui/products` : chaque produit ouvert reçoit `productPage`, l'adresse de sa page sur le site (`https://hgdc.ch/h-collection/<mot>`) ; aucune pour un produit « soon ».
+
 ## 0.47.1
 
 ### Patch Changes
