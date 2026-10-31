@@ -1,0 +1,25 @@
+---
+/** Ligne commune à ParamField et ResponseField : nom, type, lieu, obligatoire, défaut, obsolète. */
+interface Props {
+  name: string
+  place?: "path" | "query" | "body" | "header"
+  type?: string
+  required?: boolean
+  default?: string
+  deprecated?: boolean
+}
+const PLACES = { path: "chemin", query: "requête", body: "corps", header: "en-tête" } as const
+const { name, place, type, required = false, default: fallback, deprecated = false } = Astro.props
+---
+
+<div class="hd-field" data-deprecated={deprecated ? "" : undefined}>
+  <p class="hd-field__head">
+    <code class="hd-field__name">{name}</code>
+    {type && <span class="hd-field__type">{type}</span>}
+    {place && <span class="hd-field__place">{PLACES[place]}</span>}
+    {required && <span class="hd-field__required">obligatoire</span>}
+    {deprecated && <span class="hd-field__deprecated">obsolète</span>}
+    {fallback !== undefined && <span class="hd-field__default">par défaut : <code>{fallback}</code></span>}
+  </p>
+  <div class="hd-field__body"><slot /></div>
+</div>

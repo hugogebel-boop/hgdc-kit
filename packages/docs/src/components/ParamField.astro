@@ -1,0 +1,23 @@
+---
+import Field from "./_Field.astro"
+
+/**
+ * Paramètre d'une requête d'API, comme chez Mintlify : le nom est donné par l'attribut qui dit
+ * où il vit (`path`, `query`, `body` ou `header`).
+ */
+interface Props {
+  path?: string
+  query?: string
+  body?: string
+  header?: string
+  type?: string
+  required?: boolean
+  default?: string
+  deprecated?: boolean
+}
+const { path, query, body, header, ...rest } = Astro.props
+const place = path !== undefined ? "path" : query !== undefined ? "query" : header !== undefined ? "header" : "body"
+const name = path ?? query ?? header ?? body ?? ""
+---
+
+<Field name={name} place={place} {...rest}><slot /></Field>

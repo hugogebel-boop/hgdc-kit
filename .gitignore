@@ -13,3 +13,9 @@ dist
 *.txt
 .loader-showcase
 /.packs/
+
+# @hgdc/docs : dossiers de travail d'Astro et de l'aperçu
+/packages/docs/template/.astro
+/packages/docs/template/.build
+/packages/docs/.preview
+.hgdc-docs

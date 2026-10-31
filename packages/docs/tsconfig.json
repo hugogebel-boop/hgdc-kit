@@ -1,0 +1,11 @@
+{
+  /* Modèle de site : TypeScript lu par Astro et par la console (`core/`). Les .astro relèvent d'`astro check`. */
+  "extends": "../config/tsconfig/base.json",
+  "include": ["src/**/*.ts", "bin/**/*.mjs", "template/astro.config.ts", "template/src/content.config.ts"],
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "types": ["node", "astro/client"],
+    "allowJs": true,
+    "checkJs": true
+  }
+}

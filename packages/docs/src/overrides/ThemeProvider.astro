@@ -1,0 +1,23 @@
+---
+/**
+ * Thème avant la première peinture, sans éclair : clair par défaut, même si le système est
+ * en sombre ; « Sombre » et « Système » se choisissent et restent mémorisés (`starlight-theme`
+ * vaut `dark` ou `auto`). `data-hd-theme` n'est posé que par ce script : sans JavaScript,
+ * la page reste claire (theme.css).
+ */
+---
+
+<script is:inline>
+  ;(() => {
+    let stored = null
+    try {
+      stored = localStorage.getItem("starlight-theme")
+    } catch {}
+    const dark =
+      stored === "dark" || (stored === "auto" && matchMedia("(prefers-color-scheme: dark)").matches)
+    const theme = dark ? "dark" : "light"
+    document.documentElement.dataset.theme = theme
+    document.documentElement.dataset.hdTheme = theme
+    window.StarlightThemeProvider = { updatePickers() {} }
+  })()
+</script>

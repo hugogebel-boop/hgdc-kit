@@ -1,0 +1,126 @@
+---
+import type { StarlightRouteData } from "@astrojs/starlight/route-data"
+import data from "virtual:hgdc-docs/config"
+
+import { markdownPath } from "../core/llms.ts"
+import { withBase, withoutBase } from "../core/navigation.ts"
+import Icon from "./Icon.astro"
+
+/**
+ * En-tête de page : le groupe en surtitre, le titre, la description de la page en chapeau,
+ * et « Copier la page » avec ses autres formats (Markdown, Claude, ChatGPT, llms.txt).
+ */
+type Entry = StarlightRouteData["sidebar"][number]
+const route = Astro.locals.starlightRoute
+const containsCurrent = (entry: Entry): boolean =>
+  entry.type === "link" ? entry.isCurrent : entry.entries.some(containsCurrent)
+const group = route.sidebar.find((entry) => entry.type === "group" && containsCurrent(entry))?.label
+const description = route.entry.data.description
+const markdown = withBase(data.base, markdownPath(withoutBase(data.base, Astro.url.pathname)))
+---
+
+<div class="hd-title not-content">
+  {group && <p class="hd-eyebrow" data-pagefind-meta="section">{group}</p>}
+  <div class="hd-title__row">
+    <h1 id="_top">{route.entry.data.title}</h1>
+    <div class="hd-page-actions" data-hgdc-skip data-pagefind-ignore>
+      <div class="hd-split">
+        <button type="button" class="hd-split__main" data-hgdc-copy={markdown}>
+          <Icon name="copy" size={16} />
+          <span data-label>Copier la page</span>
+        </button>
+        <details class="hd-menu">
+          <summary class="hd-split__more" aria-label="Autres formats de la page">
+            <Icon name="chevron-down" size={16} />
+          </summary>
+          <ul class="hd-menu__list">
+            <li>
+              <button type="button" data-hgdc-copy-item>
+                <Icon name="copy" />
+                <span><strong>Copier la page</strong><small>En Markdown, pour un LLM</small></span>
+              </button>
+            </li>
+            <li>
+              <a href={markdown}>
+                <Icon name="markdown" />
+                <span><strong>Voir en Markdown</strong><small>La page en texte brut</small></span>
+              </a>
+            </li>
+            <li>
+              <a data-hgdc-open="claude" href="https://claude.ai/new" target="_blank" rel="noopener">
+                <Icon name="arrow-up-right" />
+                <span><strong>Ouvrir dans Claude</strong><small>Poser une question sur cette page</small></span>
+              </a>
+            </li>
+            <li>
+              <a data-hgdc-open="chatgpt" href="https://chatgpt.com/" target="_blank" rel="noopener">
+                <Icon name="arrow-up-right" />
+                <span><strong>Ouvrir dans ChatGPT</strong><small>Poser une question sur cette page</small></span>
+              </a>
+            </li>
+            <li>
+              <a href={withBase(data.base, "/llms.txt")}>
+                <Icon name="file" />
+                <span><strong>llms.txt</strong><small>L'index de la doc pour les agents</small></span>
+              </a>
+            </li>
+          </ul>
+        </details>
+      </div>
+      <span class="sr-only" role="status" aria-live="polite" data-hgdc-copy-status></span>
+    </div>
+  </div>
+  {description && <p class="hd-lead">{description}</p>}
+</div>
+
+<script>
+  const status = document.querySelector<HTMLElement>("[data-hgdc-copy-status]")
+  const main = document.querySelector<HTMLButtonElement>("[data-hgdc-copy]")
+
+  async function copyPage() {
+    if (!main) return
+    const label = main.querySelector<HTMLElement>("[data-label]")!
+    const done = (text: string) => {
+      label.textContent = text
+      if (status) status.textContent = text
+      setTimeout(() => (label.textContent = "Copier la page"), 2000)
+    }
+    try {
+      const response = await fetch(main.dataset.hgdcCopy!)
+      if (!response.ok) throw new Error(String(response.status))
+      await navigator.clipboard.writeText(await response.text())
+      done("Page copiée")
+    } catch {
+      done("Copie impossible")
+    }
+  }
+  main?.addEventListener("click", () => void copyPage())
+  document.querySelector("[data-hgdc-copy-item]")?.addEventListener("click", () => {
+    document.querySelector<HTMLDetailsElement>(".hd-menu")!.open = false
+    void copyPage()
+  })
+
+  // « Ouvrir dans… » : l'assistant externe lit la version Markdown de cette page.
+  if (main) {
+    const markdownUrl = new URL(main.dataset.hgdcCopy!, location.href)
+    const prompt = `Lis ${markdownUrl.href} et réponds à mes questions sur cette page.`
+    for (const link of document.querySelectorAll<HTMLAnchorElement>("[data-hgdc-open]")) {
+      const base = link.dataset.hgdcOpen === "claude" ? "https://claude.ai/new" : "https://chatgpt.com/"
+      link.href = `${base}?q=${encodeURIComponent(prompt)}`
+    }
+  }
+
+  // Le menu se ferme au clic extérieur et à Échap, comme un menu natif.
+  for (const menu of document.querySelectorAll<HTMLDetailsElement>(".hd-menu")) {
+    document.addEventListener("click", (event) => {
+      if (menu.open && !menu.contains(event.target as Node)) menu.open = false
+    })
+    menu.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && menu.open) {
+        event.stopPropagation()
+        menu.open = false
+        menu.querySelector("summary")?.focus()
+      }
+    })
+  }
+</script>

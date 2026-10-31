@@ -1,0 +1,50 @@
+---
+title: L'assistant IA
+sidebarTitle: Assistant
+description: Ce que fait l'assistant, d'où viennent ses réponses, et comment le régler.
+---
+
+L'assistant ajoute un bouton **Demander à l'IA** en bas à droite de chaque page, et `Ctrl I` l'ouvre au clavier. Le visiteur pose sa question ; l'assistant cherche dans ta doc et répond en quelques phrases, avec des renvois numérotés vers les sections utilisées.
+
+## D'où viennent les réponses
+
+1. La question est cherchée dans les pages publiées de ta doc, et seulement là.
+2. Les passages les plus proches sont donnés au modèle Claude, avec une consigne : répondre à partir de ces passages, citer chaque affirmation, ne rien inventer.
+3. Seuls les passages réellement cités deviennent des sources sous la réponse.
+
+Si rien dans la doc ne correspond, l'assistant répond qu'il ne trouve pas, sans appeler le modèle. Une réponse sans aucune source est traitée de la même façon.
+
+<Warning title="Les réponses restent générées par IA">
+  Le widget le rappelle sous chaque échange. Une source citée se vérifie en un clic.
+</Warning>
+
+## Activer et désactiver
+
+L'assistant est actif dès que `docs.json` porte l'identifiant `project` et que la console a indexé le site. Pour le couper :
+
+- dans la console, **Assistant › Assistant sur le site** (effet immédiat) ;
+- ou dans `docs.json`, `"assistant": { "enabled": false }` (au prochain build).
+
+## Quota
+
+Chaque organisation dispose d'un nombre de questions par mois, toutes docs confondues : 500 dans l'offre de départ. La console affiche la consommation. Au-delà, l'assistant répond qu'il a atteint sa limite, et HGDC relève le plafond sur demande.
+
+Pour éviter qu'un seul visiteur ou un script épuise le quota, chaque visiteur a droit à 6 questions par minute et 40 par jour, et chaque doc à 30 par minute et 200 par jour. HGDC relève le plafond journalier d'une doc sur demande.
+
+## Tester et lire le journal
+
+En haut de la page **Assistant**, les 30 derniers jours : nombre de questions, part de réponses sourcées, et les **questions sans réponse**, regroupées et classées de la plus posée à la moins posée. Chacune ouvre le journal filtré : c'est la liste des pages à écrire.
+
+**Assistant › Tester l'assistant** pose une question comme un visiteur. Le **journal** garde les questions des 90 derniers jours avec leur état :
+
+| État     | Ce que ça veut dire                                               |
+| -------- | ----------------------------------------------------------------- |
+| Répondu  | L'assistant a répondu en citant la doc.                           |
+| Hors doc | Rien dans la doc ne répond. Souvent une page à écrire.            |
+| Erreur   | Le modèle n'a pas répondu ; le visiteur a été invité à réessayer. |
+
+Au-dessus du journal, cherche une question par ses mots, ou filtre par état : **État › Hors doc** ne garde que les questions sans réponse. Les filtres restent dans l'adresse de la page : tu peux la garder en favori ou l'envoyer à un collègue.
+
+<Tip>
+  Lis les questions « hors doc » une fois par semaine : c'est la liste des pages qui manquent, écrite par tes visiteurs.
+</Tip>

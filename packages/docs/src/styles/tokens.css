@@ -1,0 +1,117 @@
+/*
+ * Jetons des sites HGDC Docs : couleurs, polices, mesures. Sur le site, posés sur `:root`
+ * (sombre recouvert par le clair tant que `ThemeProvider.astro` n'a pas choisi le sombre).
+ * Dans l'éditeur de la console, sur `.hd-site` : le mode visuel dessine la page avec les mêmes
+ * valeurs que le site publié. `color-scheme` reste dans theme.css, propre au site.
+ */
+
+:root,
+.hd-site {
+  --hd-font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --hd-font-heading: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --hd-font-mono: ui-monospace, "SFMono-Regular", "Cascadia Code", Consolas, monospace;
+  --hd-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --hd-ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --hd-nav-h: 3.5rem;
+  --hd-sidebar-w: 17.5rem;
+  --hd-toc-w: 15.5rem;
+  --hd-panel-w: 26rem;
+  --hd-content-w: 45rem;
+  --hd-gutter: 1.25rem;
+
+  /* Sombre, recouvert par le clair tant que `ThemeProvider.astro` n'a pas choisi le sombre :
+     clair par défaut, et clair sans JavaScript. */
+  --hd-bg: oklch(0.145 0 0);
+  --hd-fg: oklch(0.985 0 0);
+  --hd-fg-2: oklch(0.87 0 0);
+  --hd-muted: oklch(0.205 0 0);
+  --hd-muted-2: oklch(0.269 0 0);
+  --hd-muted-fg: oklch(0.708 0 0);
+  --hd-border: oklch(1 0 0 / 10%);
+  --hd-border-strong: oklch(1 0 0 / 16%);
+  --hd-floating: oklch(0.205 0 0);
+  --hd-code-bg: oklch(0.17 0 0);
+  --hd-code-header: oklch(0.2 0 0);
+  --hd-hover: oklch(1 0 0 / 6%);
+  --hd-shadow: 0 1px 2px oklch(0 0 0 / 30%), 0 12px 32px -8px oklch(0 0 0 / 50%);
+  --hd-scroll-thumb: oklch(1 0 0 / 22%);
+  --hd-backdrop: oklch(0 0 0 / 55%);
+  --hd-primary: oklch(0.922 0 0);
+  --hd-primary-fg: oklch(0.205 0 0);
+
+  --hd-tone-note: oklch(0.72 0.15 256);
+  --hd-tone-info: oklch(0.708 0 0);
+  --hd-tone-tip: oklch(0.75 0.14 156);
+  --hd-tone-check: oklch(0.75 0.14 156);
+  --hd-tone-warning: oklch(0.82 0.15 86);
+  --hd-tone-danger: oklch(0.72 0.19 22);
+
+  --hd-accent: var(--sl-color-accent);
+  --hd-accent-fg: var(--hgdc-on-accent, #fff);
+  --hd-accent-soft: color-mix(in oklab, var(--hd-accent) 9%, transparent);
+
+  /* Starlight, pour ce qui reste de son dessin (onglets, badges, contenu). */
+  --sl-font: var(--hd-font-sans);
+  --sl-font-mono: var(--hd-font-mono);
+  --sl-nav-height: var(--hd-nav-h);
+  --sl-sidebar-width: var(--hd-sidebar-w);
+  --sl-content-width: var(--hd-content-w);
+  --sl-mobile-toc-height: 0rem;
+  --sl-color-bg: var(--hd-bg);
+  --sl-color-bg-nav: var(--hd-bg);
+  --sl-color-bg-sidebar: var(--hd-bg);
+  --sl-color-hairline: var(--hd-border);
+  --sl-color-hairline-light: var(--hd-border);
+  --sl-color-hairline-shade: var(--hd-border);
+  --sl-color-text: var(--hd-fg-2);
+  --sl-color-text-accent: var(--hd-accent);
+  --sl-color-white: var(--hd-fg);
+  --sl-color-gray-1: oklch(0.92 0 0);
+  --sl-color-gray-2: oklch(0.82 0 0);
+  --sl-color-gray-3: var(--hd-muted-fg);
+  --sl-color-gray-4: oklch(0.55 0 0);
+  --sl-color-gray-5: oklch(0.32 0 0);
+  --sl-color-gray-6: var(--hd-muted);
+  --sl-color-black: var(--hd-bg);
+  --sl-text-h1: 2.25rem;
+  --sl-text-h2: 1.5rem;
+  --sl-text-h3: 1.1875rem;
+  --sl-text-h4: 1rem;
+}
+
+:root:not([data-hd-theme="dark"]),
+.hd-site:not([data-hd-theme="dark"]) {
+  --hd-bg: oklch(1 0 0);
+  --hd-fg: oklch(0.145 0 0);
+  --hd-fg-2: oklch(0.3 0 0);
+  --hd-muted: oklch(0.97 0 0);
+  --hd-muted-2: oklch(0.94 0 0);
+  --hd-muted-fg: oklch(0.52 0 0);
+  --hd-border: oklch(0.922 0 0);
+  --hd-border-strong: oklch(0.87 0 0);
+  --hd-floating: oklch(1 0 0);
+  --hd-code-bg: oklch(1 0 0);
+  --hd-code-header: oklch(0.975 0 0);
+  --hd-hover: oklch(0 0 0 / 4.5%);
+  --hd-shadow: 0 1px 2px oklch(0 0 0 / 5%), 0 12px 32px -8px oklch(0 0 0 / 14%);
+  --hd-scroll-thumb: oklch(0 0 0 / 20%);
+  --hd-backdrop: oklch(0 0 0 / 30%);
+  --hd-primary: oklch(0.205 0 0);
+  --hd-primary-fg: oklch(0.985 0 0);
+
+  --hd-tone-note: oklch(0.5 0.17 256);
+  --hd-tone-info: oklch(0.45 0 0);
+  --hd-tone-tip: oklch(0.47 0.12 155);
+  --hd-tone-check: oklch(0.47 0.12 155);
+  --hd-tone-warning: oklch(0.5 0.12 70);
+  --hd-tone-danger: oklch(0.53 0.21 27);
+
+  --sl-color-gray-1: oklch(0.25 0 0);
+  --sl-color-gray-2: oklch(0.35 0 0);
+  --sl-color-gray-3: var(--hd-muted-fg);
+  --sl-color-gray-4: oklch(0.65 0 0);
+  --sl-color-gray-5: oklch(0.87 0 0);
+  --sl-color-gray-6: var(--hd-muted);
+  --sl-color-gray-7: oklch(0.985 0 0);
+}

@@ -1,0 +1,54 @@
+---
+title: docs.json
+description: Tous les champs du fichier de configuration d'un site Docs.
+---
+
+`docs.json` vit à la racine du dossier de la doc. Il reprend le format de Mintlify : les champs que Docs ne gère pas sont acceptés et ignorés. Pour l'autocomplétion dans ton éditeur, ajoute `"$schema": "https://docs.hgdc.ch/docs.schema.json"`.
+
+## Champs
+
+| Champ                | Type                                          | Obligatoire | Rôle                                                                                                                                                                                                                                                                                                                                              |
+| -------------------- | --------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`               | texte                                         | oui         | Nom de la doc, en tête du site et dans `llms.txt`. 80 caractères au plus.                                                                                                                                                                                                                                                                         |
+| `description`        | texte                                         | non         | Une phrase de présentation.                                                                                                                                                                                                                                                                                                                       |
+| `navigation`         | objet                                         | oui         | Pages, groupes, onglets ou versions. Voir [Navigation](/guides/navigation/).                                                                                                                                                                                                                                                                      |
+| `project`            | texte                                         | non         | Identifiant du projet dans la console. Active l'assistant et l'indexation.                                                                                                                                                                                                                                                                        |
+| `language`           | `fr`, `en`, `de`, `it`                        | non         | Langue de l'interface du site. `fr` par défaut.                                                                                                                                                                                                                                                                                                   |
+| `base`               | texte                                         | non         | Sous-chemin où la doc est servie, par exemple `/docs` quand ton application la publie derrière un proxy (`https://app.acme.ch/docs`). Liens, images, recherche, `llms.txt` et pages `.md` le portent ; le site est écrit dans `dist/docs/`. Écris tes liens depuis la racine de la doc (`/guides/publier/`) : le sous-chemin est ajouté au build. |
+| `colors.primary`     | couleur `#rrggbb`                             | non         | Couleur des liens et des éléments actifs.                                                                                                                                                                                                                                                                                                         |
+| `colors.dark`        | couleur `#rrggbb`                             | non         | La même, en mode sombre.                                                                                                                                                                                                                                                                                                                          |
+| `logo`               | chemin, ou `{ light, dark }`                  | non         | Logo affiché en tête.                                                                                                                                                                                                                                                                                                                             |
+| `favicon`            | chemin                                        | non         | Icône de l'onglet du navigateur.                                                                                                                                                                                                                                                                                                                  |
+| `navbar.links`       | liste de `{ label, href }`                    | non         | Jusqu'à 5 liens dans la barre du haut (adresses complètes).                                                                                                                                                                                                                                                                                       |
+| `navbar.primary`     | `{ label, href }`                             | non         | Bouton mis en avant à droite de la barre du haut.                                                                                                                                                                                                                                                                                                 |
+| `app.href`           | adresse `https://`                            | non         | Ton application. Ajoute un bouton « Ouvrir » suivi du nom du site à droite de la barre du haut, en tête du menu sur téléphone et dans le pied de page : sans lui, on ne peut pas revenir au produit depuis la doc.                                                                                                                                |
+| `app.label`          | texte                                         | non         | Libellé de ce bouton, si « Ouvrir » suivi du nom ne convient pas.                                                                                                                                                                                                                                                                                 |
+| `footer.socials`     | objet                                         | non         | Liens vers tes réseaux : `linkedin`, `github`, `gitlab`, `x`, `youtube`, `instagram`, `facebook`, `discord`, `mastodon`, `bluesky`, `website`.                                                                                                                                                                                                    |
+| `footer.links`       | liste de `{ header, items }`                  | non         | Colonnes du pied de page, 6 au plus. Chaque lien `{ label, href, icon }` : `href` est un chemin de la doc (`/guides/publier/`), une adresse `https://` ou `mailto:` ; `icon`, facultative, une image de la doc (`/images/mail.svg`).                                                                                                              |
+| `footer.copyright`   | texte                                         | non         | Titulaire affiché après « © année » au bas du pied de page. Le nom du site par défaut. À côté, la mention « Propulsé par Docs ».                                                                                                                                                                                                                  |
+| `redirects`          | liste de `{ source, destination, permanent }` | non         | Anciennes adresses qui mènent aux nouvelles. `source` est un chemin du site (`/guides/ancien`), `destination` un chemin ou une adresse `https://`. `permanent: false` pour une redirection temporaire. 500 au plus.                                                                                                                               |
+| `assistant.enabled`  | oui / non                                     | non         | `false` cache l'assistant du site.                                                                                                                                                                                                                                                                                                                |
+| `assistant.endpoint` | adresse                                       | non         | API de l'assistant, à ne changer que pour un environnement de test.                                                                                                                                                                                                                                                                               |
+
+## Navigation
+
+Quatre formes, une seule à la fois :
+
+| Forme      | Exemple                                                   |
+| ---------- | --------------------------------------------------------- |
+| `pages`    | `["index", "installation"]`                               |
+| `groups`   | `[{ "group": "Démarrer", "pages": ["index"] }]`           |
+| `tabs`     | `[{ "tab": "Guides", "groups": [...] }]`                  |
+| `versions` | `[{ "version": "v2", "default": true, "groups": [...] }]` |
+
+Un groupe accepte `expanded: false` pour être replié par défaut, et peut contenir des groupes.
+
+## Erreurs
+
+Un `docs.json` invalide fait échouer le build avec la liste des problèmes, par exemple :
+
+```text
+docs.json invalide :
+- colors.primary : couleur attendue au format #rrggbb
+- navigation : utiliser une seule forme parmi versions, tabs, groups ou pages
+```

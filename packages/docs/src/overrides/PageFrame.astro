@@ -1,0 +1,62 @@
+---
+import data from "virtual:hgdc-docs/config"
+
+import Assistant from "./Assistant.astro"
+import { assistantEnabled } from "./sections.ts"
+import SiteFooter from "./SiteFooter.astro"
+
+/**
+ * Cadre de page. En-tête fixe ; barre latérale fixe à gauche, jusqu'en bas de la page ;
+ * à droite, le contenu puis le pied de page, qui ne passe jamais sous la barre. Ouvert,
+ * l'assistant prend une colonne à droite et pousse le contenu au lieu de le recouvrir.
+ */
+const { hasSidebar } = Astro.locals.starlightRoute
+const assistant = assistantEnabled(data.config)
+---
+
+<div class="hd-page">
+  <header class="hd-topbar"><slot name="header" /></header>
+  {
+    hasSidebar && (
+      <nav class="hd-sidebar" aria-label="Navigation de la documentation">
+        <hd-sidebar-pane popover="auto" id="starlight__sidebar" class="sidebar-pane">
+          <div class="hd-sidebar__content">
+            <slot name="sidebar" />
+          </div>
+        </hd-sidebar-pane>
+      </nav>
+    )
+  }
+  <div class="hd-main-frame main-frame">
+    <slot />
+    <SiteFooter />
+  </div>
+  {assistant && <Assistant />}
+</div>
+
+<script>
+  // Le menu de téléphone est un popover : il s'ouvre sans JavaScript. Ce script le retire
+  // sur ordinateur, où la barre est toujours visible, et rend le reste inerte quand il est ouvert.
+  class SidebarPane extends HTMLElement {
+    connectedCallback() {
+      const desktop = matchMedia("(min-width: 50em)")
+      const reset = () => {
+        if (desktop.matches && this.matches(":popover-open")) this.hidePopover()
+        this.popover = desktop.matches ? null : "auto"
+      }
+      reset()
+      desktop.addEventListener("change", reset)
+      this.addEventListener("toggle", (event) => {
+        const open = (event as ToggleEvent).newState === "open"
+        for (const element of document.querySelectorAll<HTMLElement>(".hd-main-frame, .hd-askbar"))
+          element.toggleAttribute("inert", open)
+        document.documentElement.toggleAttribute("data-hd-menu", open)
+      })
+      // Un lien suivi dans le menu le ferme (utile pour une ancre de la même page).
+      this.addEventListener("click", (event) => {
+        if ((event.target as HTMLElement).closest("a") && this.matches(":popover-open")) this.hidePopover()
+      })
+    }
+  }
+  customElements.define("hd-sidebar-pane", SidebarPane)
+</script>

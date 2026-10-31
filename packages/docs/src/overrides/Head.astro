@@ -1,0 +1,19 @@
+---
+import Default from "@astrojs/starlight/components/Head.astro"
+import data from "virtual:hgdc-docs/config"
+
+import { markdownPath } from "../core/llms.ts"
+import { withBase, withoutBase } from "../core/navigation.ts"
+import { themeCss, themeFor } from "../core/theme.ts"
+
+// llmstxt.org : chaque page annonce sa version Markdown et l'index qui la décrit.
+const markdown = withBase(data.base, markdownPath(withoutBase(data.base, Astro.url.pathname)))
+// Accent du produit, ajusté au contraste : lu ici (et non dans `head` de Starlight) pour
+// suivre docs.json dans l'aperçu sans redémarrer (ADR 0011).
+const accent = themeCss(themeFor(data.config.colors?.primary, data.config.colors?.dark))
+---
+
+<Default><slot /></Default>
+<style is:inline set:html={accent}></style>
+<link rel="alternate" type="text/markdown" href={markdown} />
+<link rel="describedby" type="text/markdown" href={withBase(data.base, "/llms.txt")} />

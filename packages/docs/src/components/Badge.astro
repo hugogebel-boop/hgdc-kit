@@ -1,0 +1,17 @@
+---
+import NamedIcon from "../overrides/NamedIcon.astro"
+
+/** Étiquette dans le texte, comme chez Mintlify : couleur, taille, forme, icône. */
+interface Props {
+  color?: "gray" | "blue" | "green" | "yellow" | "orange" | "red" | "purple" | "white" | "surface"
+  size?: "xs" | "sm" | "md" | "lg"
+  shape?: "rounded" | "pill"
+  icon?: string
+  disabled?: boolean
+}
+const { color = "gray", size = "md", shape = "rounded", icon, disabled = false } = Astro.props
+---
+
+<span class="hd-badge" data-color={color} data-size={size} data-shape={shape} data-disabled={disabled ? "" : undefined}
+  ><NamedIcon name={icon} size={12} class="hd-badge__icon" /><slot /></span
+>

@@ -1,0 +1,31 @@
+---
+import Icon from "../overrides/Icon.astro"
+
+/**
+ * Encadré commun à Note, Info, Tip, Check, Warning et Danger : un lavis de sa couleur, un
+ * filet de la même teinte et son icône. Le type est dit au lecteur d'écran.
+ */
+export type CalloutTone = "note" | "info" | "tip" | "check" | "warning" | "danger"
+interface Props {
+  tone: CalloutTone
+  title?: string | undefined
+}
+const LABELS: Record<CalloutTone, string> = {
+  note: "Note",
+  info: "Info",
+  tip: "Astuce",
+  check: "Validé",
+  warning: "Attention",
+  danger: "Danger",
+}
+const ICONS = { note: "note", info: "info", tip: "tip", check: "circle-check", warning: "warning", danger: "danger" } as const
+const { tone, title } = Astro.props
+---
+
+<aside class="hd-callout" data-tone={tone} aria-label={title ?? LABELS[tone]}>
+  <Icon name={ICONS[tone]} class="hd-callout__icon" />
+  <div class="hd-callout__body">
+    {title && <p class="hd-callout__title">{title}</p>}
+    <slot />
+  </div>
+</aside>

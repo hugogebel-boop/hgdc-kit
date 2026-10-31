@@ -1,0 +1,52 @@
+---
+import type { StarlightRouteData } from "@astrojs/starlight/route-data"
+
+import Icon from "./Icon.astro"
+
+/**
+ * Arbre de la barre latérale. Premier niveau : titres de groupe et pages. Plus bas : un
+ * groupe se replie derrière un chevron, ouvert d'office s'il contient la page affichée.
+ */
+type Entry = StarlightRouteData["sidebar"][number]
+interface Props {
+  entries: Array<Entry>
+  depth?: number
+}
+const { entries, depth = 0 } = Astro.props
+const containsCurrent = (entry: Entry): boolean =>
+  entry.type === "link" ? entry.isCurrent : entry.entries.some(containsCurrent)
+---
+
+<ul class:list={["hd-nav", `hd-nav--depth-${depth}`]}>
+  {
+    entries.map((entry) =>
+      entry.type === "link" ? (
+        <li>
+          <a href={entry.href} class="hd-nav__link" aria-current={entry.isCurrent ? "page" : undefined} {...entry.attrs}>
+            <span>{entry.label}</span>
+            {entry.badge && (
+              <span class="hd-badge" data-variant={entry.badge.variant}>
+                {entry.badge.text}
+              </span>
+            )}
+          </a>
+        </li>
+      ) : depth === 0 ? (
+        <li class="hd-nav__group">
+          <p class="hd-nav__heading">{entry.label}</p>
+          <Astro.self entries={entry.entries} depth={depth + 1} />
+        </li>
+      ) : (
+        <li>
+          <details class="hd-nav__fold" open={!entry.collapsed || containsCurrent(entry)}>
+            <summary class="hd-nav__link">
+              <span>{entry.label}</span>
+              <Icon name="chevron-right" size={14} class="hd-nav__chevron" />
+            </summary>
+            <Astro.self entries={entry.entries} depth={depth + 1} />
+          </details>
+        </li>
+      ),
+    )
+  }
+</ul>

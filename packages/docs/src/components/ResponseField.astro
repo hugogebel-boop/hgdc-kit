@@ -1,0 +1,15 @@
+---
+import Field from "./_Field.astro"
+
+/** Champ d'une réponse d'API, comme chez Mintlify. */
+interface Props {
+  name: string
+  type?: string
+  required?: boolean
+  default?: string
+  deprecated?: boolean
+}
+const { name, ...rest } = Astro.props
+---
+
+<Field name={name} {...rest}><slot /></Field>

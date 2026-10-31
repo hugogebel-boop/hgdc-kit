@@ -1,0 +1,32 @@
+---
+title: Données et confidentialité
+sidebarTitle: Données
+description: Ce qui est stocké, où, combien de temps, et qui y accède.
+---
+
+## Ce qui est stocké
+
+| Donnée                                           | Où                 | Durée                          |
+| ------------------------------------------------ | ------------------ | ------------------------------ |
+| Pages publiées, en Markdown, et passages indexés | Base de la console | Tant que le projet existe      |
+| Questions des visiteurs, réponses, sources       | Base de la console | 90 jours                       |
+| Consommation mensuelle de l'assistant            | Base de la console | Tant que l'organisation existe |
+
+La console ne stocke ni l'adresse IP ni l'identité des visiteurs. L'IP sert seulement, le temps de la requête, à limiter le nombre de questions par minute et par jour.
+
+## Qui traite quoi
+
+- **Le site** est servi par Host.
+- **La recherche du site** tourne dans le navigateur du visiteur : aucune requête ne part.
+- **Les embeddings** des passages et des questions sont calculés chez Infomaniak, en Suisse.
+- **Les réponses** sont rédigées par un modèle hébergé chez Infomaniak, en Suisse (ou Claude par AWS Bedrock, dans l'Union européenne, si HGDC le choisit). La question et les passages trouvés lui sont envoyés.
+
+Sans accès aux embeddings, la recherche de l'assistant reste en plein texte : rien ne part chez Infomaniak.
+
+## Ce que voit l'assistant
+
+Uniquement ce que ton site publie : il lit le corpus du site public. Une page qui n'est pas publiée n'existe pas pour lui. Il ne peut ni naviguer sur le web, ni agir : il lit des passages et écrit une réponse.
+
+## Supprimer
+
+Supprimer un projet dans la console efface son index, ses pages et son journal. Le site publié et ton dépôt ne sont pas touchés.

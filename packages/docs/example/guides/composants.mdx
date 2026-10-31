@@ -1,0 +1,195 @@
+---
+title: Composants
+description: Encadrés, étapes, cartes, onglets et accordéons, disponibles dans chaque page sans import.
+---
+
+Ces composants s'utilisent directement dans une page `.mdx`, sans `import`. Ils portent les mêmes noms que chez Mintlify.
+
+## Encadrés
+
+<Note>Une information utile à côté du texte.</Note>
+
+<Tip>Un conseil qui fait gagner du temps.</Tip>
+
+<Warning>Un piège à éviter.</Warning>
+
+<Danger>Une action qui détruit des données.</Danger>
+
+```mdx
+<Note>Une information utile à côté du texte.</Note>
+<Tip title="Astuce">Un conseil qui fait gagner du temps.</Tip>
+<Warning>Un piège à éviter.</Warning>
+<Danger>Une action qui détruit des données.</Danger>
+```
+
+`<Info>` et `<Check>` existent aussi. Chacun accepte un `title`.
+
+## Étapes
+
+<Steps>
+  <Step title="Installer">Ajoute le paquet.</Step>
+  <Step title="Configurer">Écris `docs.json`.</Step>
+</Steps>
+
+```mdx
+<Steps>
+  <Step title="Installer">Ajoute le paquet.</Step>
+  <Step title="Configurer">Écris `docs.json`.</Step>
+</Steps>
+```
+
+## Cartes
+
+<CardGroup cols={2}>
+  <Card title="Avec un lien" href="/guides/publier/">
+    Toute la carte est cliquable.
+  </Card>
+  <Card title="Sans lien">Pour présenter une idée.</Card>
+</CardGroup>
+
+```mdx
+<CardGroup cols={2}>
+  <Card title="Avec un lien" href="/guides/publier/">
+    Toute la carte est cliquable.
+  </Card>
+  <Card title="Sans lien">Pour présenter une idée.</Card>
+</CardGroup>
+```
+
+`cols` va de 1 à 4. Sur téléphone, les cartes passent l'une sous l'autre.
+
+## Onglets
+
+<Tabs>
+  <Tab title="npm">```bash npm install --save-dev @hgdc/docs ```</Tab>
+  <Tab title="Bun">```bash bun add --dev @hgdc/docs ```</Tab>
+</Tabs>
+
+```mdx
+<Tabs>
+  <Tab title="npm">…</Tab>
+  <Tab title="Bun">…</Tab>
+</Tabs>
+```
+
+## Accordéons
+
+<AccordionGroup>
+  <Accordion title="Faut-il un compte HGDC pour écrire ?">
+    Non. Le site se construit sans compte. Le compte sert à la console : publication suivie et assistant.
+  </Accordion>
+  <Accordion title="Puis-je garder mes composants Mintlify ?">
+    Ceux de cette page, oui. Les autres s'affichent comme du texte : remplace-les ou écris-nous.
+  </Accordion>
+</AccordionGroup>
+
+```mdx
+<AccordionGroup>
+  <Accordion title="Question">Réponse.</Accordion>
+</AccordionGroup>
+```
+
+## Groupe de code
+
+`CodeGroup` réunit plusieurs blocs en onglets, nommés d'après le texte écrit après le langage. Avec `dropdown`, une liste déroulante remplace les onglets.
+
+<CodeGroup>
+
+```bash npm
+npm install --save-dev @hgdc/docs
+```
+
+```bash bun
+bun add --dev @hgdc/docs
+```
+
+</CodeGroup>
+
+La même chose avec `dropdown` :
+
+<CodeGroup dropdown>
+
+```bash npm
+npm install --save-dev @hgdc/docs
+```
+
+```bash bun
+bun add --dev @hgdc/docs
+```
+
+</CodeGroup>
+
+## Colonnes
+
+`Columns` range ce qu'on veut côte à côte, de 1 à 4 colonnes.
+
+<Columns cols={3}>
+  <Card title="Écrire">Les pages en MDX.</Card>
+  <Card title="Publier">Host construit le site.</Card>
+  <Card title="Suivre">L'assistant et les retours.</Card>
+</Columns>
+
+## Cadre
+
+`Frame` entoure une image et peut porter une légende.
+
+<Frame caption="Le logo de la doc, dans un cadre">![Logo de Docs](/images/logo-clair.svg)</Frame>
+
+## Taille des titres d'étape
+
+<Steps titleSize="h3">
+  <Step title="Une étape en titre de niveau 3">`titleSize` vaut `p` par défaut, ou `h2` et `h3`.</Step>
+</Steps>
+
+## Icônes
+
+Les cartes, les étapes et les accordéons prennent une icône, comme chez Mintlify : un nom [Lucide](https://lucide.dev/icons), ou un nom Font Awesome courant (`circle-info`, `gear`…).
+
+<Columns cols={2}>
+  <Card title="Démarrer" icon="rocket">
+    Une carte avec une icône.
+  </Card>
+  <Card title="Réglages" icon="gear">
+    Un nom Font Awesome, traduit en Lucide.
+  </Card>
+</Columns>
+
+<Steps>
+  <Step title="Installer" icon="download">
+    L'icône remplace le numéro.
+  </Step>
+  <Step title="Publier" icon="cloud-upload">
+    Host construit le site.
+  </Step>
+</Steps>
+
+## Badge et info-bulle
+
+Une version <Badge color="green" shape="pill">Nouveau</Badge>, un statut <Badge color="orange" icon="clock">Bêta</Badge>, et un <Tooltip tip="Le fichier qui décrit la navigation et l'apparence du site." headline="docs.json">mot expliqué</Tooltip> au survol.
+
+## Champs d'API
+
+<ParamField query="limite" type="number" default="20">
+  Nombre de résultats renvoyés, de 1 à 100.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Jeton du projet, précédé de `Bearer`.
+</ParamField>
+
+<ResponseField name="pages" type="object[]" required>
+  Les pages trouvées.
+
+  <Expandable title="propriétés">
+    <ResponseField name="titre" type="string">
+      Le titre de la page.
+    </ResponseField>
+    <ResponseField name="chemin" type="string">
+      Son adresse dans le site.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Dans le Markdown publié
+
+Chaque composant a une forme Markdown : un encadré devient une citation qui commence par son titre en gras, une étape devient un élément de liste numérotée. C'est cette forme que lisent l'assistant, `llms.txt` et les outils d'IA.

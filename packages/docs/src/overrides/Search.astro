@@ -1,0 +1,54 @@
+---
+import data from "virtual:hgdc-docs/config"
+
+import Icon from "./Icon.astro"
+import { assistantEnabled } from "./sections.ts"
+
+/**
+ * Recherche en palette (Ctrl K ou « / ») sur l'index Pagefind que Starlight construit au
+ * build. Le script de Pagefind n'est chargé qu'à la première ouverture. Logique dans
+ * `../widget/search.ts`.
+ */
+const assistant = assistantEnabled(data.config)
+---
+
+<hd-search data-base={data.base} data-assistant={assistant ? "" : undefined}>
+  <button type="button" class="hd-search-trigger" data-open aria-haspopup="dialog" aria-label="Rechercher (Ctrl K)">
+    <Icon name="search" size={16} />
+    <span class="hd-search-trigger__label">Rechercher</span>
+    <kbd class="hd-kbd" data-shortcut>Ctrl K</kbd>
+  </button>
+
+  <dialog class="hd-palette" aria-label="Rechercher dans la documentation">
+    <div class="hd-palette__box">
+      <div class="hd-palette__field">
+        <Icon name="search" />
+        <input
+          type="text"
+          data-input
+          placeholder="Rechercher dans la documentation"
+          autocomplete="off"
+          spellcheck="false"
+          role="combobox"
+          aria-expanded="false"
+          aria-controls="hd-palette-results"
+          aria-autocomplete="list"
+        />
+        <button type="button" class="hd-kbd hd-kbd--button" data-close>Échap</button>
+      </div>
+      <div class="hd-palette__results" id="hd-palette-results" role="listbox" aria-label="Résultats" data-results></div>
+      <p class="hd-palette__status" data-status role="status">Tape un mot pour chercher dans les pages.</p>
+      <footer class="hd-palette__hints" aria-hidden="true">
+        <span><kbd class="hd-kbd">↑</kbd><kbd class="hd-kbd">↓</kbd> Choisir</span>
+        <span><kbd class="hd-kbd">↵</kbd> Ouvrir</span>
+        <span><kbd class="hd-kbd">Échap</kbd> Fermer</span>
+      </footer>
+    </div>
+  </dialog>
+</hd-search>
+
+<script>
+  import { defineSearch } from "../widget/search.ts"
+
+  defineSearch()
+</script>

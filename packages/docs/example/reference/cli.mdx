@@ -1,0 +1,35 @@
+---
+title: La commande hgdc-docs
+sidebarTitle: Commande hgdc-docs
+description: Les commandes dev, build et preview, et les variables d'environnement du build.
+---
+
+`hgdc-docs` est installée avec le paquet `@hgdc/docs`. Elle se lance depuis le dossier de la doc, ou avec le chemin du dossier en argument.
+
+## Commandes
+
+| Commande            | Effet                                                                                                      |
+| ------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `hgdc-docs dev`     | Site local sur `http://localhost:4321`, rechargé à chaque modification.                                    |
+| `hgdc-docs build`   | Site statique dans `dist/`, avec la recherche, `llms.txt`, les pages Markdown et le corpus de l'assistant. |
+| `hgdc-docs preview` | Sert le dernier build, pour vérifier avant de pousser.                                                     |
+
+Options : `--port 4000` change le port de `dev` et `preview`, `--help` affiche l'aide.
+
+## Variables d'environnement
+
+| Variable         | Rôle                                                                                                                                                                |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HGDC_DOCS_SITE` | Adresse publique du site (`https://docs.acme.ch`). Rend les liens de `llms.txt` absolus et produit le sitemap. Sur Host, l'adresse de production est reprise seule. |
+| `HGDC_DOCS_OUT`  | Dossier de sortie, `dist/` par défaut.                                                                                                                              |
+| `HGDC_DOCS_API`  | API de l'assistant, `https://docs.hgdc.ch` par défaut.                                                                                                              |
+
+## Ce que contient dist/
+
+| Fichier                                             | Contenu                                                        |
+| --------------------------------------------------- | -------------------------------------------------------------- |
+| `index.html`, `<page>/index.html`                   | Les pages du site.                                             |
+| `<page>.md`                                         | Chaque page en Markdown.                                       |
+| `llms.txt`, `llms-full.txt`, `.well-known/llms.txt` | L'index et la doc complète pour les agents.                    |
+| `pagefind/`                                         | L'index de la recherche.                                       |
+| `_hgdc/corpus.json`                                 | Le contenu publié, lu par la console pour indexer l'assistant. |
