@@ -110,7 +110,7 @@ jobs:
       skip-paths: '^docs/|\.md$'
 ```
 
-Recherche de secrets (gitleaks sur tout l'historique, binaire vérifié par sa somme SHA-256) : un second job, sur la même machine.
+Recherche de secrets (gitleaks sur tout l'historique du commit testé, pas les autres branches, binaire vérifié par sa somme SHA-256) : un second job, sur la même machine.
 
 ```yaml
 secrets:
