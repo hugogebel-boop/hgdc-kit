@@ -39,6 +39,11 @@ export type HgdcCatalogProduct = {
    * 0016). Pour Account, sa racine.
    */
   entryHref: string
+  /**
+   * Page du produit sur le site : `https://hgdc.ch/h-collection/<mot>`. Absente tant que le produit
+   * est « soon » : sa page n'existe pas encore.
+   */
+  productPage?: string | undefined
   /** Une phrase, au tutoiement. */
   pitch: string
   /** Pastille du produit (`ProductBadge` de `@hgdc/ui/product-badge`) : le mot en minuscules. */
@@ -58,6 +63,9 @@ export type HgdcCatalogProduct = {
  * le monte (`createHgdcEntry`). Il ouvre l'app avec la session HGDC Account, sans formulaire
  * quand cette session existe.
  */
+/** Base des pages produit du site : `<base>/<mot>`. */
+export const PRODUCT_PAGE_BASE = "https://hgdc.ch/h-collection"
+
 export const PRODUCT_ENTRY_PATH = "/auth/hgdc"
 
 /** Où un produit est servi : l'origine et, s'il partage son hôte avec d'autres, sa base de chemin. */
@@ -110,6 +118,7 @@ function product(word: string, pitch: string, icon: IconSvgElement, stage: Produ
     subdomain,
     href,
     entryHref: productEntryHref(badge),
+    ...(stage === "soon" ? {} : { productPage: `${PRODUCT_PAGE_BASE}/${badge}` }),
     pitch,
     badge,
     icon,
