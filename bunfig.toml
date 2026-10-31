@@ -1,0 +1,4 @@
+# node_modules à plat, comme npm chez un client : le build de l'exemple de @hgdc/docs (Astro Starlight)
+# charge des binaires natifs optionnels (satteri) que le linker isolé de bun ne rend pas résolvables.
+[install]
+linker = "hoisted"
