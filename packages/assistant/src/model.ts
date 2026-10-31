@@ -1,14 +1,13 @@
 /*
- * Le modèle de l'assistant, ses tarifs et les crédits. Claude est appelé chez Anthropic ou par
- * OpenRouter (même modèle, API au format Anthropic), selon le préfixe de la clé. Fonctions pures.
+ * Le modèle de l'assistant, ses tarifs et les crédits. Claude est appelé chez Anthropic (clé
+ * `sk-ant-`), ou via les clients de `@hgdc/assistant/clients`. Fonctions pures.
  */
 
-export type Provider = "anthropic" | "openrouter"
+export type Provider = "anthropic"
 
-/** Clé Anthropic (`sk-ant-`) ou OpenRouter (`sk-or-`), reconnue à son préfixe ; `null` sinon. */
+/** Clé Anthropic (`sk-ant-`), reconnue à son préfixe ; `null` sinon. */
 export function keyProvider(key: string): Provider | null {
   if (/^sk-ant-[A-Za-z0-9_-]{20,}$/.test(key)) return "anthropic"
-  if (/^sk-or-[A-Za-z0-9_-]{20,}$/.test(key)) return "openrouter"
   return null
 }
 
@@ -31,8 +30,6 @@ export type Price = {
 export type Model = {
   /** Identifiant chez Anthropic. */
   anthropic: string
-  /** Le même modèle chez OpenRouter. */
-  openrouter: string
   price: Price
 }
 
@@ -43,7 +40,6 @@ export type Model = {
  */
 export const HAIKU_5_5: Model = {
   anthropic: "claude-haiku-5-5",
-  openrouter: "anthropic/claude-haiku-5.5",
   price: {
     input: 0.1,
     cacheWrite: 0.125,
@@ -52,8 +48,6 @@ export const HAIKU_5_5: Model = {
     long: { threshold: 100_000, input: 0.5, cacheWrite: 0.625, cacheRead: 0.05, output: 2.5 },
   },
 }
-
-export const OPENROUTER_BASE_URL = "https://openrouter.ai/api"
 
 export type Usage = { input: number; cacheWrite: number; cacheRead: number; output: number }
 

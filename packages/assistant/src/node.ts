@@ -1,8 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk"
 import { ConvexError } from "convex/values"
 
-import { addUsage, HAIKU_5_5, keyProvider, NO_USAGE, OPENROUTER_BASE_URL, requestMicros } from "./model.ts"
-import type { Model, Price, Usage } from "./model.ts"
+import { addUsage, HAIKU_5_5, keyProvider, NO_USAGE, requestMicros } from "./model.ts"
+import type { Price, Usage } from "./model.ts"
 import { processEnv, usProcessingAllowed } from "./providers.ts"
 import type { ProviderEnv } from "./providers.ts"
 import {
@@ -36,40 +36,6 @@ export type ModelStream = {
 }
 export type ModelClient = {
   messages: { stream(params: Anthropic.MessageStreamParams, options?: { signal?: AbortSignal }): ModelStream }
-}
-
-export type ClientChoice = { client: Anthropic; model: string; direct: boolean }
-
-/** Le refus d'Anthropic en direct et d'OpenRouter hors développement local. */
-export const US_PROCESSING_REFUSED =
-  "Anthropic en direct et OpenRouter traitent les données aux États-Unis : refusés hors développement local (ADR 0011). Branche Infomaniak ou Bedrock eu. (sovereignClient)."
-
-/**
- * Le client selon la clé : Anthropic directement, ou OpenRouter qui sert le même modèle avec
- * l'API au format Anthropic (jeton en `Authorization: Bearer`). `origin` et `title` identifient le
- * produit chez OpenRouter. Lève une erreur hors développement local, sauf drapeau
- * `ASSISTANT_ALLOW_US_PROCESSING=1` (`usProcessingAllowed`).
- * @deprecated Traitement aux États-Unis. Utiliser `sovereignClient()` de `@hgdc/assistant/clients`.
- */
-export function clientFor(
-  key: string,
-  options: { origin: string; title: string; model?: Model; env?: ProviderEnv },
-): ClientChoice {
-  if (!usProcessingAllowed(options.env ?? processEnv())) throw new Error(US_PROCESSING_REFUSED)
-  const model = options.model ?? HAIKU_5_5
-  if (keyProvider(key) === "openrouter") {
-    return {
-      client: new Anthropic({
-        baseURL: OPENROUTER_BASE_URL,
-        apiKey: null,
-        authToken: key,
-        defaultHeaders: { "HTTP-Referer": options.origin, "X-Title": options.title },
-      }),
-      model: model.openrouter,
-      direct: false,
-    }
-  }
-  return { client: new Anthropic({ apiKey: key }), model: model.anthropic, direct: true }
 }
 
 export type FailureKind = "auth" | "rate_limit" | "api" | "timeout" | "internal"
@@ -109,31 +75,17 @@ export function toolErrorText(error: unknown): string {
 }
 
 /**
- * Essaie une clé avant de l'enregistrer. OpenRouter : `GET /v1/key` ; Anthropic : liste des modèles.
- * Rend le message à montrer en cas de refus, ou `null`. Toute clé est refusée hors développement
- * local, sauf drapeau `ASSISTANT_ALLOW_US_PROCESSING=1`.
+ * Essaie une clé Anthropic avant de l'enregistrer (liste des modèles). Rend le message à montrer en
+ * cas de refus, ou `null`. Toute clé est refusée hors développement local, sauf drapeau
+ * `ASSISTANT_ALLOW_US_PROCESSING=1`.
  * @deprecated Traitement aux États-Unis : la plateforme passe par `sovereignClient()`.
  */
-export async function verifyKey(
-  key: string,
-  fetcher: (url: string, init: RequestInit) => Promise<Response> = fetch,
-  options: { env?: ProviderEnv } = {},
-): Promise<string | null> {
+export async function verifyKey(key: string, options: { env?: ProviderEnv } = {}): Promise<string | null> {
   if (!usProcessingAllowed(options.env ?? processEnv()))
-    return "Les clés Anthropic et OpenRouter ne sont plus acceptées : elles font traiter les données aux États-Unis."
+    return "Les clés Anthropic ne sont plus acceptées : elles font traiter les données aux États-Unis."
   const trimmed = key.trim()
-  const provider = keyProvider(trimmed)
-  if (!provider) return "Colle une clé Anthropic (sk-ant-…) ou OpenRouter (sk-or-…)."
+  if (!keyProvider(trimmed)) return "Colle une clé Anthropic (sk-ant-…)."
   const unreachable = "Impossible de vérifier la clé pour l'instant. Réessaie dans un instant."
-  if (provider === "openrouter") {
-    const response = await fetcher(`${OPENROUTER_BASE_URL}/v1/key`, {
-      headers: { Authorization: `Bearer ${trimmed}` },
-    }).catch(() => null)
-    if (!response) return unreachable
-    if (response.status === 401 || response.status === 403)
-      return "OpenRouter refuse cette clé. Vérifie-la sur openrouter.ai."
-    return response.ok ? null : unreachable
-  }
   try {
     await new Anthropic({ apiKey: trimmed }).models.list({ limit: 1 })
     return null

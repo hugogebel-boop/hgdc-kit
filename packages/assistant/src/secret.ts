@@ -1,5 +1,5 @@
 /*
- * Chiffrement d'un secret stocké en base (clé Anthropic ou OpenRouter d'une organisation) :
+ * Chiffrement d'un secret stocké en base (clé Anthropic d'une organisation) :
  * AES-GCM 256, clé dérivée par HKDF-SHA-256 d'un secret du déploiement (`BETTER_AUTH_SECRET`) et
  * d'un usage, et données associées liées à l'organisation : une valeur copiée d'une organisation à
  * une autre ne s'ouvre pas, une fuite de la base seule ne révèle rien. `crypto.subtle` existe dans
