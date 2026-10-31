@@ -32,6 +32,7 @@ describe("catalogue des produits", () => {
       "Analytics",
       "Docs",
       "IAssistant",
+      "ID",
     ])
     for (const product of [HGDC_ACCOUNT, ...HGDC_PRODUCTS]) {
       expect(product.name).toBe(product.word)
