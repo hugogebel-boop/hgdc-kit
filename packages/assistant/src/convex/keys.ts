@@ -1,7 +1,7 @@
 import { db, type AssistantReader, type AssistantWriter } from "./context.ts"
 
 /*
- * La clé propre d'une organisation (Anthropic ou OpenRouter), scellée par l'action du produit
+ * La clé Anthropic propre d'une organisation, scellée par l'action du produit
  * (`@hgdc/assistant/secret`). Dépréciée hors développement local : le traitement a lieu aux
  * États-Unis (ADR 0011 de la famille). Gardée pour lire, retirer et effacer les clés existantes.
  */

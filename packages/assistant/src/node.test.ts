@@ -3,15 +3,7 @@ import { ConvexError } from "convex/values"
 import { describe, expect, it, vi } from "vitest"
 import { z } from "zod"
 
-import {
-  clientFor,
-  runTurn,
-  US_PROCESSING_REFUSED,
-  verifyKey,
-  type ModelClient,
-  type RunTurnOptions,
-  type ToolCall,
-} from "./node.ts"
+import { runTurn, verifyKey, type ModelClient, type RunTurnOptions, type ToolCall } from "./node.ts"
 import { defineTools } from "./tools.ts"
 
 const TOOLS = defineTools({
@@ -291,40 +283,13 @@ describe("contre-revue", () => {
 const LOCAL = { env: { CONVEX_CLOUD_URL: "http://127.0.0.1:3210" } }
 
 describe("verifyKey", () => {
-  it("refuse une clé inconnue et lit la réponse d'OpenRouter", async () => {
-    expect(await verifyKey("sk-proj-123", fetch, LOCAL)).toContain("Colle une clé")
-    const refused = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(
-      async () => new Response(null, { status: 401 }),
-    )
-    expect(await verifyKey(`sk-or-v1-${"a".repeat(30)}`, refused, LOCAL)).toContain("OpenRouter refuse")
-    const ok = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(
-      async () => new Response("{}", { status: 200 }),
-    )
-    expect(await verifyKey(`sk-or-v1-${"a".repeat(30)}`, ok, LOCAL)).toBeNull()
-    expect(ok.mock.calls[0]?.[0]).toBe("https://openrouter.ai/api/v1/key")
-  })
-})
-
-describe("Anthropic en direct et OpenRouter dépréciés", () => {
-  const key = `sk-or-v1-${"a".repeat(30)}`
-  const online = { CONVEX_CLOUD_URL: "https://convex.host.hgdc.ch" }
-
-  it("refusés sur un déploiement en ligne, sans appel réseau", async () => {
-    const fetcher = vi.fn<(url: string, init: RequestInit) => Promise<Response>>()
-    expect(await verifyKey(key, fetcher, { env: online })).toContain("ne sont plus acceptées")
-    expect(fetcher).not.toHaveBeenCalled()
-    expect(() => clientFor(key, { origin: "https://app.hgdc.ch", title: "Host", env: online })).toThrow(
-      US_PROCESSING_REFUSED,
-    )
+  it("refuse une chaîne qui n'est pas une clé Anthropic", async () => {
+    expect(await verifyKey("sk-proj-123", LOCAL)).toContain("Colle une clé")
   })
 
-  it("permis en développement local, ou avec le drapeau explicite", () => {
-    expect(clientFor(key, { origin: "x", title: "Host", ...LOCAL }).direct).toBe(false)
-    const flagged = { ...online, ASSISTANT_ALLOW_US_PROCESSING: "1" }
-    expect(clientFor(key, { origin: "x", title: "Host", env: flagged }).model).toBe("anthropic/claude-haiku-5.5")
-    expect(() =>
-      clientFor(key, { origin: "x", title: "Host", env: { ...online, ASSISTANT_ALLOW_US_PROCESSING: "true" } }),
-    ).toThrow(US_PROCESSING_REFUSED)
+  it("refusée sur un déploiement en ligne, sans appel réseau", async () => {
+    const online = { CONVEX_CLOUD_URL: "https://convex.host.hgdc.ch" }
+    expect(await verifyKey(`sk-ant-${"a".repeat(30)}`, { env: online })).toContain("ne sont plus acceptées")
   })
 })
 

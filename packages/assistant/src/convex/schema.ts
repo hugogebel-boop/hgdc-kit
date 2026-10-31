@@ -99,7 +99,7 @@ export function assistantTables() {
       outputTokens: v.number(),
     }).index("by_org_month", ["organizationId", "month"]),
 
-    /** Clé Anthropic ou OpenRouter de l'organisation, scellée (`@hgdc/assistant/secret`), jamais rendue. */
+    /** Clé Anthropic de l'organisation, scellée (`@hgdc/assistant/secret`), jamais rendue. */
     assistantKeys: defineTable({
       organizationId: v.string(),
       sealed: v.string(),

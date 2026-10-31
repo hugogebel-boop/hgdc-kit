@@ -13,13 +13,13 @@ import {
 import { keyHint, openSecret, sealSecret } from "./secret.ts"
 
 describe("clés", () => {
-  it("reconnaît Anthropic et OpenRouter à leur préfixe", () => {
+  it("reconnaît une clé Anthropic à son préfixe", () => {
     expect(keyProvider(`sk-ant-${"a".repeat(24)}`)).toBe("anthropic")
-    expect(keyProvider(`sk-or-v1-${"b".repeat(24)}`)).toBe("openrouter")
+    expect(keyProvider(`sk-or-v1-${"b".repeat(24)}`)).toBeNull()
     expect(keyProvider("sk-proj-123")).toBeNull()
-    expect(readKey(`  sk-or-v1-${"c".repeat(24)} `)).toBe(`sk-or-v1-${"c".repeat(24)}`)
+    expect(readKey(`  sk-ant-${"c".repeat(24)} `)).toBe(`sk-ant-${"c".repeat(24)}`)
     expect(readKey("")).toBeUndefined()
-    expect(keyHint(`sk-or-v1-${"c".repeat(20)}wxyz`)).toBe("wxyz")
+    expect(keyHint(`sk-ant-${"c".repeat(20)}wxyz`)).toBe("wxyz")
   })
 })
 
@@ -50,10 +50,10 @@ describe("secret scellé", () => {
   const secret = "un-secret-de-deploiement-assez-long"
 
   it("s'ouvre avec le même secret et le même usage seulement", async () => {
-    const sealed = await sealSecret("sk-or-v1-secret", { secret, context: "org_1" })
+    const sealed = await sealSecret("sk-ant-secret", { secret, context: "org_1" })
     expect(sealed.startsWith("v1.")).toBe(true)
-    expect(sealed).not.toContain("sk-or")
-    expect(await openSecret(sealed, { secret, context: "org_1" })).toBe("sk-or-v1-secret")
+    expect(sealed).not.toContain("sk-ant")
+    expect(await openSecret(sealed, { secret, context: "org_1" })).toBe("sk-ant-secret")
     await expect(openSecret(sealed, { secret, context: "org_1", purpose: "turnstile" })).rejects.toThrow("illisible")
     await expect(openSecret(sealed, { secret: `${secret}-autre`, context: "org_1" })).rejects.toThrow("illisible")
     await expect(sealSecret("x", { secret: "court", context: "org_1" })).rejects.toThrow("trop court")

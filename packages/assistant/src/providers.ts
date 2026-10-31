@@ -136,7 +136,7 @@ export const PROVIDER_ENV = {
   model: "ASSISTANT_MODEL",
   infomaniak: ["INFOMANIAK_AI_TOKEN", "INFOMANIAK_AI_PRODUCT_ID"],
   bedrock: ["BEDROCK_REGION", "BEDROCK_API_KEY"],
-  /** Drapeau explicite : `1` autorise Anthropic en direct et OpenRouter (traitement aux États-Unis). */
+  /** Drapeau explicite : `1` autorise Anthropic en direct (traitement aux États-Unis). */
   allowUs: "ASSISTANT_ALLOW_US_PROCESSING",
 } as const
 
@@ -219,7 +219,7 @@ export function isLocalDeployment(env: ProviderEnv = processEnv()): boolean {
 }
 
 /**
- * Anthropic en direct et OpenRouter (traitement aux États-Unis, ADR 0011 de la famille) : permis en
+ * Anthropic en direct (traitement aux États-Unis, ADR 0011 de la famille) : permis en
  * développement local, ou avec le drapeau `ASSISTANT_ALLOW_US_PROCESSING=1` posé exprès.
  */
 export function usProcessingAllowed(env: ProviderEnv = processEnv()): boolean {

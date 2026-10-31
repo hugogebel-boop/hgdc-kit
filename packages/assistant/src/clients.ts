@@ -53,7 +53,7 @@ export async function modelClient(option: ModelOption, options: ModelClientOptio
 
 /**
  * Le modèle de la plateforme (`ASSISTANT_MODEL`, défaut Mistral Small 4 chez Infomaniak), prêt
- * pour `runTurn`. Remplace `clientFor(key, …)` : `const choice = await sovereignClient()`.
+ * pour `runTurn` : `const choice = await sovereignClient()`.
  */
 export async function sovereignClient(options: ModelClientOptions = {}): Promise<ModelChoice | null> {
   const option = platformModel(options.env ?? processEnv())

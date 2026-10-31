@@ -97,7 +97,7 @@ export type ConsoleAssistantConfig<
   /** Un modèle est branché. Défaut : `sovereignReady()` (Infomaniak ou Bedrock `eu.`). */
   ready?: () => boolean
   /**
-   * Accepter la clé propre d'une organisation déjà enregistrée (Anthropic, OpenRouter : États-Unis).
+   * Accepter la clé Anthropic propre d'une organisation déjà enregistrée (États-Unis).
    * Défaut : non, chaque tour est réservé sur le modèle de la plateforme.
    */
   ownKeys?: boolean

@@ -1,7 +1,7 @@
 {
   "name": "@hgdc/assistant",
   "version": "0.4.1",
-  "description": "Moteur commun de l'assistant IA des produits HGDC : outils typés (lecture, écriture, confirmation), boucle en flux avec Claude (Anthropic, OpenRouter, Bedrock en UE) ou un modèle au format OpenAI (Infomaniak, en Suisse), tables et gardes Convex, crédits mensuels, clé chiffrée de l'organisation.",
+  "description": "Moteur commun de l'assistant IA des produits HGDC : outils typés (lecture, écriture, confirmation), boucle en flux avec Claude (Bedrock en UE) ou un modèle au format OpenAI (Infomaniak, en Suisse), tables et gardes Convex, crédits mensuels, clé chiffrée de l'organisation.",
   "license": "UNLICENSED",
   "homepage": "https://github.com/hugogebel-boop/hgdc-kit/tree/main/packages/assistant#readme",
   "bugs": "https://github.com/hugogebel-boop/hgdc-kit/security/advisories/new",
