@@ -11,6 +11,7 @@
   "@hgdc/assistant": "0.4.1",
   "@hgdc/auth": "0.26.0",
   "@hgdc/config": "0.4.0",
+  "@hgdc/docs": "0.5.1",
   "@hgdc/domains": "0.1.0",
   "@hgdc/errors": "0.1.0",
   "@hgdc/status": "0.1.0",
