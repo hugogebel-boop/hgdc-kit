@@ -1,5 +1,11 @@
 # @hgdc/auth
 
+## 0.31.0
+
+### Minor Changes
+
+- 7e747f3: `manager` rejoint `MCP_PRODUCTS` : serveur MCP de Manager à `https://app.hgdc.ch/manager/mcp`, scopes `manager:read` et `manager:write`. `createMcpProxy` accepte `convexPrefix` pour un serveur MCP qui partage le déploiement Convex d'un autre produit (Manager sur celui d'ID : `/manager/mcp`).
+
 ## 0.30.0
 
 ### Minor Changes
