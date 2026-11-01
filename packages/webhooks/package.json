@@ -1,7 +1,7 @@
 {
   "name": "@hgdc/webhooks",
   "version": "0.1.0",
-  "description": "Webhooks signés au format Standard Webhooks pour les produits HGDC : signature et vérification, secret whsec_, garde SSRF des adresses, calendrier de reprises. Fonctions pures.",
+  "description": "Webhooks signés au format Standard Webhooks pour les produits HGDC : signature et vérification, secret whsec_, garde SSRF des adresses, calendrier de reprises. Fonctions pures, plus une requête sortante sûre pour Node (`@hgdc/webhooks/safe-fetch`).",
   "license": "UNLICENSED",
   "homepage": "https://github.com/hugogebel-boop/hgdc-kit/tree/main/packages/webhooks#readme",
   "bugs": "https://github.com/hugogebel-boop/hgdc-kit/security/advisories/new",
@@ -22,6 +22,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./safe-fetch": {
+      "types": "./dist/safe-fetch.d.ts",
+      "default": "./dist/safe-fetch.js"
     },
     "./package.json": "./package.json"
   },
