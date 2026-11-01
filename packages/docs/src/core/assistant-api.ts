@@ -49,10 +49,10 @@ export const ASK_ERRORS = {
   project_not_found: "Cette documentation n'a pas d'assistant.",
   assistant_disabled: "L'assistant est désactivé pour cette documentation.",
   origin_not_allowed: "Cet assistant ne répond que depuis son site de documentation.",
-  rate_limited: "Trop de questions d'un coup. Réessaie dans une minute.",
+  rate_limited: "Trop de questions d'un coup. Réessayez dans une minute.",
   quota_exceeded: "L'assistant a atteint sa limite de questions pour ce mois.",
-  not_indexed: "La documentation n'est pas encore indexée. Réessaie après la prochaine publication.",
-  unavailable: "L'assistant ne répond pas pour l'instant. Réessaie dans un moment.",
+  not_indexed: "La documentation n'est pas encore indexée. Réessayez après la prochaine publication.",
+  unavailable: "L'assistant ne répond pas pour l'instant. Réessayez dans un moment.",
 } as const
 
 export type AskErrorCode = keyof typeof ASK_ERRORS
