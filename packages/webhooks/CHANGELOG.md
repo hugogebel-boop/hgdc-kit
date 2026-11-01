@@ -1,5 +1,11 @@
 # @hgdc/webhooks
 
+## 0.2.0
+
+### Minor Changes
+
+- cd8872c: `@hgdc/webhooks/safe-fetch` : requête sortante pour Node qui épingle l'adresse vérifiée (plus de rebinding DNS), revérifie chaque redirection et borne délai et taille.
+
 ## 0.1.0
 
 ### Minor Changes
