@@ -13,9 +13,9 @@
  * Délai et taille de la réponse bornés.
  */
 import { lookup as dnsLookup } from "node:dns/promises"
-import { request as httpRequest } from "node:http"
+import { Agent as HttpAgent, request as httpRequest } from "node:http"
 import type { IncomingHttpHeaders, RequestOptions } from "node:http"
-import { request as httpsRequest } from "node:https"
+import { Agent as HttpsAgent, request as httpsRequest } from "node:https"
 import type { LookupFunction } from "node:net"
 
 import { isPrivateIp, isPublicUrl } from "./ssrf.js"
@@ -32,8 +32,8 @@ export type SafeFetchErrorCode =
 /** Refus ou échec, avec un code stable et un message lisible (français), sans le corps reçu. */
 export class SafeFetchError extends Error {
   readonly code: SafeFetchErrorCode
-  constructor(code: SafeFetchErrorCode, message: string) {
-    super(message)
+  constructor(code: SafeFetchErrorCode, message: string, options?: { cause?: unknown }) {
+    super(message, options)
     this.name = "SafeFetchError"
     this.code = code
   }
@@ -56,6 +56,7 @@ export type SafeFetchOptions = {
 export type SafeResponse = {
   status: number
   headers: IncomingHttpHeaders
+  /** Octets reçus, jamais décompressés : la requête demande `accept-encoding: identity`. */
   body: Uint8Array
   /** L'URL du dernier saut. */
   url: string
@@ -100,8 +101,16 @@ export const sendPinned: Send = (url, target, init) =>
       port: url.port || (url.protocol === "https:" ? 443 : 80),
       path: `${url.pathname}${url.search}`,
       method: init.method,
-      headers: { ...init.headers, host: url.host },
+      headers: {
+        ...init.headers,
+        host: url.host,
+        // Pas de corps compressé : `maxBytes` borne ce qui sera lu, pas une bombe à décompresser.
+        "accept-encoding": "identity",
+        ...(init.body !== undefined ? { "content-length": String(Buffer.byteLength(init.body)) } : {}),
+      },
       lookup: pinnedLookup(target.address, target.family),
+      // Un agent par requête, sans keep-alive : ni socket réutilisée, ni proxy pris de l'environnement.
+      agent: url.protocol === "https:" ? new HttpsAgent({ keepAlive: false }) : new HttpAgent({ keepAlive: false }),
       signal: init.signal,
       ...(url.protocol === "https:" ? { servername: url.hostname } : {}),
     }
@@ -126,11 +135,18 @@ export const sendPinned: Send = (url, target, init) =>
   })
 
 /** Le nom ne mène-t-il qu'à des adresses publiques ? La première, sinon une erreur. */
-async function checkedTarget(url: URL, resolve: Resolve) {
+async function checkedTarget(url: URL, resolve: Resolve, signal: AbortSignal) {
   let addresses: Awaited<ReturnType<Resolve>>
   try {
-    addresses = await resolve(url.hostname.replace(/\.+$/, ""))
+    // Le résolveur ignore le signal : la course garde le délai total, même sur un DNS muet.
+    addresses = await Promise.race([
+      resolve(url.hostname.replace(/\.+$/, "")),
+      new Promise<never>((_, reject) => {
+        signal.addEventListener("abort", () => reject(signal.reason), { once: true })
+      }),
+    ])
   } catch {
+    if (signal.aborted) throw new SafeFetchError("timeout", "Pas de réponse à temps.")
     throw new SafeFetchError("dns", `Le nom ${url.hostname} ne se résout pas.`)
   }
   if (addresses.length === 0) throw new SafeFetchError("dns", `Le nom ${url.hostname} ne se résout pas.`)
@@ -161,16 +177,18 @@ export async function safeFetch(
   }
   let method = (options.method ?? "GET").toUpperCase()
   let body = options.body
+  let headers = options.headers ?? {}
   for (let hop = 0; ; hop++) {
+    if (signal.aborted) throw new SafeFetchError("timeout", `Pas de réponse en ${timeoutMs} ms.`)
     if (!isPublicUrl(url, { httpsOnly })) {
       throw new SafeFetchError("unsafe_url", "L'adresse doit viser un site public, sans IP ni port particulier.")
     }
-    const target = await checkedTarget(url, resolve)
+    const target = await checkedTarget(url, resolve, signal)
     let response: Awaited<ReturnType<Send>>
     try {
       response = await send(url, target, {
         method,
-        headers: options.headers ?? {},
+        headers,
         ...(body !== undefined ? { body } : {}),
         maxBytes,
         signal,
@@ -178,22 +196,35 @@ export async function safeFetch(
     } catch (e) {
       if (e instanceof SafeFetchError) throw e
       if (signal.aborted) throw new SafeFetchError("timeout", `Pas de réponse en ${timeoutMs} ms.`)
-      throw new SafeFetchError("network", "La connexion a échoué.")
+      throw new SafeFetchError("network", "La connexion a échoué.", { cause: e })
     }
     const location = response.headers.location
     if (response.status < 300 || response.status >= 400 || !location || maxRedirects === 0) {
       return { ...response, url: url.toString() }
     }
     if (hop >= maxRedirects) throw new SafeFetchError("too_many_redirects", "Trop de redirections.")
+    let next: URL
     try {
-      url = new URL(location, url)
+      next = new URL(location, url)
     } catch {
       throw new SafeFetchError("unsafe_url", "Redirection vers une adresse illisible.")
     }
+    if (url.protocol === "https:" && next.protocol !== "https:") {
+      throw new SafeFetchError("unsafe_url", "Redirection de https vers http refusée.")
+    }
+    // Vers une autre origine, les identifiants de l'appelant restent ici.
+    if (next.origin !== url.origin)
+      headers = withoutHeaders(headers, ["authorization", "cookie", "proxy-authorization"])
+    url = next
     // 303, et 301 ou 302 après un POST (comme les navigateurs) : la suite se lit en GET, sans corps.
     if (response.status === 303 || ((response.status === 301 || response.status === 302) && method === "POST")) {
       method = "GET"
       body = undefined
+      headers = withoutHeaders(headers, ["content-type"])
     }
   }
+}
+
+function withoutHeaders(headers: Record<string, string>, names: string[]) {
+  return Object.fromEntries(Object.entries(headers).filter(([k]) => !names.includes(k.toLowerCase())))
 }

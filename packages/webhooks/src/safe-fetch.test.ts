@@ -111,6 +111,31 @@ describe("safeFetch", () => {
     expect(calls.map((c) => c.method)).toEqual(["POST", "GET"])
   })
 
+  test("une redirection vers une autre origine perd les identifiants, et https vers http est refusé", async () => {
+    const seen: Record<string, string>[] = []
+    const send: Send = async (url, _target, init) => {
+      seen.push(init.headers)
+      return url.hostname === "site.ch"
+        ? { status: 302, headers: { location: "https://autre.ch/" }, body: new Uint8Array() }
+        : { status: 200, headers: {}, body: new Uint8Array() }
+    }
+    await safeFetch(
+      "https://site.ch/",
+      { headers: { Authorization: "Bearer x", "x-ok": "1" }, maxRedirects: 1 },
+      { resolve: publicIp, send },
+    )
+    expect(seen[1]).toEqual({ "x-ok": "1" })
+    const down = { "https://site.ch/": { status: 302, location: "http://site.ch/" } }
+    expect(
+      await code(safeFetch("https://site.ch/", { maxRedirects: 1 }, { resolve: publicIp, send: fakeSend(down).send })),
+    ).toBe("unsafe_url")
+  })
+
+  test("un DNS muet ne dépasse pas le délai total", async () => {
+    const resolve: Resolve = () => new Promise(() => undefined)
+    expect(await code(safeFetch("https://site.ch/", { timeoutMs: 50 }, { resolve }))).toBe("timeout")
+  })
+
   test("un nom qui ne se résout pas est refusé", async () => {
     expect(await code(safeFetch("https://rien.example.ch/", {}, { resolve: async () => [] }))).toBe("dns")
   })
