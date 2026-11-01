@@ -11,6 +11,7 @@ export const FAMILY_PRODUCTS = [
   "docs",
   "iassistant",
   "id",
+  "manager",
 ] as const
 
 export type FamilyProduct = (typeof FAMILY_PRODUCTS)[number]
@@ -42,6 +43,8 @@ export const PRODUCT_BADGE_SVG: Readonly<Record<FamilyProduct, string>> = {
   iassistant:
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><svg x="0" y="0" width="64" height="64" viewBox="16 18 34 34"><defs><linearGradient id="g" x1="14" y1="14" x2="50" y2="50" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#d946ef"/><stop offset="1" stop-color="#c026d3"/></linearGradient></defs><path d="M24 18H38A6 6 0 0 1 44 24V32A6 6 0 0 1 38 38H27L21 43V37.2A6 6 0 0 1 18 32V24A6 6 0 0 1 24 18Z" fill="url(#g)" fill-opacity="0.4" fill-rule="evenodd"/><path d="M29 27H43A6 6 0 0 1 49 33V41A6 6 0 0 1 43 47V51.5L37.5 47H29A6 6 0 0 1 23 41V33A6 6 0 0 1 29 27ZM28.1 37A1.9 1.9 0 1 0 31.9 37A1.9 1.9 0 1 0 28.1 37ZM34.1 37A1.9 1.9 0 1 0 37.9 37A1.9 1.9 0 1 0 34.1 37ZM40.1 37A1.9 1.9 0 1 0 43.9 37A1.9 1.9 0 1 0 40.1 37Z" fill="url(#g)" fill-rule="evenodd"/></svg></svg>',
   id: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><svg x="0" y="0" width="64" height="64" viewBox="18 18 48 48"><defs><linearGradient id="g" x1="18" y1="18" x2="66" y2="66" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ff2a2a"/><stop offset="1" stop-color="#e60000"/></linearGradient></defs><path d="M28.5 18H55.5A10.5 10.5 0 0 1 66 28.5V55.5A10.5 10.5 0 0 1 55.5 66H28.5A10.5 10.5 0 0 1 18 55.5V28.5A10.5 10.5 0 0 1 28.5 18Z" fill="url(#g)"/><path d="M37.8 28L46.2 28L46.2 37.8L56 37.8L56 46.2L46.2 46.2L46.2 56L37.8 56L37.8 46.2L28 46.2L28 37.8L37.8 37.8Z" transform="translate(1.9 1.9)" fill="#fff" fill-opacity="0.4"/><path d="M37.8 28L46.2 28L46.2 37.8L56 37.8L56 46.2L46.2 46.2L46.2 56L37.8 56L37.8 46.2L28 46.2L28 37.8L37.8 37.8Z" transform="translate(-1.9 -1.9)" fill="#fff"/></svg></svg>',
+  manager:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><svg x="0" y="0" width="64" height="64" viewBox="14 16.5 36 36"><defs><linearGradient id="g" x1="14" y1="14" x2="50" y2="50" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ff6a3d"/><stop offset="1" stop-color="#fc582e"/></linearGradient></defs><path d="M17.2 27.5A3.8 3.8 0 1 0 24.8 27.5A3.8 3.8 0 1 0 17.2 27.5ZM14 44.5C14 39.5 17 36 21 36C25 36 28 39.5 28 44.5ZM39.2 27.5A3.8 3.8 0 1 0 46.8 27.5A3.8 3.8 0 1 0 39.2 27.5ZM36 44.5C36 39.5 39 36 43 36C47 36 50 39.5 50 44.5Z" fill="url(#g)" fill-opacity="0.45" fill-rule="evenodd"/><path d="M26.5 25A5.5 5.5 0 1 0 37.5 25A5.5 5.5 0 1 0 26.5 25ZM21 47.5C21 40.5 26 35.5 32 35.5C38 35.5 43 40.5 43 47.5A2.5 2.5 0 0 1 40.5 50H23.5A2.5 2.5 0 0 1 21 47.5Z" fill="url(#g)" fill-rule="evenodd"/></svg></svg>',
 }
 
 /**
@@ -58,6 +61,7 @@ export const EMAIL_ICON_VERSION: Readonly<Record<FamilyProduct, string>> = {
   docs: "77f11f0b",
   iassistant: "2b9ed0e0",
   id: "4c663fa1",
+  manager: "0923b87a",
 }
 
 /** SVG du H « Double », la marque de la H Collection, sans fond (`family/hcollection-icon(-dark).svg`). */

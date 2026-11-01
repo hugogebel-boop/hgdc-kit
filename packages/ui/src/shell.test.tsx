@@ -318,6 +318,7 @@ describe("Barre des produits", () => {
       "Docs",
       "IAssistant, Préversion",
       "ID",
+      "Manager",
     ])
     const host = within(rail).getByRole("link", { name: /Host/ })
     expect(host.getAttribute("href")).toBe(`https://app.hgdc.ch/host${PRODUCT_ENTRY_PATH}?refresh=background&next=/`)

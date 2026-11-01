@@ -33,6 +33,7 @@ describe("catalogue des produits", () => {
       "Docs",
       "IAssistant",
       "ID",
+      "Manager",
     ])
     for (const product of [HGDC_ACCOUNT, ...HGDC_PRODUCTS]) {
       expect(product.name).toBe(product.word)
@@ -54,6 +55,7 @@ describe("catalogue des produits", () => {
       "Docs",
       "IAssistant",
       "ID",
+      "Manager",
     ])
     expect(entries.find((e) => e.current)?.name).toBe("Mail")
     expect(entries.filter((e) => e.hint !== undefined).map((e) => e.name)).toEqual(["IAssistant"])
@@ -72,6 +74,7 @@ describe("catalogue des produits", () => {
       Docs: "https://app.hgdc.ch/docs/auth/hgdc?refresh=background&next=/",
       IAssistant: "https://app.hgdc.ch/iassistant/auth/hgdc?refresh=background&next=/",
       ID: "https://id.hgdc.ch",
+      Manager: "https://app.hgdc.ch/manager/auth/hgdc?refresh=background&next=/",
     })
     expect(HGDC_ACCOUNT.entryHref).toBe(HGDC_ACCOUNT.href)
     for (const product of HGDC_PRODUCTS) expect(product.href).toBe(`https://${product.subdomain}`)

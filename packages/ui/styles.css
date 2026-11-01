@@ -299,6 +299,8 @@
   --product-iassistant-to: #c026d3;
   --product-id-from: #ff2a2a;
   --product-id-to: #e60000;
+  --product-manager-from: #ff6a3d;
+  --product-manager-to: #fc582e;
   --glow-blue: #2c78fd;
   --glow-violet: #7343fe;
   --glow-pink: #fe5292;
@@ -865,7 +867,8 @@
 :root[data-hgdc-product="analytics"] [data-slot="shell-frame"] [data-product="analytics"],
 :root[data-hgdc-product="docs"] [data-slot="shell-frame"] [data-product="docs"],
 :root[data-hgdc-product="iassistant"] [data-slot="shell-frame"] [data-product="iassistant"],
-:root[data-hgdc-product="id"] [data-slot="shell-frame"] [data-product="id"] {
+:root[data-hgdc-product="id"] [data-slot="shell-frame"] [data-product="id"],
+:root[data-hgdc-product="manager"] [data-slot="shell-frame"] [data-product="manager"] {
   display: contents;
 }
 :root[data-hgdc-product="account"] [data-slot="shell-frame-rail"] [data-product="account"],
@@ -876,7 +879,8 @@
 :root[data-hgdc-product="analytics"] [data-slot="shell-frame-rail"] [data-product="analytics"],
 :root[data-hgdc-product="docs"] [data-slot="shell-frame-rail"] [data-product="docs"],
 :root[data-hgdc-product="iassistant"] [data-slot="shell-frame-rail"] [data-product="iassistant"],
-:root[data-hgdc-product="id"] [data-slot="shell-frame-rail"] [data-product="id"] {
+:root[data-hgdc-product="id"] [data-slot="shell-frame-rail"] [data-product="id"],
+:root[data-hgdc-product="manager"] [data-slot="shell-frame-rail"] [data-product="manager"] {
   display: flex;
   background: var(--shell-active);
   color: var(--shell-foreground);

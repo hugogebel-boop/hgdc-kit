@@ -5,6 +5,7 @@ import BubbleChatIcon from "@hugeicons/core-free-icons/BubbleChatIcon"
 import Briefcase01Icon from "@hugeicons/core-free-icons/Briefcase01Icon"
 import Mail01Icon from "@hugeicons/core-free-icons/Mail01Icon"
 import Rocket01Icon from "@hugeicons/core-free-icons/Rocket01Icon"
+import UserGroupIcon from "@hugeicons/core-free-icons/UserGroupIcon"
 import UserCircleIcon from "@hugeicons/core-free-icons/UserCircleIcon"
 import type { IconSvgElement } from "@hugeicons/react"
 
@@ -146,6 +147,7 @@ export const HGDC_PRODUCTS: ReadonlyArray<HgdcCatalogProduct> = [
   product("Docs", "Ta documentation en ligne, avec un assistant qui y répond.", BookOpen01Icon, "live"),
   product("IAssistant", "Une bulle de chat IA sur ton site, qui répond à tes visiteurs.", BubbleChatIcon, "preview"),
   id(),
+  product("Manager", "Tes organisations, leurs membres et leurs rôles.", UserGroupIcon, "live"),
 ]
 
 /** ID, le compte de connexion ouvert aux applications tierces : pas d'entrée `/auth/hgdc`, sa racine. */

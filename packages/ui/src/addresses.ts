@@ -13,11 +13,12 @@ export const APP_ORIGIN = "https://app.hgdc.ch"
 
 /**
  * Produits servis sous `https://app.hgdc.ch/<mot>` (consoles relayées par la passerelle, ADR 0005).
- * Account (fournisseur d'identité) et Portal (pas encore relayé) gardent leur hôte. Status : la
+ * Account et ID (fournisseur d'identité) gardent leur hôte ; Manager (organisations, ex-Account) a son backend dans
+ * l'instance `account`, mais sa console est relayée comme les autres (ADR 0015 de la famille). Status : la
  * console seule, `status.hgdc.ch` garde les pages publiques et la console de secours. Vérifiée contre
  * le manifeste privé de la famille (`famille check`) : un produit relayé s'ajoute ici et là.
  */
-export const APP_PRODUCTS = ["analytics", "mail", "host", "docs", "status", "iassistant", "portal"] as const
+export const APP_PRODUCTS = ["analytics", "mail", "host", "docs", "status", "iassistant", "portal", "manager"] as const
 
 /** Vrai si le produit est servi sous `app.hgdc.ch`. */
 export function isAppProduct(product: string): boolean {
