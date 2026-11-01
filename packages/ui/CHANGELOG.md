@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.49.0
+
+### Minor Changes
+
+- 20195a9: `floating-field` : `FloatingField`, champ à libellé flottant pour les écrans de connexion (libellé dans le champ vide, sur le filet au focus ou avec une valeur, en CSS seul ; erreur avec icône citée par `aria-describedby`).
+
 ## 0.48.0
 
 ### Minor Changes
