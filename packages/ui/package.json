@@ -1,6 +1,6 @@
 {
   "name": "@hgdc/ui",
-  "version": "0.50.0",
+  "version": "0.51.0",
   "description": "Interface de la H Collection : jetons de la DA, thèmes, polices et composants.",
   "license": "UNLICENSED",
   "homepage": "https://github.com/hugogebel-boop/hgdc-kit/tree/main/packages/ui#readme",
