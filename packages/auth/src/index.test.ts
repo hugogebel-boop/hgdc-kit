@@ -4,6 +4,7 @@ import {
   acceptedIssuers,
   HGDC_ACCEPTED_ISSUERS,
   HGDC_ID_ISSUER,
+  HGDC_LEGACY_ISSUER,
   HGDC_ISSUER,
   hasRole,
   highestRole,
@@ -104,12 +105,14 @@ describe("acceptedIssuers (ADR 0015 de la famille)", () => {
   it("exactement deux noms pour l'émetteur de production, jamais un autre fournisseur", () => {
     expect(HGDC_ACCEPTED_ISSUERS).toEqual(["https://account.hgdc.ch/api/auth", "https://id.hgdc.ch/api/auth"])
     expect(HGDC_ACCEPTED_ISSUERS).toContain(HGDC_ISSUER)
-    expect(HGDC_ACCEPTED_ISSUERS).toContain(HGDC_ID_ISSUER)
+    expect(HGDC_ACCEPTED_ISSUERS).toContain(HGDC_LEGACY_ISSUER)
+    expect(HGDC_ISSUER).toBe("https://id.hgdc.ch/api/auth")
+    expect(HGDC_ID_ISSUER).toBe(HGDC_ISSUER)
   })
 
   it("l'un des noms donne les deux", () => {
-    expect(acceptedIssuers(HGDC_ISSUER)).toEqual(HGDC_ACCEPTED_ISSUERS)
-    expect(acceptedIssuers(`${HGDC_ID_ISSUER}/`)).toEqual([HGDC_ID_ISSUER, HGDC_ISSUER])
+    expect(acceptedIssuers(HGDC_LEGACY_ISSUER)).toEqual(HGDC_ACCEPTED_ISSUERS)
+    expect(acceptedIssuers(`${HGDC_ISSUER}/`)).toEqual([HGDC_ISSUER, HGDC_LEGACY_ISSUER])
   })
 
   it("un autre émetteur reste seul", () => {

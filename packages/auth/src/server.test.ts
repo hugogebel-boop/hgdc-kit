@@ -63,9 +63,9 @@ describe("hgdcProvider", () => {
     const config = hgdcProvider({ clientId: "id", clientSecret: "secret" })
     expect(config).toMatchObject({
       providerId: "hgdc",
-      authorizationUrl: "https://account.hgdc.ch/api/auth/oauth2/authorize",
-      tokenUrl: "https://account.hgdc.ch/api/auth/oauth2/token",
-      userInfoUrl: "https://account.hgdc.ch/api/auth/oauth2/userinfo",
+      authorizationUrl: "https://id.hgdc.ch/api/auth/oauth2/authorize",
+      tokenUrl: "https://id.hgdc.ch/api/auth/oauth2/token",
+      userInfoUrl: "https://id.hgdc.ch/api/auth/oauth2/userinfo",
       pkce: true,
       scopes: [...HGDC_SCOPES],
     })

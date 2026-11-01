@@ -235,6 +235,7 @@ describe("raison des refus", () => {
 
 describe("jetons de l'app de bureau", () => {
   const ACCOUNT = "https://account.hgdc.ch/api/auth"
+  const ID = "https://id.hgdc.ch/api/auth"
   const env = { HGDC_APP_CLIENT_ID: "app-client" }
   // Identifiants Account (`sub`) des personnes connues du produit.
   const accounts: Record<string, string> = { "acc-ada": "ada", "acc-bob": "bob" }
@@ -242,10 +243,10 @@ describe("jetons de l'app de bureau", () => {
   const app = appAccess<Ctx>(env, resolveUser)
 
   it("déclare un fournisseur RS256 par nom de l'émetteur, mêmes clés, limité à l'audience de l'app", () => {
-    const provider = { type: "customJwt", jwks: `${ACCOUNT}/jwks`, algorithm: "RS256", applicationID: "app-client" }
+    const provider = { type: "customJwt", jwks: `${ID}/jwks`, algorithm: "RS256", applicationID: "app-client" }
     expect(appAuthProviders(env)).toEqual([
+      { ...provider, issuer: ID },
       { ...provider, issuer: ACCOUNT },
-      { ...provider, issuer: "https://id.hgdc.ch/api/auth" },
     ])
     // Un Account d'essai garde un seul nom : jamais l'émetteur de production en plus.
     expect(appAuthProviders({ ...env, HGDC_ISSUER: "https://account.test/api/auth/" })).toEqual([
