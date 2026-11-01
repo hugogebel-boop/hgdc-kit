@@ -11,7 +11,8 @@ import { cn } from "./cn.ts"
  * monte sur le filet dès que le champ a le focus ou une valeur (saisie, autoremplissage).
  *
  * Tout en CSS : `placeholder=" "` rend `:placeholder-shown` vrai tant que le champ est vide, le
- * libellé (`peer-…`) suit sans JavaScript, dès le rendu serveur. Le libellé posé sur le filet
+ * libellé (`peer-…`) suit sans JavaScript, dès le rendu serveur ; `:autofill` le monte aussi quand le
+ * navigateur propose une valeur sans l'écrire encore (aperçu de l'autoremplissage, Chrome). Le libellé posé sur le filet
  * reprend le fond de la surface où le champ est posé (`surface`, fond de page par défaut). Texte à
  * 16 px : sous 16 px, Safari zoome au focus.
  *
@@ -53,12 +54,12 @@ function FloatingField({
           placeholder=" "
           aria-invalid={error ? true : props["aria-invalid"]}
           aria-describedby={describedBy || undefined}
-          className="peer touch-field h-14 w-full min-w-0 rounded-md bg-transparent px-3.5 text-base text-foreground ring-1 ring-control-off transition-[box-shadow] duration-(--duration-fast) outline-none ring-inset focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:ring-2 aria-invalid:ring-destructive"
+          className="peer touch-field h-14 w-full min-w-0 rounded-2xl bg-transparent px-4 text-base text-foreground ring-1 ring-control-off transition-[box-shadow] duration-(--duration-fast) outline-none ring-inset focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:ring-2 aria-invalid:ring-destructive"
         />
         <label
           htmlFor={inputId}
           className={cn(
-            "pointer-events-none absolute top-1/2 left-2.5 max-w-[calc(100%-1.25rem)] -translate-y-1/2 truncate px-1 text-base text-muted-foreground transition-[top,font-size,color] duration-(--duration-fast) ease-(--ease-out) peer-focus-visible:top-0 peer-focus-visible:text-xs peer-focus-visible:text-accent peer-aria-invalid:text-destructive peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:text-xs motion-reduce:transition-none",
+            "pointer-events-none absolute top-1/2 left-3 max-w-[calc(100%-1.5rem)] -translate-y-1/2 truncate px-1 text-base text-muted-foreground transition-[top,font-size,color] duration-(--duration-fast) ease-(--ease-out) peer-focus-visible:top-0 peer-focus-visible:text-xs peer-focus-visible:text-accent peer-aria-invalid:text-destructive peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:text-xs peer-autofill:top-0 peer-autofill:text-xs motion-reduce:transition-none",
             surface === "card" ? "bg-card" : "bg-background",
           )}
         >
