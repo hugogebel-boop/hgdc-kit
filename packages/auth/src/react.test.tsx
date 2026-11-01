@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs"
 
-import { renderToStaticMarkup } from "react-dom/server"
+import { renderToStaticMarkup, renderToString } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 
 import {
@@ -66,6 +66,21 @@ describe("HgdcSignInButton", () => {
     expect(ID_SIGN_IN_CSS).toContain(`[data-slot="id-sign-in"]{background:${ID_SIGN_IN_COLORS.rest};color:#fff`)
     expect(ID_SIGN_IN_CSS).toMatch(/:focus-visible\{outline:2px solid/)
     expect(ID_SIGN_IN_CSS).toMatch(/:disabled\{cursor:not-allowed;opacity:\.5\}/)
+  })
+
+  it("pose sa feuille une seule fois, dans <head>, quel que soit le nombre de boutons", () => {
+    const { authClient } = client({})
+    const html = renderToString(
+      <html lang="fr">
+        <head />
+        <body>
+          <HgdcSignInButton authClient={authClient} />
+          <HgdcSignInButton authClient={authClient} />
+        </body>
+      </html>,
+    )
+    expect(html.split('data-href="hgdc-id-sign-in"')).toHaveLength(2)
+    expect(html.indexOf('data-href="hgdc-id-sign-in"')).toBeLessThan(html.indexOf("<body>"))
   })
 
   it("garde le blanc lisible sur chaque rouge (AA, 4,5:1)", () => {

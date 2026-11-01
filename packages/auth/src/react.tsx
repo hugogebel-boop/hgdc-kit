@@ -170,7 +170,10 @@ export function HgdcSignInButton({
       data-slot="id-sign-in"
       onClick={() => void signIn()}
     >
-      <style>{ID_SIGN_IN_CSS}</style>
+      {/* Hissée dans <head> une seule fois par React 19, quel que soit le nombre de boutons. */}
+      <style href="hgdc-id-sign-in" precedence="default">
+        {ID_SIGN_IN_CSS}
+      </style>
       <img src={markSrc(ID_MARK_SVG)} alt="" aria-hidden="true" width={16} height={16} draggable={false} />
       <span>{pending ? "Redirection vers ID…" : label}</span>
     </button>
