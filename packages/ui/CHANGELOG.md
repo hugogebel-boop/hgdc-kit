@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.53.0
+
+### Minor Changes
+
+- 4b78635: ID devient un produit en service : `https://id.hgdc.ch`, entrée à sa racine, dans le menu, la barre et la carte des produits. Manager (ex-Account) reste à venir : `HGDC_ACCOUNT` ne change pas.
+
 ## 0.52.0
 
 ### Minor Changes
