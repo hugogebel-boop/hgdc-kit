@@ -26,7 +26,17 @@ import { acceptedIssuers, HGDC_ISSUER } from "./index.ts"
  */
 
 /** Produits qui servent un MCP protégé par Account, en minuscules. */
-export const MCP_PRODUCTS = ["account", "analytics", "docs", "host", "iassistant", "mail", "portal", "status"] as const
+export const MCP_PRODUCTS = [
+  "account",
+  "analytics",
+  "docs",
+  "host",
+  "iassistant",
+  "mail",
+  "manager",
+  "portal",
+  "status",
+] as const
 
 export type McpProduct = (typeof MCP_PRODUCTS)[number]
 

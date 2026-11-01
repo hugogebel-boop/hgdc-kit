@@ -896,8 +896,8 @@
   background: var(--shell-hover);
 }
 :root[data-hgdc-org] [data-slot="org-placeholder-mark"] {
-  background: var(--hgdc-org-logo, var(--foreground)) center / cover no-repeat;
-  color: var(--background);
+  background: var(--hgdc-org-logo, var(--hgdc-org-bg, var(--foreground))) center / cover no-repeat;
+  color: var(--hgdc-org-ink, var(--background));
 }
 :root[data-hgdc-org] [data-slot="org-placeholder-mark"]::before {
   content: var(--hgdc-org-initials, "");

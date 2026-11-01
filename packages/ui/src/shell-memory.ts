@@ -1,4 +1,4 @@
-import { initials } from "./initials.ts"
+import { AVATAR_TONES, initials, orgTone } from "./initials.ts"
 import { FAMILY_PRODUCTS } from "./family-svg.ts"
 import { PRODUCT_ORIGINS } from "./products.ts"
 
@@ -25,7 +25,7 @@ export const SHELL_SWITCH_KEY = "hgdc-shell:switch"
 /** Au-delà, un passage noté n'est plus celui qu'on vit (onglet laissé, retour bien plus tard). */
 export const SHELL_SWITCH_MAX_AGE_MS = 10_000
 
-export type ShellOrganization = { initials: string; logo?: string }
+export type ShellOrganization = { initials: string; logo?: string; tone?: number }
 
 export type ShellBootConfig = {
   /** Clé du rail de la barre latérale (`sidebar`), valeur `rail`. */
@@ -38,6 +38,8 @@ export type ShellBootConfig = {
   origins: ReadonlyArray<readonly [string, string, string]>
   /** Domaine des produits sur leur sous-domaine (`hgdc.ch` : `mail.hgdc.ch` est Mail). */
   domain: string
+  /** Nombre de teintes d'avatar (`AVATAR_TONES`) : la teinte retenue de l'organisation est un entier de 1 à `tones`. */
+  tones: number
 }
 
 type BootWindow = {
@@ -80,7 +82,7 @@ export function shellBoot(config: ShellBootConfig, win: BootWindow): void {
   if (product && !root.dataset.hgdcProduct) root.dataset.hgdcProduct = product
   product = root.dataset.hgdcProduct ?? ""
 
-  let org: { initials?: unknown; logo?: unknown } | null = null
+  let org: { initials?: unknown; logo?: unknown; tone?: unknown } | null = null
   try {
     org = JSON.parse(rawOrg ?? "null")
   } catch {
@@ -96,10 +98,25 @@ export function shellBoot(config: ShellBootConfig, win: BootWindow): void {
     root.style.setProperty("--hgdc-org-initials", logo ? '""' : `"${letters}"`)
     if (logo) root.style.setProperty("--hgdc-org-logo", `url("${logo}")`)
     else root.style.removeProperty("--hgdc-org-logo")
+    // Teinte d'OrgMark (`--avatar-<n>`), un entier de 1 à 7 seulement.
+    const tone =
+      org && Number.isInteger(org.tone) && Number(org.tone) >= 1 && Number(org.tone) <= config.tones
+        ? Number(org.tone)
+        : 0
+    if (tone) {
+      const token = `--avatar-${tone}`
+      root.style.setProperty("--hgdc-org-bg", `var(${token})`)
+      root.style.setProperty("--hgdc-org-ink", `var(${token}-ink)`)
+    } else {
+      root.style.removeProperty("--hgdc-org-bg")
+      root.style.removeProperty("--hgdc-org-ink")
+    }
   } else {
     delete root.dataset.hgdcOrg
     root.style.removeProperty("--hgdc-org-initials")
     root.style.removeProperty("--hgdc-org-logo")
+    root.style.removeProperty("--hgdc-org-bg")
+    root.style.removeProperty("--hgdc-org-ink")
   }
 
   let height = 0
@@ -119,6 +136,7 @@ export const SHELL_BOOT_CONFIG: ShellBootConfig = {
   products: FAMILY_PRODUCTS,
   origins: Object.entries(PRODUCT_ORIGINS).map(([word, { origin, basePath }]) => [word, origin, basePath] as const),
   domain: "hgdc.ch",
+  tones: AVATAR_TONES,
 }
 
 /** Le script en ligne du `<head>` : `shellBoot` et sa configuration, sans dépendance. */
@@ -140,12 +158,20 @@ function storageSet(storage: "localStorage" | "sessionStorage", key: string, val
 }
 
 /** Ce que la coque retient d'une organisation : ses initiales et son logo (`https:` seulement). */
-export function shellOrganization(org: { name: string; logo?: string | undefined }): ShellOrganization {
-  return { initials: initials(org.name), ...(org.logo ? { logo: org.logo } : {}) }
+export function shellOrganization(org: {
+  id?: string | undefined
+  name: string
+  logo?: string | undefined
+}): ShellOrganization {
+  return { initials: initials(org.name), ...(org.logo ? { logo: org.logo } : { tone: orgTone(org) }) }
 }
 
 /** Retient l'organisation affichée (`OrgSwitcher` le fait) et l'applique à la page. */
-export function rememberShellOrganization(org: { name: string; logo?: string | undefined }): void {
+export function rememberShellOrganization(org: {
+  id?: string | undefined
+  name: string
+  logo?: string | undefined
+}): void {
   const win = browser()
   if (!win) return
   storageSet("localStorage", SHELL_ORG_KEY, JSON.stringify(shellOrganization(org)))

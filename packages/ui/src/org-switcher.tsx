@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./dropdown-menu.tsx"
-import { initials } from "./initials.ts"
+import { AVATAR_TONE_CLASSES, initials, orgTone } from "./initials.ts"
 import { rememberShellOrganization } from "./shell-memory.ts"
 import { useShellPlacement } from "./shell-placement.ts"
 import { cn } from "./cn.ts"
@@ -61,12 +61,16 @@ export type Organization = {
 export const MENU_LINK_ITEM: string =
   "relative flex cursor-default items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium outline-hidden select-none focus:bg-muted focus:text-foreground data-highlighted:bg-muted max-lg:min-h-11 coarse:min-h-11 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
 
-/** Marque d'une organisation : son logo, ou ses initiales (`initials`) sur un carré arrondi. */
+/**
+ * Marque d'une organisation : son logo, ou ses initiales (`initials`) sur un carré arrondi, dans la teinte de
+ * son identifiant (`avatarTone`) : deux organisations aux mêmes initiales ne se confondent pas. Sans `id`, la
+ * teinte du nom.
+ */
 export function OrgMark({
   org,
   className,
 }: {
-  org: Pick<Organization, "name" | "logo">
+  org: Pick<Organization, "name" | "logo"> & { id?: string }
   className?: string
 }): React.JSX.Element {
   if (org.logo)
@@ -75,7 +79,8 @@ export function OrgMark({
     <span
       aria-hidden
       className={cn(
-        "grid size-8 shrink-0 place-items-center rounded-lg bg-foreground text-xs font-semibold text-background uppercase",
+        "grid size-8 shrink-0 place-items-center rounded-lg text-xs font-semibold uppercase",
+        AVATAR_TONE_CLASSES[orgTone(org)],
         className,
       )}
     >
@@ -114,8 +119,8 @@ export function OrgSwitcher({
   const activeName = active?.name
   const activeLogo = active?.logo
   useEffect(() => {
-    if (activeName !== undefined) rememberShellOrganization({ name: activeName, logo: activeLogo })
-  }, [activeName, activeLogo])
+    if (activeName !== undefined) rememberShellOrganization({ id: activeId, name: activeName, logo: activeLogo })
+  }, [activeId, activeName, activeLogo])
   if (!active) return null
   // En haut de la barre des produits : la marque seule dans 40 px, le nom quand la barre s'élargit.
   const inRail = placement === "product-rail"
@@ -126,10 +131,11 @@ export function OrgSwitcher({
           <button
             type="button"
             aria-label={`Organisation ${active.name}, changer d'organisation`}
+            title={active.name}
             className={cn(
-              "flex h-10 w-full min-w-0 items-center gap-2.5 rounded-xl px-1.5 text-left coarse:h-11 outline-none transition-colors duration-(--duration-fast) ease-out hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-muted",
+              "flex min-h-10 w-full min-w-0 items-center gap-2.5 rounded-xl px-1.5 py-1 text-left coarse:min-h-11 outline-none transition-colors duration-(--duration-fast) ease-out hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-muted",
               inRail
-                ? "shrink-0 gap-3 px-1 hover:bg-shell-hover aria-expanded:bg-shell-hover"
+                ? "h-10 shrink-0 gap-3 px-1 py-0 hover:bg-shell-hover aria-expanded:bg-shell-hover coarse:h-11"
                 : "lg:hover:bg-shell-hover lg:aria-expanded:bg-shell-hover lg:rail:w-auto lg:rail:justify-center lg:rail:px-1",
               className,
             )}
@@ -145,7 +151,10 @@ export function OrgSwitcher({
               : "lg:rail:hidden",
           )}
         >
-          <span className="block truncate text-sm font-medium">{active.name}</span>
+          {/* Dans la barre latérale, le nom entier sur deux lignes au plus ; dans la barre des produits, une ligne. */}
+          <span className={cn("block text-sm font-medium", inRail ? "truncate" : "line-clamp-2 break-words")}>
+            {active.name}
+          </span>
           {active.role ? (
             <span className="block truncate text-xs text-muted-foreground lg:text-shell-muted">
               {ORG_ROLE_LABEL[active.role]}
@@ -168,7 +177,7 @@ export function OrgSwitcher({
           <DropdownMenuLabel>Organisations</DropdownMenuLabel>
           {organizations.map((org) => (
             <DropdownMenuItem key={org.id} onClick={() => onSelect(org.id)}>
-              <OrgMark org={org} className="size-6 rounded-md bg-muted text-[10px] text-foreground" />
+              <OrgMark org={org} className="size-6 rounded-md text-[10px]" />
               <span className="min-w-0 flex-1 truncate">{org.name}</span>
               {org.id === activeId ? (
                 <HugeiconsIcon icon={Tick02Icon} aria-label="Organisation active" className="size-4" />

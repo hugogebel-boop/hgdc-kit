@@ -36,6 +36,11 @@ export type McpProxyOptions = {
   product: McpProduct
   /** Base de la console sous `app.hgdc.ch` (`/host`), retirée avant le relais. */
   basePath?: string
+  /**
+   * Préfixe des routes chez Convex, quand le serveur MCP partage le déploiement d'un autre produit (Manager sur
+   * le Convex d'ID : `/manager` donne `/manager/mcp`). Absent : les routes à la racine.
+   */
+  convexPrefix?: string
   /** Secret partagé avec Convex : sans lui, l'adresse du visiteur n'est pas signée. */
   addressSecret?: () => string | undefined
   /** Client HTTP, à remplacer dans les tests. */
@@ -86,10 +91,13 @@ export function createMcpProxy(
 ): (request: Request) => Promise<Response> {
   const basePath = options.basePath ?? ""
   const resourcePath = new URL(mcpResource(options.product)).pathname
+  const prefix = (options.convexPrefix ?? "").replace(/\/+$/, "")
+  if (prefix && !/^(\/[a-z0-9-]+)+$/.test(prefix))
+    throw new Error(`createMcpProxy : convexPrefix invalide (${JSON.stringify(options.convexPrefix)}).`)
   const routes = new Map<string, string>([
-    ["/mcp", "/mcp"],
-    ["/mcp/server-card", "/mcp/server-card"],
-    [`/.well-known/oauth-protected-resource${resourcePath}`, "/.well-known/oauth-protected-resource/mcp"],
+    ["/mcp", `${prefix}/mcp`],
+    ["/mcp/server-card", `${prefix}/mcp/server-card`],
+    [`/.well-known/oauth-protected-resource${resourcePath}`, `${prefix}/.well-known/oauth-protected-resource/mcp`],
   ])
   const fetchImpl = options.fetch ?? fetch
   return async (request: Request): Promise<Response> => {
