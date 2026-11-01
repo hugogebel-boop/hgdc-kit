@@ -1,5 +1,11 @@
 # @hgdc/docs
 
+## 0.6.2
+
+### Patch Changes
+
+- 56bd580: Le widget de l'assistant vouvoie les visiteurs : messages d'erreur (`ASK_ERRORS`), invite et barre de question.
+
 ## 0.6.1
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@hgdc/docs",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Modèle de site de HGDC Docs : documentation MDX (docs.json) construite avec Astro Starlight, recherche, versions, llms.txt et assistant.",
   "license": "UNLICENSED",
   "homepage": "https://github.com/hugogebel-boop/hgdc-kit/tree/main/packages/docs#readme",
