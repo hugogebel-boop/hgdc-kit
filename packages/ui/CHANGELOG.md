@@ -1,5 +1,15 @@
 # @hgdc/ui
 
+## 0.52.0
+
+### Minor Changes
+
+- f33ddf8: Bouton « Se connecter avec ID » : fond rouge d'ID, texte blanc (AA), double croix blanche à gauche, états survol, appui, focus visible et désactivé. Nouvelle marque `@hgdc/ui/family/id-mark.svg` (double croix sans fond, pour un fond rouge) ; l'icône d'app reste `family/id.svg`.
+
+### Patch Changes
+
+- f33ddf8: `FloatingField` : rayon des champs du kit (`rounded-2xl`), libellé monté aussi à l'autoremplissage du navigateur (`:autofill`).
+
 ## 0.51.0
 
 ### Minor Changes
