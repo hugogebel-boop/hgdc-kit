@@ -1,6 +1,6 @@
 {
   "name": "@hgdc/config",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "description": "Config partagée de la H Collection : tsconfig, oxlint, oxfmt, Renovate, versions exactes de la stack.",
   "license": "UNLICENSED",
   "homepage": "https://github.com/hugogebel-boop/hgdc-kit/tree/main/packages/config#readme",
