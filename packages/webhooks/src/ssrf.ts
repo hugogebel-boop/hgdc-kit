@@ -54,10 +54,10 @@ export function isPrivateIp(ip: string): boolean {
     // Link-local (fe80::/10) et site-local déprécié (fec0::/10).
     /^fe[89a-f]/.test(address) ||
     // NAT64, 6to4, Teredo, documentation et discard : chacune peut mener à une IPv4 interne, ou nulle part.
-    /^64:ff9b:/.test(address) ||
-    /^2002:/.test(address) ||
+    address.startsWith("64:ff9b:") ||
+    address.startsWith("2002:") ||
     /^2001:(0{0,4}:|db8:)/.test(address) ||
-    /^100::/.test(address) ||
+    address.startsWith("100::") ||
     /^100:0{1,4}:0{1,4}:0{1,4}:/.test(address) ||
     address.startsWith("ff")
   )
