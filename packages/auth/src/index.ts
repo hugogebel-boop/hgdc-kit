@@ -3,20 +3,24 @@ import { z } from "zod"
 /** Identifiant du fournisseur dans `genericOAuth` et dans la table `account` des produits. */
 export const HGDC_PROVIDER_ID = "hgdc"
 
-/** Émetteur OIDC de HGDC Account (`iss` des jetons, base de la découverte et des points OAuth). */
-export const HGDC_ISSUER = "https://account.hgdc.ch/api/auth"
+/** Émetteur OIDC d'ID (`iss` des jetons, base des points OAuth et des clés). Temps 4 de l'ADR 0015 de la famille. */
+export const HGDC_ISSUER = "https://id.hgdc.ch/api/auth"
+
+/** Même émetteur, nommé `HGDC_ISSUER` pendant la migration. Gardé jusqu'au temps 5 (ADR 0015). */
+export const HGDC_ID_ISSUER: string = HGDC_ISSUER
 
 /**
- * Nom à venir du même émetteur (ADR 0015 de la famille). Accepté dès maintenant partout où `HGDC_ISSUER` l'est, pour que la bascule de l'émetteur ne coupe
- * aucune connexion ; `HGDC_ISSUER` le deviendra au « temps 4 ».
+ * Ancien nom du même émetteur, sous `account.hgdc.ch`. Accepté jusqu'à la fin de la fenêtre
+ * (temps 5 de l'ADR 0015, contrôle le 2026-12-08) : jetons et retours d'autorisation émis sous ce
+ * nom, clients MCP qui l'ont découvert.
  */
-export const HGDC_ID_ISSUER = "https://id.hgdc.ch/api/auth"
+export const HGDC_LEGACY_ISSUER = "https://account.hgdc.ch/api/auth"
 
 /**
  * Les deux noms de l'émetteur de production pendant la migration vers ID (ADR 0015). Même serveur
  * d'autorisation, même base, même clé de signature : jamais un autre fournisseur.
  */
-export const HGDC_ACCEPTED_ISSUERS: readonly string[] = Object.freeze([HGDC_ISSUER, HGDC_ID_ISSUER])
+export const HGDC_ACCEPTED_ISSUERS: readonly string[] = Object.freeze([HGDC_LEGACY_ISSUER, HGDC_ISSUER])
 
 function withoutTrailingSlash(value: string): string {
   return value.replace(/\/+$/, "")
