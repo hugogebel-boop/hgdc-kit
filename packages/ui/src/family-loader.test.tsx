@@ -223,6 +223,7 @@ describe("Cadre de la coque, hors de la coque (ADR 0020)", () => {
       "analytics",
       "docs",
       "iassistant",
+      "id",
     ])
     const sidebar = html.slice(html.indexOf('data-slot="shell-frame-sidebar"'))
     for (const name of ["Account", "Host", "Mail", "Portal", "Status", "Analytics", "Docs", "IAssistant"])

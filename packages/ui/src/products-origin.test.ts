@@ -32,7 +32,8 @@ describe("adresses des produits (PRODUCT_ORIGINS)", () => {
   it("le catalogue livré suit la table et garde la page d'accueil publique", () => {
     for (const item of HGDC_PRODUCTS) {
       expect(item.href).toBe(`https://${item.badge}.hgdc.ch`)
-      expect(item.entryHref).toBe(productEntryHref(item.badge))
+      // ID n’a pas d’entrée `/auth/hgdc` : sa racine.
+      expect(item.entryHref).toBe(item.badge === "id" ? item.href : productEntryHref(item.badge))
     }
     expect(productMenuEntries().length).toBeGreaterThan(0)
   })
