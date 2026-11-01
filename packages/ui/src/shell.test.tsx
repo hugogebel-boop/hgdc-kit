@@ -15,7 +15,7 @@ import {
   toggleSidebar,
 } from "./app-shell.tsx"
 import { Avatar, AvatarFallback } from "./avatar.tsx"
-import { avatarTone } from "./initials.ts"
+import { avatarTone, orgTone } from "./initials.ts"
 import { CommandMenu, matchCommand } from "./command-menu.tsx"
 import { OrgSwitcher } from "./org-switcher.tsx"
 import { FamilyLoaderRoot } from "./family-loader.tsx"
@@ -459,7 +459,10 @@ describe("Barre des produits", () => {
         Page
       </AppShell>,
     )
-    expect(JSON.parse(localStorage.getItem(SHELL_ORG_KEY) ?? "null")).toEqual({ initials: "AG" })
+    expect(JSON.parse(localStorage.getItem(SHELL_ORG_KEY) ?? "null")).toEqual({
+      initials: "AG",
+      tone: orgTone({ id: "a", name: "Atelier Gebel" }),
+    })
     expect(document.documentElement.dataset.hgdcOrg).toBe("")
     expect(document.documentElement.dataset.hgdcProduct).toBe("host")
   })

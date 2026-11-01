@@ -18,6 +18,7 @@ import {
   takeProductSwitch,
   type ShellBootConfig,
 } from "./shell-memory.ts"
+import { orgTone } from "./initials.ts"
 
 const CONFIG: ShellBootConfig = {
   ...SHELL_BOOT_CONFIG,
@@ -94,6 +95,21 @@ describe("shellBoot : la mémoire de la coque sur <html>, avant la première pei
     expect(logo.root.style.getPropertyValue("--hgdc-org-initials")).toBe('""')
   })
 
+  it("la teinte retenue de l'organisation, un entier de 1 à 7 seulement", () => {
+    const toned = fakeWindow("https://app.hgdc.ch/mail/", {
+      [SHELL_ORG_KEY]: JSON.stringify({ initials: "OD", tone: 3 }),
+    })
+    shellBoot(CONFIG, toned.win)
+    expect(toned.root.style.getPropertyValue("--hgdc-org-bg")).toBe("var(--avatar-3)")
+    expect(toned.root.style.getPropertyValue("--hgdc-org-ink")).toBe("var(--avatar-3-ink)")
+
+    for (const tone of [0, 8, 2.5, "3", "1);x:url(y"]) {
+      const odd = fakeWindow("https://app.hgdc.ch/mail/", { [SHELL_ORG_KEY]: JSON.stringify({ initials: "OD", tone }) })
+      shellBoot(CONFIG, odd.win)
+      expect(odd.root.style.getPropertyValue("--hgdc-org-bg")).toBe("")
+    }
+  })
+
   it("rien d'injectable : guillemets, parenthèses et adresses non https sont écartés", () => {
     const { root, win } = fakeWindow("https://app.hgdc.ch/mail/", {
       [SHELL_ORG_KEY]: JSON.stringify({
@@ -151,7 +167,12 @@ describe("shellBoot : la mémoire de la coque sur <html>, avant la première pei
 
 describe("mémoire de l'organisation et du passage", () => {
   it("retient les initiales et le logo, pas le nom ; l'applique à la page ; l'oublie à la déconnexion", () => {
-    expect(shellOrganization({ name: "Atelier Gebel" })).toEqual({ initials: "AG" })
+    expect(shellOrganization({ name: "Atelier Gebel" })).toEqual({
+      initials: "AG",
+      tone: orgTone({ name: "Atelier Gebel" }),
+    })
+    // La teinte suit l'identifiant, comme OrgMark : deux homonymes ne se confondent pas.
+    expect(shellOrganization({ id: "org_1", name: "Atelier Gebel" }).tone).toBe(orgTone({ id: "org_1", name: "x" }))
     rememberShellOrganization({ name: "Atelier Gebel", logo: "https://cdn.hgdc.ch/a.png" })
     expect(JSON.parse(localStorage.getItem(SHELL_ORG_KEY) ?? "")).toEqual({
       initials: "AG",

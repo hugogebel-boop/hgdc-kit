@@ -70,6 +70,24 @@ describe("relais du serveur MCP", () => {
     expect(seen).toHaveLength(1)
   })
 
+  it("relaie Manager vers ses routes préfixées du Convex d'ID, jamais vers le MCP d'ID", async () => {
+    const { seen, fetch } = recorder()
+    const proxy = createMcpProxy("https://actions.account.hgdc.ch", {
+      product: "manager",
+      basePath: "/manager",
+      convexPrefix: "/manager",
+      fetch,
+    })
+    for (const path of ["/mcp", "/mcp/server-card", "/.well-known/oauth-protected-resource/manager/mcp"])
+      expect((await proxy(new Request(`https://app.hgdc.ch/manager${path}`))).status).toBe(200)
+    expect(seen.map((call) => call.url)).toEqual([
+      "https://actions.account.hgdc.ch/manager/mcp",
+      "https://actions.account.hgdc.ch/manager/mcp/server-card",
+      "https://actions.account.hgdc.ch/manager/.well-known/oauth-protected-resource/mcp",
+    ])
+    expect(() => createMcpProxy("https://x.ch", { product: "manager", convexPrefix: "../api" })).toThrow(/convexPrefix/)
+  })
+
   it("relaie les routes d'un produit servi à la racine (account)", async () => {
     const { seen, fetch } = recorder(() => Response.json({ resource: "https://account.hgdc.ch/mcp" }))
     const proxy = createMcpProxy("https://actions.account.hgdc.ch", { product: "account", fetch })

@@ -45,6 +45,20 @@ describe("initials", () => {
     const { container } = render(<OrgMark org={{ name: "Test vérif" }} />)
     expect(container.textContent).toBe("TV")
   })
+
+  it("teinte la marque d'une organisation selon son identifiant, pas selon ses initiales", () => {
+    const ids = ["org_a", "org_b", "org_c", "org_d", "org_e", "org_f", "org_g", "org_h"]
+    const tones = new Set(
+      ids.map((id) => {
+        const { container } = render(<OrgMark org={{ id, name: "Organisation de test" }} />)
+        const mark = container.firstElementChild as HTMLElement
+        cleanup()
+        return mark.className.match(/bg-avatar-[1-7]/)?.[0]
+      }),
+    )
+    expect(tones.has(undefined)).toBe(false)
+    expect(tones.size).toBeGreaterThan(1)
+  })
 })
 
 describe("AppShell, barre du haut", () => {
