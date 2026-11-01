@@ -159,14 +159,15 @@ Filtres, tri et page vivent dans l'URL du produit : les composants sont contrôl
 
 ## Formulaires et réglages
 
-| Import              | Exemple                                                                                                                                                |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `settings-section`  | `<SettingsSection title="Nom de l'espace" description="…" dirty={changed} saving={saving} onSave={save}>…</SettingsSection>` : un Enregistrer par bloc |
-| `date-range-picker` | `<DateRangePicker value={{ from: "2026-10-01", to: "2026-10-15" }} onChange={(range, preset) => …} />` : raccourcis et période libre                   |
-| `date-time-field`   | `<DateTimeField value={sendAt} onChange={setSendAt} min={Date.now()} />` : millisecondes, heure du navigateur                                          |
-| `color-field`       | `<ColorField value="#7c3aed" onChange={…} />` : pastille, code hexadécimal, contraste avec le texte blanc et son verdict                               |
-| `money-field`       | `<MoneyField value={centimes} onChange={…} />` : CHF en centimes, « 1’250.50 », accepte « 12.– » ; `formatChf`, `parseMoney`                           |
-| `address-fields`    | `<AddressFields value={address} onChange={…} errors={validatePostalAddress(address)} />` : rue, numéro, NPA, localité, pays (facture QR)               |
+| Import              | Exemple                                                                                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `settings-section`  | `<SettingsSection title="Nom de l'espace" description="…" dirty={changed} saving={saving} onSave={save}>…</SettingsSection>` : un Enregistrer par bloc  |
+| `date-range-picker` | `<DateRangePicker value={{ from: "2026-10-01", to: "2026-10-15" }} onChange={(range, preset) => …} />` : raccourcis et période libre                    |
+| `date-time-field`   | `<DateTimeField value={sendAt} onChange={setSendAt} min={Date.now()} />` : millisecondes, heure du navigateur                                           |
+| `color-field`       | `<ColorField value="#7c3aed" onChange={…} />` : pastille, code hexadécimal, contraste avec le texte blanc et son verdict                                |
+| `money-field`       | `<MoneyField value={centimes} onChange={…} />` : CHF en centimes, « 1’250.50 », accepte « 12.– » ; `formatChf`, `parseMoney`                            |
+| `address-fields`    | `<AddressFields value={address} onChange={…} errors={validatePostalAddress(address)} />` : rue, numéro, NPA, localité, pays (facture QR)                |
+| `floating-field`    | `<FloatingField label="Adresse e-mail" type="email" error={message} surface="card" />` : libellé dans le champ, monté sur le filet au focus (connexion) |
 
 `access-request` : `<AccessRequest endpoint="https://<deploiement>.convex.site/f/<id>" product="Mail" signInRender={<Link to="/sign-in" />} />`, la page « Demander un accès » d'un produit (les comptes HGDC s'ouvrent sur invitation). Poste en JSON vers un formulaire HGDC Mail Forms : prénom, nom, entreprise, e-mail professionnel, message facultatif, `produit` caché, piège `_gotcha`. États envoi, réussite, erreur, champ refusé ; `submitAccessRequest` s'appelle seul.
 
