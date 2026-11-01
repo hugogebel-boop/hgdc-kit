@@ -384,8 +384,14 @@ export default {
   providers: convexAuthProviders(getAuthConfigProvider({ jwks: process.env.JWKS }), process.env),
 } satisfies AuthConfig
 
-// convex/auth.ts, dans les plugins : le plugin refuse deux fournisseurs « convex »
-convex({ authConfig: currentAuthConfig(authConfig), jwks: process.env.JWKS })
+// convex/auth.ts, dans les plugins : le plugin refuse deux fournisseurs « convex ». Une instance
+// avec `basePath` (vue seule de `viewAuthSites`) le donne aussi au plugin, comme le demande la doc de
+// @convex-dev/better-auth : sinon avertissement à chaque chargement et `jwks_uri` hors de la base.
+convex({
+  authConfig: currentAuthConfig(authConfig),
+  jwks: process.env.JWKS,
+  ...(site.basePath ? { options: { basePath: site.basePath } } : {}),
+})
 
 // gardes
 await requireIdentity(ctx, { issuer: convexIssuers(process.env) })
