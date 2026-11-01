@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { HGDC_PRODUCTS } from "./products.ts"
+import { HGDC_PRODUCTS, productMenuEntries, productRailEntries } from "./products.ts"
 
 describe("page produit sur le site (productPage)", () => {
   it("déduit l'adresse du mot pour chaque produit ouvert", () => {
@@ -12,8 +12,25 @@ describe("page produit sur le site (productPage)", () => {
   })
 
   it("ne donne aucun lien à un produit « soon »", () => {
-    const soon = HGDC_PRODUCTS.filter((item) => item.stage === "soon")
-    expect(soon.length).toBeGreaterThan(0)
-    for (const item of soon) expect(item.productPage).toBeUndefined()
+    for (const item of HGDC_PRODUCTS.filter((p) => p.stage === "soon")) expect(item.productPage).toBeUndefined()
+  })
+})
+
+describe("ID", () => {
+  const id = HGDC_PRODUCTS.find((item) => item.word === "ID")
+
+  it("est un produit en service, servi à id.hgdc.ch, entrée à sa racine", () => {
+    expect(id).toMatchObject({
+      stage: "live",
+      badge: "id",
+      href: "https://id.hgdc.ch",
+      entryHref: "https://id.hgdc.ch",
+      productPage: "https://hgdc.ch/h-collection/id",
+    })
+  })
+
+  it("apparaît dans le menu et la barre des produits", () => {
+    expect(productMenuEntries().some((entry) => entry.badge === "id" && entry.href === "https://id.hgdc.ch")).toBe(true)
+    expect(productRailEntries().products.some((entry) => entry.badge === "id")).toBe(true)
   })
 })
