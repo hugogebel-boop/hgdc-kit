@@ -4,7 +4,7 @@
     "rootDir": "src",
     "outDir": "dist",
     "lib": ["ES2024", "DOM"],
-    "types": []
+    "types": ["node"]
   },
   "include": ["src"],
   "exclude": ["src/**/*.test.ts"]

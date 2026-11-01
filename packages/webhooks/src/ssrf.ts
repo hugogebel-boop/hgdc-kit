@@ -12,7 +12,10 @@ const INTERNAL_SUFFIX = /(^|\.)(localhost|local|internal|intranet|lan|home|corp|
  */
 export function unmapIpv4(ip: string): string {
   const address = ip.toLowerCase().replace(/^\[|\]$/g, "")
-  const tail = address.match(/^(?:(?:0{1,4}:){5}ffff:|::ffff:|::(?:0{1,4}:)?ffff:|::)(.+)$/)?.[1]
+  // SIIT (`::ffff:0:a.b.c.d`) compris.
+  const tail = address.match(
+    /^(?:(?:0{1,4}:){5}ffff:|::ffff:(?:0{1,4}:)?|::(?:0{1,4}:)?ffff:(?:0{1,4}:)?|::)(.+)$/,
+  )?.[1]
   if (!tail) return address
   if (/^\d{1,3}(\.\d{1,3}){3}$/.test(tail)) return tail
   const hex = tail.match(/^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/)
@@ -27,7 +30,7 @@ export function isPrivateIp(ip: string): boolean {
   const address = unmapIpv4(ip)
   const v4 = address.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
   if (v4) {
-    const [a, b] = [Number(v4[1]), Number(v4[2])]
+    const [a, b, c] = [Number(v4[1]), Number(v4[2]), Number(v4[3])]
     return (
       a === 0 ||
       a === 10 ||
@@ -37,14 +40,25 @@ export function isPrivateIp(ip: string): boolean {
       (a === 169 && b === 254) ||
       (a === 172 && b >= 16 && b <= 31) ||
       (a === 192 && (b === 168 || b === 0)) ||
-      (a === 198 && (b === 18 || b === 19))
+      (a === 198 && (b === 18 || b === 19)) ||
+      // Documentation (198.51.100/24, 203.0.113/24) et ancien relais 6to4 (192.88.99/24).
+      (a === 198 && b === 51 && c === 100) ||
+      (a === 203 && b === 0 && c === 113) ||
+      (a === 192 && b === 88 && c === 99)
     )
   }
   return (
     address === "::" ||
     address === "::1" ||
     /^f[cd]/.test(address) ||
-    /^fe[89ab]/.test(address) ||
+    // Link-local (fe80::/10) et site-local déprécié (fec0::/10).
+    /^fe[89a-f]/.test(address) ||
+    // NAT64, 6to4, Teredo, documentation et discard : chacune peut mener à une IPv4 interne, ou nulle part.
+    address.startsWith("64:ff9b:") ||
+    address.startsWith("2002:") ||
+    /^2001:(0{0,4}:|db8:)/.test(address) ||
+    address.startsWith("100::") ||
+    /^100:0{1,4}:0{1,4}:0{1,4}:/.test(address) ||
     address.startsWith("ff")
   )
 }

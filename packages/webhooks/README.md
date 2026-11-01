@@ -64,6 +64,19 @@ if (verdict !== "ok") return new Response(null, { status: 401 })
 
 Un récepteur retient aussi les `webhook-id` déjà vus : un message capturé et rejoué dans la fenêtre de 5 minutes reste signé.
 
-## Limite connue
+## Requête sortante sûre (Node)
 
-`resolvesPublicly` lit le DNS, puis `fetch` le résout une seconde fois : un DNS qui change de réponse entre les deux (rebinding, TTL nul) passe. Compenser côté produit : pas de cookies ni d'identifiants, redirections refusées, réponse jamais rendue.
+`resolvesPublicly` lit le DNS, puis `fetch` le résout une seconde fois : un DNS qui change de réponse entre les deux (rebinding, TTL nul) passe. Dans un runtime Node (action Convex `"use node"`), utiliser `safeFetch`, qui ferme ce trou :
+
+```ts
+import { SafeFetchError, safeFetch } from "@hgdc/webhooks/safe-fetch"
+
+const res = await safeFetch(url, { method: "POST", headers, body, timeoutMs: 10_000, maxBytes: 64_000 })
+```
+
+- chaque saut passe `isPublicUrl`, puis le nom est résolu une fois : une seule adresse privée, de boucle locale, link-local, de métadonnées ou IPv6 ULA, et tout est refusé ;
+- la connexion vise l'adresse vérifiée (option `lookup` de `node:https`), `Host` et SNI gardent le nom d'origine ;
+- redirections refusées par défaut ; avec `maxRedirects`, chacune est revérifiée ;
+- délai total et taille de la réponse bornés. Une erreur est une `SafeFetchError` au `code` stable (`unsafe_url`, `private_address`, `dns`, `timeout`, `too_large`, `too_many_redirects`, `network`).
+
+Sans Node (runtime par défaut de Convex, Workers), aucune parade complète : garder `resolvesPublicly`, pas de cookies ni d'identifiants, redirections refusées, réponse jamais rendue.

@@ -191,6 +191,20 @@ describe("garde SSRF", () => {
       "::7f00:1",
     ])
       expect(isPrivateIp(ip), ip).toBe(true)
+    for (const ip of [
+      "fec0::1",
+      "64:ff9b::a00:1",
+      "2002:a00:1::1",
+      "2001:0:4136::1",
+      "2001:db8::1",
+      "100::1",
+      "::ffff:0:7f00:1",
+      "::ffff:0:10.0.0.1",
+      "198.51.100.7",
+      "203.0.113.9",
+      "192.88.99.1",
+    ])
+      expect(isPrivateIp(ip), ip).toBe(true)
     for (const ip of ["8.8.8.8", "93.184.216.34", "172.32.0.1", "2606:4700:4700::1111", "::ffff:8.8.8.8"])
       expect(isPrivateIp(ip), ip).toBe(false)
   })
