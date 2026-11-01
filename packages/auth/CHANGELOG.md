@@ -1,5 +1,11 @@
 # @hgdc/auth
 
+## 0.29.0
+
+### Minor Changes
+
+- f33ddf8: Bouton « Se connecter avec ID » : fond rouge d'ID, texte blanc (AA), double croix blanche à gauche, états survol, appui, focus visible et désactivé. Nouvelle marque `@hgdc/ui/family/id-mark.svg` (double croix sans fond, pour un fond rouge) ; l'icône d'app reste `family/id.svg`.
+
 ## 0.28.0
 
 ### Minor Changes
