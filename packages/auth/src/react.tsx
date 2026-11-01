@@ -107,16 +107,41 @@ export function HgdcMark({ className }: { className?: string }): ReactElement {
   )
 }
 
+/** La marque d'ID, copie exacte de `@hgdc/ui/family/id-mark.svg` : la double croix blanche, sans fond, pour un fond rouge. */
+export const ID_MARK_SVG: string =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="25 25 34 34"><path d="M37.8 28L46.2 28L46.2 37.8L56 37.8L56 46.2L46.2 46.2L46.2 56L37.8 56L37.8 46.2L28 46.2L28 37.8L37.8 37.8Z" transform="translate(1.9 1.9)" fill="#fff" fill-opacity="0.4"/><path d="M37.8 28L46.2 28L46.2 37.8L56 37.8L56 46.2L46.2 46.2L46.2 56L37.8 56L37.8 46.2L28 46.2L28 37.8L37.8 37.8Z" transform="translate(-1.9 -1.9)" fill="#fff"/></svg>'
+
 /**
- * Bouton « Se connecter avec HGDC ». Sans style propre : le produit le met en forme par
- * `className`, l'état d'attente est exposé par `aria-busy` et `data-pending`.
+ * Rouge du bouton et de ses états, texte blanc. Contraste du blanc : 4,8:1 au repos, 6,3:1 au survol,
+ * 7,9:1 à l'appui (AA). Le contour du focus, rouge, garde 3:1 sur un fond clair ou sombre.
+ * Couleurs et états hors couche (`@layer`) : ils passent devant les utilitaires du produit, le
+ * bouton reste rouge partout. Mise en page dans `@layer base` : la `className` du produit (taille,
+ * largeur, arrondi) la remplace.
+ */
+export const ID_SIGN_IN_COLORS = { rest: "#e60000", hover: "#c40000", active: "#a80000" } as const
+
+const BUTTON = '[data-slot="id-sign-in"]'
+export const ID_SIGN_IN_CSS: string =
+  `@layer base{${BUTTON}{display:inline-flex;align-items:center;justify-content:center;gap:.625rem;min-height:2.5rem;padding:.5rem 1rem;border-radius:.625rem;font:inherit;font-weight:500}}` +
+  `${BUTTON}{background:${ID_SIGN_IN_COLORS.rest};color:#fff;border:0;cursor:pointer}` +
+  `${BUTTON}:hover:not(:disabled){background:${ID_SIGN_IN_COLORS.hover}}` +
+  `${BUTTON}:active:not(:disabled){background:${ID_SIGN_IN_COLORS.active}}` +
+  `${BUTTON}:focus-visible{outline:2px solid ${ID_SIGN_IN_COLORS.rest};outline-offset:2px}` +
+  `${BUTTON}:disabled{cursor:not-allowed;opacity:.5}` +
+  `${BUTTON}[data-pending]{cursor:progress;opacity:.85}` +
+  `${BUTTON}>img{display:block;width:1.25em;height:1.25em;flex-shrink:0}`
+
+/**
+ * Bouton « Se connecter avec ID ». Rouge d'ID, texte blanc, double croix blanche à gauche
+ * (`ID_SIGN_IN_CSS`) ; la `className` du produit règle la taille. L'état d'attente est exposé par
+ * `aria-busy` et `data-pending`.
  */
 export function HgdcSignInButton({
   authClient,
   callbackURL = "/",
   errorCallbackURL,
   onError,
-  label = "Se connecter avec HGDC",
+  label = "Se connecter avec ID",
   disabled,
   ...rest
 }: HgdcSignInButtonProps): ReactElement {
@@ -128,7 +153,7 @@ export function HgdcSignInButton({
       callbackURL,
       ...(errorCallbackURL ? { errorCallbackURL } : {}),
     })
-    // Succès : le navigateur part vers HGDC Account, le bouton reste en attente.
+    // Succès : le navigateur part vers ID, le bouton reste en attente.
     if (!result.ok) {
       setPending(false)
       onError?.(result.error)
@@ -142,10 +167,15 @@ export function HgdcSignInButton({
       disabled={disabled === true || pending}
       aria-busy={pending}
       data-pending={pending ? "" : undefined}
+      data-slot="id-sign-in"
       onClick={() => void signIn()}
     >
-      <HgdcMark />
-      <span>{pending ? "Redirection vers Account…" : label}</span>
+      {/* Hissée dans <head> une seule fois par React 19, quel que soit le nombre de boutons. */}
+      <style href="hgdc-id-sign-in" precedence="default">
+        {ID_SIGN_IN_CSS}
+      </style>
+      <img src={markSrc(ID_MARK_SVG)} alt="" aria-hidden="true" width={16} height={16} draggable={false} />
+      <span>{pending ? "Redirection vers ID…" : label}</span>
     </button>
   )
 }

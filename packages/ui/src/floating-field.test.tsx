@@ -15,6 +15,15 @@ describe("FloatingField", () => {
     expect(input.getAttribute("aria-describedby")).toBeNull()
   })
 
+  it("monte le libellé à l'autoremplissage, au rayon des champs du kit, sans animation si réduite", () => {
+    render(<FloatingField label="Adresse e-mail" type="email" />)
+    const input = screen.getByLabelText("Adresse e-mail")
+    const label = document.querySelector(`label[for="${input.id}"]`)
+    expect(input.className).toContain("rounded-2xl")
+    expect(label?.className).toContain("peer-autofill:top-0")
+    expect(label?.className).toContain("motion-reduce:transition-none")
+  })
+
   it("cite l'erreur et passe le champ en invalide", () => {
     render(<FloatingField label="Mot de passe" type="password" error="Mot de passe incorrect." description="Aide" />)
     const input = screen.getByLabelText("Mot de passe")
