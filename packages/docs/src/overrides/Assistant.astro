@@ -26,14 +26,14 @@ const endpoint = new URL("/api/v1/ask", data.config.assistant?.endpoint ?? data.
 
     <div class="hgdc-panel__body" data-log aria-live="polite">
       <div class="hgdc-empty" data-empty>
-        <p class="hgdc-empty__title">Pose ta question sur {data.config.name}.</p>
+        <p class="hgdc-empty__title">Posez votre question sur {data.config.name}.</p>
         <p>Je cherche dans les pages de cette documentation et je cite mes sources. Si la réponse n'y est pas, je te le dis.</p>
       </div>
     </div>
 
     <form class="hgdc-panel__form" data-form>
       <label class="sr-only" for="hgdc-question">Ta question</label>
-      <textarea id="hgdc-question" data-input rows="1" maxlength="1000" placeholder="Pose une question…" required></textarea>
+      <textarea id="hgdc-question" data-input rows="1" maxlength="1000" placeholder="Posez une question…" required></textarea>
       <button type="submit" class="hd-send" data-send aria-label="Envoyer la question"><Icon name="arrow-up" size={16} /></button>
     </form>
     <p class="hgdc-panel__note">
