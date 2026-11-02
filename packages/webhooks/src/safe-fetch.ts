@@ -47,6 +47,11 @@ export type SafeFetchOptions = {
   timeoutMs?: number
   /** Taille maximale du corps reçu, en octets. 1 Mo par défaut. */
   maxBytes?: number
+  /**
+   * Au-delà de `maxBytes` : `"error"` (par défaut) lève `too_large` ; `"truncate"` arrête la lecture,
+   * coupe le corps à `maxBytes` et rend la réponse avec `truncated: true` (le statut reste connu).
+   */
+  overflow?: "error" | "truncate"
   /** Redirections suivies, chacune revérifiée. 0 par défaut : une 3xx est rendue telle quelle. */
   maxRedirects?: number
   /** Refuser `http:`. */
@@ -58,6 +63,8 @@ export type SafeResponse = {
   headers: IncomingHttpHeaders
   /** Octets reçus, jamais décompressés : la requête demande `accept-encoding: identity`. */
   body: Uint8Array
+  /** Corps coupé à `maxBytes` (option `overflow: "truncate"`). */
+  truncated: boolean
   /** L'URL du dernier saut. */
   url: string
 }
@@ -74,9 +81,10 @@ export type Send = (
     headers: Record<string, string>
     body?: string | Uint8Array
     maxBytes: number
+    truncate?: boolean
     signal: AbortSignal
   },
-) => Promise<{ status: number; headers: IncomingHttpHeaders; body: Uint8Array }>
+) => Promise<{ status: number; headers: IncomingHttpHeaders; body: Uint8Array; truncated?: boolean }>
 
 const systemResolve: Resolve = async (host) =>
   (await dnsLookup(host, { all: true, verbatim: true })).map((a) => ({
@@ -117,13 +125,23 @@ export const sendPinned: Send = (url, target, init) =>
     const req = (url.protocol === "https:" ? httpsRequest : httpRequest)(options, (res) => {
       const chunks: Buffer[] = []
       let size = 0
+      let done = false
       res.on("data", (chunk: Buffer) => {
-        size += chunk.length
-        if (size > init.maxBytes) {
+        if (done) return
+        if (size + chunk.length > init.maxBytes) {
+          done = true
+          // Lu en flux : jamais plus de `maxBytes` gardés en mémoire, le reste n'est pas téléchargé.
           res.destroy()
-          reject(new SafeFetchError("too_large", `Réponse de plus de ${init.maxBytes} octets.`))
+          if (!init.truncate) {
+            reject(new SafeFetchError("too_large", `Réponse de plus de ${init.maxBytes} octets.`))
+            return
+          }
+          chunks.push(chunk.subarray(0, init.maxBytes - size))
+          const status = res.statusCode ?? 0
+          resolve({ status, headers: res.headers, body: Buffer.concat(chunks), truncated: true })
           return
         }
+        size += chunk.length
         chunks.push(chunk)
       })
       res.on("end", () => resolve({ status: res.statusCode ?? 0, headers: res.headers, body: Buffer.concat(chunks) }))
@@ -165,7 +183,7 @@ export async function safeFetch(
   options: SafeFetchOptions = {},
   deps: { resolve?: Resolve; send?: Send } = {},
 ): Promise<SafeResponse> {
-  const { timeoutMs = 10_000, maxBytes = 1_000_000, maxRedirects = 0, httpsOnly = false } = options
+  const { timeoutMs = 10_000, maxBytes = 1_000_000, maxRedirects = 0, httpsOnly = false, overflow = "error" } = options
   const resolve = deps.resolve ?? systemResolve
   const send = deps.send ?? sendPinned
   const signal = AbortSignal.timeout(timeoutMs)
@@ -191,6 +209,7 @@ export async function safeFetch(
         headers,
         ...(body !== undefined ? { body } : {}),
         maxBytes,
+        ...(overflow === "truncate" ? { truncate: true } : {}),
         signal,
       })
     } catch (e) {
@@ -200,7 +219,7 @@ export async function safeFetch(
     }
     const location = response.headers.location
     if (response.status < 300 || response.status >= 400 || !location || maxRedirects === 0) {
-      return { ...response, url: url.toString() }
+      return { ...response, truncated: response.truncated === true, url: url.toString() }
     }
     if (hop >= maxRedirects) throw new SafeFetchError("too_many_redirects", "Trop de redirections.")
     let next: URL

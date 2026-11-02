@@ -144,6 +144,19 @@ describe("safeFetch", () => {
 describe("sendPinned", () => {
   test("vise l'adresse donnée sans résoudre le nom, garde le Host et borne la taille", async () => {
     const server = createServer((req, res) => {
+      if (req.url === "/flux") {
+        res.writeHead(202)
+        const chunk = "y".repeat(64 * 1024)
+        let sent = 0
+        const pump = () => {
+          while (sent < 48 && res.write(chunk)) sent++
+          if (sent < 48) res.once("drain", pump)
+          else res.end()
+        }
+        res.on("error", () => {})
+        pump()
+        return
+      }
       res.end(req.url === "/gros" ? "x".repeat(5000) : `host=${req.headers.host}`)
     })
     await new Promise<void>((r) => server.listen(0, "127.0.0.1", r))
@@ -169,6 +182,15 @@ describe("sendPinned", () => {
         },
       )
       expect(await code(big)).toBe("too_large")
+      // Corps de plusieurs Mo en flux : coupé à `maxBytes`, statut gardé.
+      const cut = await sendPinned(
+        new URL(`http://x.invalid:${port}/flux`),
+        { address: "127.0.0.1", family: 4 },
+        { method: "POST", headers: {}, body: "{}", maxBytes: 1000, truncate: true, signal },
+      )
+      expect(cut.status).toBe(202)
+      expect(cut.truncated).toBe(true)
+      expect(cut.body.length).toBe(1000)
     } finally {
       server.close()
     }
