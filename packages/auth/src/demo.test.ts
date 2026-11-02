@@ -10,6 +10,8 @@ import {
   demoEntryAddressKey,
   demoEntryIp,
   demoEntryReader,
+  demoEntryRequest,
+  DEMO_ENTRY_PROOF_TTL_MS,
   enterDemo,
   isDemoOrganization,
   isDemoPath,
@@ -24,6 +26,7 @@ import {
 type Fetch = (url: string, init: RequestInit) => Promise<Response>
 
 const SECRET = "un-secret-de-relais-assez-long"
+const NOW = Date.UTC(2026, 10, 2, 8, 0)
 
 describe("identification", () => {
   it("ne reconnaît que l'identifiant fixe", () => {
@@ -112,30 +115,73 @@ describe("entrée", () => {
     expect(await demoEntryReader(SECRET, "192.0.2.7")).toBe(a)
     expect(await demoEntryReader(SECRET, "192.0.2.8")).not.toBe(a)
     expect(await demoEntryReader(`${SECRET}x`, "192.0.2.7")).not.toBe(a)
+    // Vecteur figé (kit 0.32.0) : changer la dérivation viderait tous les seaux en place.
+    expect(a).toBe("D2ZY85QYFTwSCE2z6Pn9Ipgh3GT9uW2m")
     // Sans IP, rien n'est compté : pas de seau commun à tous les visiteurs sans adresse.
     expect(await demoEntryReader(SECRET, null)).toBeNull()
     expect(await demoEntryReader(SECRET, "")).toBeNull()
   })
 
-  it("refuse sans le bon secret ou avec une clé mal formée, et ne compte rien sans secret configuré", async () => {
-    const limit = vi.fn<DemoEntryLimit>(async () => ({ ok: true }))
-    const reader = (await demoEntryReader(SECRET, "192.0.2.7")) ?? ""
-    expect(await takeDemoEntry({ relay: "faux", reader }, { secret: SECRET, limit })).toEqual({ allowed: false })
-    expect(await takeDemoEntry({ relay: SECRET, reader: "192.0.2.7" }, { secret: SECRET, limit })).toEqual({
-      allowed: false,
-    })
-    expect(await takeDemoEntry({ relay: "", reader }, { secret: undefined, limit })).toEqual({ allowed: true })
+  it("signe la demande sans jamais y mettre le secret", async () => {
+    const request = await demoEntryRequest(SECRET, "192.0.2.7", NOW)
+    expect(request).not.toBeNull()
+    expect(request?.reader).toBe(await demoEntryReader(SECRET, "192.0.2.7"))
+    expect(request?.at).toBe(NOW)
+    expect(JSON.stringify(request)).not.toContain(SECRET)
+    expect(await demoEntryRequest(SECRET, null, NOW)).toBeNull()
+  })
+
+  it("ne compte que les demandes signées, récentes et bien formées, sans jamais fermer la démo", async () => {
+    const limit = vi.fn<DemoEntryLimit>(async () => ({ ok: false, retryAfter: 1_000 }))
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined)
+    const request = (await demoEntryRequest(SECRET, "192.0.2.7", NOW))!
+    const options = { secrets: [SECRET], limit, now: NOW }
+    // Preuve d'un autre secret, preuve modifiée, autre visiteur, clé mal formée, heure hors fenêtre.
+    const forged = [
+      (await demoEntryRequest(`${SECRET}x`, "192.0.2.7", NOW))!,
+      { ...request, proof: `${request.proof.slice(0, -1)}A` },
+      { ...request, reader: (await demoEntryReader(SECRET, "192.0.2.8"))! },
+      { ...request, reader: "192.0.2.7" },
+      { ...request, at: NOW + 1 },
+      (await demoEntryRequest(SECRET, "192.0.2.7", NOW - DEMO_ENTRY_PROOF_TTL_MS - 1))!,
+      { ...request, at: Number.NaN },
+    ]
+    for (const args of forged) expect(await takeDemoEntry(args, options)).toEqual({ allowed: true })
+    expect(limit).not.toHaveBeenCalled()
+    expect(warn).toHaveBeenCalledTimes(forged.length)
+    expect(JSON.stringify(warn.mock.calls)).not.toContain(SECRET)
+    warn.mockRestore()
+    // Sans secret configuré : rien n'est compté.
+    expect(await takeDemoEntry(request, { secrets: [undefined, ""], limit, now: NOW })).toEqual({ allowed: true })
     expect(limit).not.toHaveBeenCalled()
   })
 
+  it("accepte une horloge décalée dans la fenêtre", async () => {
+    const limit = vi.fn<DemoEntryLimit>(async () => ({ ok: true }))
+    const early = (await demoEntryRequest(SECRET, "192.0.2.7", NOW - DEMO_ENTRY_PROOF_TTL_MS))!
+    const late = (await demoEntryRequest(SECRET, "192.0.2.7", NOW + DEMO_ENTRY_PROOF_TTL_MS))!
+    expect(await takeDemoEntry(early, { secrets: [SECRET], limit, now: NOW })).toEqual({ allowed: true })
+    expect(await takeDemoEntry(late, { secrets: [SECRET], limit, now: NOW })).toEqual({ allowed: true })
+    expect(limit).toHaveBeenCalledTimes(2)
+  })
+
+  it("compte pendant une rotation, que le front ait l'ancien ou le nouveau secret", async () => {
+    const limit = vi.fn<DemoEntryLimit>(async () => ({ ok: true }))
+    const options = { secrets: [`${SECRET}-neuf`, SECRET], limit, now: NOW }
+    await takeDemoEntry((await demoEntryRequest(SECRET, "192.0.2.7", NOW))!, options)
+    await takeDemoEntry((await demoEntryRequest(`${SECRET}-neuf`, "192.0.2.7", NOW))!, options)
+    expect(limit).toHaveBeenCalledTimes(2)
+  })
+
   it("prend un jeton par entrée et rend le délai du seau vide", async () => {
-    const reader = (await demoEntryReader(SECRET, "192.0.2.7")) ?? ""
-    const ok = await takeDemoEntry({ relay: SECRET, reader }, { secret: SECRET, limit: async () => ({ ok: true }) })
+    const request = (await demoEntryRequest(SECRET, "192.0.2.7", NOW))!
+    const ok = await takeDemoEntry(request, { secrets: [SECRET], limit: async () => ({ ok: true }), now: NOW })
     expect(ok).toEqual({ allowed: true })
-    const full = await takeDemoEntry(
-      { relay: SECRET, reader },
-      { secret: SECRET, limit: async () => ({ ok: false, retryAfter: 1_500 }) },
-    )
+    const full = await takeDemoEntry(request, {
+      secrets: [SECRET],
+      limit: async () => ({ ok: false, retryAfter: 1_500 }),
+      now: NOW,
+    })
     expect(full).toEqual({ allowed: false, retryAfterMs: 1_500 })
   })
 
