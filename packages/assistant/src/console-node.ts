@@ -1,6 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk"
 import { makeFunctionReference } from "convex/server"
-import type { ActionBuilder, GenericActionCtx, RegisteredAction } from "convex/server"
+import type { ActionBuilder, GenericActionCtx, GenericDataModel, RegisteredAction } from "convex/server"
 
 import { sovereignClient, type ModelChoice } from "./clients.ts"
 import { vRunArgs } from "./console.ts"
@@ -77,8 +77,7 @@ export function createConsoleRunner<T extends ToolSet>(
 
   return config.internalAction({
     args: vRunArgs,
-    // oxlint-disable-next-line typescript/no-explicit-any
-    handler: async (ctx: GenericActionCtx<any>, args: RunArgs): Promise<void> => {
+    handler: async (ctx: GenericActionCtx<GenericDataModel>, args: RunArgs): Promise<void> => {
       const { messageId, threadId, text, speaker } = args
       const { organizationId } = speaker
       const stop = async (message: string): Promise<void> => {
