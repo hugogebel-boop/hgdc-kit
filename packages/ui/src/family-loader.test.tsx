@@ -213,9 +213,9 @@ describe("Cadre de la coque, hors de la coque (ADR 0020)", () => {
       html.indexOf('data-slot="shell-frame-sidebar"'),
     )
     expect(rail).toContain('data-slot="org-placeholder"')
-    // Account, puis les produits ouverts du catalogue, dans l'ordre de la barre.
+    // Manager, puis les autres produits ouverts du catalogue, dans l'ordre de la barre.
     expect([...rail.matchAll(/data-product="(\w+)"/g)].map((m) => m[1])).toEqual([
-      "account",
+      "manager",
       "host",
       "mail",
       "portal",
@@ -224,10 +224,9 @@ describe("Cadre de la coque, hors de la coque (ADR 0020)", () => {
       "docs",
       "iassistant",
       "id",
-      "manager",
     ])
     const sidebar = html.slice(html.indexOf('data-slot="shell-frame-sidebar"'))
-    for (const name of ["Account", "Host", "Mail", "Portal", "Status", "Analytics", "Docs", "IAssistant"])
+    for (const name of ["Manager", "Host", "Mail", "Portal", "Status", "Analytics", "Docs", "IAssistant"])
       expect(sidebar).toContain(`>${name}<`)
     expect(html).toContain('data-slot="shell-frame-nav"')
     expect(html).toContain('data-slot="shell-frame-header"')

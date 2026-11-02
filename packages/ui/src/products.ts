@@ -137,6 +137,14 @@ const account = product(
 )
 export const HGDC_ACCOUNT: HgdcCatalogProduct = { ...account, entryHref: account.href }
 
+/** Manager : les organisations, leurs membres et leurs rôles. En tête du menu et de la barre des produits. */
+export const HGDC_MANAGER: HgdcCatalogProduct = product(
+  "Manager",
+  "Tes organisations, leurs membres et leurs rôles.",
+  UserGroupIcon,
+  "live",
+)
+
 /** Les produits de la famille, dans leur ordre d'affichage. Account n'en fait pas partie (`HGDC_ACCOUNT`). */
 export const HGDC_PRODUCTS: ReadonlyArray<HgdcCatalogProduct> = [
   product("Host", "Ton site en ligne, déployé à chaque modification.", Rocket01Icon, "live"),
@@ -147,7 +155,7 @@ export const HGDC_PRODUCTS: ReadonlyArray<HgdcCatalogProduct> = [
   product("Docs", "Ta documentation en ligne, avec un assistant qui y répond.", BookOpen01Icon, "live"),
   product("IAssistant", "Une bulle de chat IA sur ton site, qui répond à tes visiteurs.", BubbleChatIcon, "preview"),
   id(),
-  product("Manager", "Tes organisations, leurs membres et leurs rôles.", UserGroupIcon, "live"),
+  HGDC_MANAGER,
 ]
 
 /** ID, le compte de connexion ouvert aux applications tierces : pas d'entrée `/auth/hgdc`, sa racine. */
@@ -175,9 +183,9 @@ export type ProductMenuEntry = {
 }
 
 /**
- * Les entrées du menu du compte : Account d'abord, puis les produits ouverts. `current` est le
- * mot du produit affiché (« Mail ») : il est coché. `accountHref` remplace l'adresse d'Account
- * (un Account local en développement). Chaque produit pointe vers son entrée (`entryHref`) :
+ * Les entrées du menu du compte : Manager d'abord, puis les autres produits ouverts. `current` est le
+ * mot du produit affiché (« Mail ») : il est coché. `accountHref` remplace l'adresse de Manager
+ * (un Manager local en développement). Chaque produit pointe vers son entrée (`entryHref`) :
  * un clic ouvre l'app avec la session HGDC, pas la page d'accueil publique.
  */
 export function productMenuEntries(
@@ -188,9 +196,9 @@ export function productMenuEntries(
   } = {},
 ): Array<ProductMenuEntry> {
   const current = options.current?.toLowerCase()
-  const accountHref = options.accountHref ?? HGDC_ACCOUNT.entryHref
-  const account = { ...HGDC_ACCOUNT, href: accountHref, entryHref: accountHref }
-  return [account, ...(options.catalog ?? HGDC_PRODUCTS).filter(isProductOpen)].map((item) => ({
+  const { manager, others } = managerFirst(options.catalog ?? HGDC_PRODUCTS)
+  const head = manager && options.accountHref ? { ...manager, entryHref: options.accountHref } : manager
+  return [...(head ? [head] : []), ...others.filter(isProductOpen)].map((item) => ({
     name: item.name,
     href: item.entryHref,
     badge: item.badge,
@@ -231,10 +239,10 @@ export type ProductRailEntry = {
 }
 
 /**
- * Les entrées de la barre des produits : les produits ouverts du catalogue et Account, affiché en
- * tête (le compte commun, pas un produit). Chaque produit pointe vers son entrée
- * `/auth/hgdc?refresh=background&next=/` (ADR 0010, 0013, 0016), Account vers sa racine (`accountHref` en
- * développement). Le produit courant pointe vers sa racine, sans détour par l'entrée.
+ * Les entrées de la barre des produits : Manager, affiché en tête, puis les autres produits ouverts du
+ * catalogue. Chaque produit pointe vers son entrée
+ * `/auth/hgdc?refresh=background&next=/` (ADR 0010, 0013, 0016), Manager aussi, ou vers `accountHref` en
+ * développement. Le produit courant pointe vers sa racine, sans détour par l'entrée.
  *
  * `pageOrigin` (`location.origin`, absent au rendu serveur) : un produit servi sous cette origine
  * (`PRODUCT_ORIGINS`, `app.hgdc.ch/<produit>`) reçoit un lien relatif et `sameOrigin` (ADR 0020),
@@ -263,10 +271,21 @@ export function productRailEntries(
     const path = product ? sameOriginPath(href, pageOrigin) : null
     return path === null ? { ...base, href } : { ...base, href: path, sameOrigin: true }
   }
+  const { manager, others } = managerFirst(options.catalog ?? HGDC_PRODUCTS)
+  const head = manager ?? HGDC_MANAGER
   return {
-    products: (options.catalog ?? HGDC_PRODUCTS).filter(isProductOpen).map((item) => entry(item, item.entryHref, true)),
-    account: entry(HGDC_ACCOUNT, options.accountHref ?? HGDC_ACCOUNT.entryHref, false),
+    products: others.filter(isProductOpen).map((item) => entry(item, item.entryHref, true)),
+    account: entry(head, options.accountHref ?? head.entryHref, options.accountHref === undefined),
   }
+}
+
+/** Manager du catalogue, s'il y est, sorti des autres produits : il prend la place d'Account en tête. */
+function managerFirst(catalog: ReadonlyArray<HgdcCatalogProduct>): {
+  manager: HgdcCatalogProduct | undefined
+  others: Array<HgdcCatalogProduct>
+} {
+  const manager = catalog.find((item) => item.badge === "manager" && isProductOpen(item))
+  return { manager, others: catalog.filter((item) => item !== manager) }
 }
 
 /**
