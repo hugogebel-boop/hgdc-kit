@@ -328,7 +328,8 @@ describe("passerelle : emplacements, accès, générations", { timeout: 20_000 }
     host: "127.0.0.1",
     slots: slots.map((slot) => slot.socket),
     maxPerOrganization: 1,
-    evictAfterMs: 400,
+    // Large : une session ne devient inactive que par `idleAll`, jamais parce que le poste est lent.
+    evictAfterMs: 60_000,
     closeAfterMs: 60_000,
     maxSessionMs: 3_600_000,
     freshTimeoutMs: 10_000,
@@ -349,6 +350,15 @@ describe("passerelle : emplacements, accès, générations", { timeout: 20_000 }
     stop()
     for (const slot of slots) await slot.shutdown()
   })
+
+  /**
+   * Rend inactives toutes les sessions ouvertes. Avec une vraie attente de 500 ms contre un seuil
+   * de 400 ms, une synchronisation lente (préchauffage, taskkill sous Windows) rendait inactive
+   * une session censée rester active, et l'inconnu prenait sa place.
+   */
+  const idleAll = () => {
+    for (const session of gateway.sessions.values()) session.lastUsed = 0
+  }
 
   const hex = (c: string) => c.repeat(64)
   const DOCS_JSON = JSON.stringify({ name: "Acme", navigation: { pages: ["index"] } })
@@ -469,7 +479,7 @@ describe("passerelle : emplacements, accès, générations", { timeout: 20_000 }
     const c = await sync({ key: "4", owner: "f", organization: "c" }, "doc de C")
     expect(c).toMatchObject({ status: 503, json: { code: "busy" } })
     // A inactif depuis plus de `evictAfterMs` : C prend sa place.
-    await new Promise((done) => setTimeout(done, 500))
+    idleAll()
     await sync({ key: "3", owner: "b", organization: "b" }, "doc de B")
     const taken = await sync({ key: "4", owner: "f", organization: "c" }, "doc de C")
     expect(taken.status).toBe(200)
@@ -496,7 +506,7 @@ describe("passerelle : emplacements, accès, générations", { timeout: 20_000 }
   })
 
   it("emplacement mort puis reparti neuf : session fermée, la suivante s'ouvre", async () => {
-    await new Promise((done) => setTimeout(done, 500))
+    idleAll()
     const who = { key: "9", owner: "6", organization: "6" }
     const before = await sync(who, "avant la panne")
     expect(before.status).toBe(200)
@@ -524,7 +534,7 @@ describe("passerelle : emplacements, accès, générations", { timeout: 20_000 }
 
   it("la lectrice voit la panne la première : « relance en cours », session fermée", async () => {
     const who = { key: "a", owner: "5", organization: "5" }
-    await new Promise((done) => setTimeout(done, 500))
+    idleAll()
     const opened = await sync(who, "avant")
     expect(opened.status).toBe(200)
     const { session, generation } = opened.json as { session: string; generation: string }
@@ -542,7 +552,7 @@ describe("passerelle : emplacements, accès, générations", { timeout: 20_000 }
   // Sept attributions, chacune après un recyclage et un préchauffage (taskkill est lent sous Windows).
   it("six attributions par personne en dix minutes, pas plus", async () => {
     // Les sessions précédentes deviennent inactives : leurs emplacements peuvent servir.
-    await new Promise((done) => setTimeout(done, 500))
+    idleAll()
     const keys = ["0", "5", "8", "b", "c", "e"]
     for (const key of keys) expect((await sync({ key, owner: "7", organization: "7" }, `doc ${key}`)).status).toBe(200)
     expect(await sync({ key: "d", owner: "7", organization: "7" }, "doc d")).toMatchObject({
