@@ -1,5 +1,11 @@
 # @hgdc/webhooks
 
+## 0.3.0
+
+### Minor Changes
+
+- 9ac9ae4: `safeFetch` : option `overflow: "truncate"` qui coupe un corps trop long à `maxBytes` (lu en flux) et rend la réponse avec son statut et `truncated: true`, au lieu de lever `too_large`.
+
 ## 0.2.0
 
 ### Minor Changes
