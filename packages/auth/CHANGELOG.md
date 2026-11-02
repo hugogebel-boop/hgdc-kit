@@ -1,5 +1,11 @@
 # @hgdc/auth
 
+## 0.34.0
+
+### Minor Changes
+
+- 35b663b: `@hgdc/auth/demo/testing` : `auditDemoGuards` énumère les mutations et actions publiques d'un produit et rend celles qui ne passent par aucune garde de la démo, et les exceptions qui nomment une fonction disparue (`listPublicWrites`, `guardCallPattern`).
+
 ## 0.33.0
 
 ### Minor Changes
