@@ -25,13 +25,18 @@ function boot(stored: string | null, systemDark: boolean) {
 afterEach(() => vi.unstubAllGlobals())
 
 describe("thème au chargement", () => {
-  it("s'ouvre en clair quand rien n'est choisi, même si le système est en sombre", () => {
+  it("suit le système quand rien n'est choisi", () => {
     const { theme, colors } = boot(null, true)
-    expect(theme).toBe("light")
+    expect(theme).toBe("dark")
     for (const [content, media] of colors) {
-      expect(content).toBe(THEME_COLOR.light)
+      expect(content).toBe(THEME_COLOR.dark)
       expect(media).toBeNull()
     }
+    expect(boot(null, false).theme).toBe("light")
+  })
+
+  it("garde le choix clair mémorisé, même si le système est en sombre", () => {
+    expect(boot("light", true).theme).toBe("light")
   })
 
   it("garde le choix mémorisé : sombre, ou système", () => {

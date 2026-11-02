@@ -79,13 +79,13 @@ describe("ThemeProvider", () => {
     return <Button onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>{theme}</Button>
   }
 
-  it("part du thème clair et mémorise le choix du sombre", () => {
+  it("part du thème du système et mémorise le choix du sombre", () => {
     render(
       <ThemeProvider>
         <Toggle />
       </ThemeProvider>,
     )
-    const button = screen.getByRole("button", { name: "light" })
+    const button = screen.getByRole("button", { name: "system" })
     act(() => button.click())
     expect(button.textContent).toBe("dark")
     expect(document.documentElement.classList.contains("dark")).toBe(true)

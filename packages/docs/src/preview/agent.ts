@@ -143,6 +143,24 @@ export function processesOf(uid: number, proc = "/proc"): Array<number> {
 
 const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms))
 
+/**
+ * Renomme par-dessus `to`. Sous Windows, le renommage échoue (EPERM, EACCES, EBUSY) tant qu'un
+ * autre processus tient `to` ouvert, ici le serveur du site qui relit sa configuration dès
+ * qu'elle change : on réessaie un court instant, comme graceful-fs. Sous Linux, jamais.
+ */
+function replaceFile(from: string, to: string) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return renameSync(from, to)
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code
+      const busy = code === "EPERM" || code === "EACCES" || code === "EBUSY"
+      if (process.platform !== "win32" || !busy || attempt >= 50) throw error
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20)
+    }
+  }
+}
+
 async function portFree(port: number): Promise<boolean> {
   return await new Promise((done) => {
     const socket = connect(port, "127.0.0.1")
@@ -339,7 +357,7 @@ export function createAgent(options: AgentOptions) {
     const staged = join(astro, `.astro.config.${randomBytes(8).toString("hex")}.ts`)
     safeWriteConfig(staged, text)
     if (options.astroUid !== null) chownSync(staged, options.astroUid, options.astroUid)
-    renameSync(staged, join(astro, "astro.config.ts"))
+    replaceFile(staged, join(astro, "astro.config.ts"))
   }
 
   /**

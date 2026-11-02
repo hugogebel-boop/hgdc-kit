@@ -15,8 +15,8 @@ export type ThemeProviderState = {
 }
 
 const THEME_STORAGE_KEY = "theme"
-// Clair par défaut, quel que soit le réglage du système : le sombre se choisit dans le menu.
-const THEME_DEFAULT: Theme = "light"
+// Suit le réglage du système tant que l'utilisateur n'a rien choisi dans le menu.
+const THEME_DEFAULT: Theme = "system"
 
 /**
  * Couleur de la barre du navigateur, au fond de l'app dans chaque thème. Elle suit le thème de
@@ -39,7 +39,7 @@ function buildThemeScript(storageKey: string, defaultTheme: Theme) {
 export const themeInitScript: string = buildThemeScript(THEME_STORAGE_KEY, THEME_DEFAULT)
 
 const ThemeProviderContext = createContext<ThemeProviderState>({
-  theme: "light",
+  theme: "system",
   setTheme: () => {},
 })
 
