@@ -8,6 +8,7 @@ import {
   DEMO_READ_ONLY,
   demoBusyMessage,
   demoEntryAddressKey,
+  demoEntryIp,
   demoEntryReader,
   enterDemo,
   isDemoOrganization,
@@ -36,6 +37,8 @@ describe("identification", () => {
     expect(isDemoPath("/docs/o/%7Edemo/p/x")).toBe(true)
     expect(isDemoPath("/o/~demonstration")).toBe(false)
     expect(isDemoPath("/o/acme")).toBe(false)
+    expect(isDemoPath("/o/acme/x/o/~demo")).toBe(false)
+    expect(isDemoPath("/a/b/o/~demo")).toBe(false)
   })
 })
 
@@ -88,7 +91,18 @@ describe("entrée", () => {
     expect(demoEntryAddressKey("2001:db8:1:2::ffff")).toBe("2001:0db8:0001:0002::/64")
     expect(demoEntryAddressKey("::ffff:192.0.2.7")).toBe("192.0.2.7")
     expect(demoEntryAddressKey("192.0.2.7")).toBe("192.0.2.7")
-    expect(demoEntryAddressKey(null)).toBe("inconnue")
+    expect(demoEntryAddressKey("192.0.2.7:51234")).toBe("192.0.2.7")
+    expect(demoEntryAddressKey("[2001:db8:1:2::9]:443")).toBe("2001:0db8:0001:0002::/64")
+    expect(demoEntryAddressKey("::ffff:c000:207")).toBe("192.0.2.7")
+    expect(demoEntryAddressKey("0:0:0:0:0:ffff:192.0.2.7")).toBe("192.0.2.7")
+    expect(demoEntryAddressKey("fe80::1%eth0")).toBe("fe80:0000:0000:0000::/64")
+    expect(demoEntryAddressKey("1:2:3:4:5:6:7:8:9")).toBe("1:2:3:4:5:6:7:8:9")
+  })
+
+  it("lit l'IP posée par la plateforme, jamais x-forwarded-for", () => {
+    expect(demoEntryIp(new Headers({ "x-real-ip": " 192.0.2.7 " }))).toBe("192.0.2.7")
+    expect(demoEntryIp(new Headers({ "x-forwarded-for": "192.0.2.7" }))).toBeNull()
+    expect(demoEntryIp(new Headers({ "x-real-ip": "x".repeat(65) }))).toBeNull()
   })
 
   it("dérive une clé stable, propre au secret, sans l'IP en clair", async () => {
@@ -98,22 +112,24 @@ describe("entrée", () => {
     expect(await demoEntryReader(SECRET, "192.0.2.7")).toBe(a)
     expect(await demoEntryReader(SECRET, "192.0.2.8")).not.toBe(a)
     expect(await demoEntryReader(`${SECRET}x`, "192.0.2.7")).not.toBe(a)
+    // Sans IP, rien n'est compté : pas de seau commun à tous les visiteurs sans adresse.
+    expect(await demoEntryReader(SECRET, null)).toBeNull()
+    expect(await demoEntryReader(SECRET, "")).toBeNull()
   })
 
-  it("refuse sans le bon secret ou avec une clé mal formée, sans toucher au seau", async () => {
+  it("refuse sans le bon secret ou avec une clé mal formée, et ne compte rien sans secret configuré", async () => {
     const limit = vi.fn<DemoEntryLimit>(async () => ({ ok: true }))
-    const reader = await demoEntryReader(SECRET, "192.0.2.7")
+    const reader = (await demoEntryReader(SECRET, "192.0.2.7")) ?? ""
     expect(await takeDemoEntry({ relay: "faux", reader }, { secret: SECRET, limit })).toEqual({ allowed: false })
     expect(await takeDemoEntry({ relay: SECRET, reader: "192.0.2.7" }, { secret: SECRET, limit })).toEqual({
       allowed: false,
     })
-    expect(await takeDemoEntry({ relay: "", reader }, { secret: undefined, limit })).toEqual({ allowed: false })
-    expect(await takeDemoEntry({ relay: "court", reader }, { secret: "court", limit })).toEqual({ allowed: false })
+    expect(await takeDemoEntry({ relay: "", reader }, { secret: undefined, limit })).toEqual({ allowed: true })
     expect(limit).not.toHaveBeenCalled()
   })
 
   it("prend un jeton par entrée et rend le délai du seau vide", async () => {
-    const reader = await demoEntryReader(SECRET, "192.0.2.7")
+    const reader = (await demoEntryReader(SECRET, "192.0.2.7")) ?? ""
     const ok = await takeDemoEntry({ relay: SECRET, reader }, { secret: SECRET, limit: async () => ({ ok: true }) })
     expect(ok).toEqual({ allowed: true })
     const full = await takeDemoEntry(
@@ -160,6 +176,21 @@ describe("remise à zéro", () => {
       ),
     ).rejects.toBe(failure)
     expect(report).toHaveBeenCalledWith(failure)
+    expect(fetch).toHaveBeenCalledWith("https://status.example/ping/abc/fail", expect.anything())
+
+    // Suivi des erreurs en panne : l'erreur d'origine remonte quand même, et `/fail` part.
+    const broken = vi.fn<(error: unknown) => Promise<void>>(async () => {
+      throw new Error("GlitchTip injoignable")
+    })
+    fetch.mockClear()
+    await expect(
+      runDemoReset(
+        async () => {
+          throw failure
+        },
+        { pingUrl: "https://status.example/ping/abc", report: broken, fetch },
+      ),
+    ).rejects.toBe(failure)
     expect(fetch).toHaveBeenCalledWith("https://status.example/ping/abc/fail", expect.anything())
   })
 

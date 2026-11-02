@@ -32,9 +32,12 @@ export function isDemoOrganization(organizationId: string | null | undefined): b
   return organizationId === DEMO_ORGANIZATION_ID
 }
 
-/** Page de la démo (`…/o/~demo/…`, `~` encodé ou non) : le client Convex n'y attend pas de session. */
+/**
+ * Page de la démo (`/o/~demo/…`, ou sous une base d'un seul segment, `/status/o/~demo/…` ; `~` encodé
+ * ou non) : le client Convex n'y attend pas de session. Ancré au début : `/o/acme/x/o/~demo` n'en est pas une.
+ */
 export function isDemoPath(pathname: string): boolean {
-  return /\/o\/(?:~|%7e)demo(?:\/|$)/i.test(pathname)
+  return /^(?:\/[^/]+)?\/o\/(?:~|%7e)demo(?:\/|$)/i.test(pathname)
 }
 
 /**
@@ -90,6 +93,8 @@ export async function readOrgOrDemo<Access>(
 /**
  * Seau de l'entrée (réglage du composant `@convex-dev/rate-limiter`) : freine les rechargements en
  * boucle, pas un appel direct à Convex (là, la limite est le coût des queries de la démo, bornées).
+ * L'IP comptée doit être celle du visiteur : derrière un relais qui ne la transmet pas, tous les
+ * visiteurs partagent un seau, à régler plus large (`rate`, `capacity`, `shards`) par le produit.
  */
 export const DEMO_ENTRY_LIMIT: { kind: "token bucket"; rate: number; period: number; capacity: number } = {
   kind: "token bucket",
@@ -101,32 +106,62 @@ export const DEMO_ENTRY_LIMIT: { kind: "token bucket"; rate: number; period: num
 /** Clé d'un visiteur : 32 caractères base64url, empreinte HMAC de son IP (jamais l'IP elle-même). */
 export const DEMO_ENTRY_READER: RegExp = /^[A-Za-z0-9_-]{32}$/
 
-/** IPv4 entière ou préfixe /64 d'une IPv6 : changer d'adresse dans son /64 ne remplit pas un seau neuf. */
-export function demoEntryAddressKey(ip: string | null | undefined): string {
-  const address =
-    (ip ?? "")
-      .trim()
-      .replace(/^\[|\]$/g, "")
-      .split("%")[0] ?? ""
-  if (!address) return "inconnue"
-  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(address)
-  if (mapped?.[1]) return mapped[1]
-  if (!address.includes(":")) return address.slice(0, 64)
-  const halves = address.toLowerCase().split("::")
-  if (halves.length > 2) return address.slice(0, 64)
-  const head = halves[0] ? halves[0].split(":") : []
-  const tail = halves.length === 2 && halves[1] ? halves[1].split(":") : []
-  const groups = [...head, ...Array.from({ length: Math.max(0, 8 - head.length - tail.length) }, () => "0"), ...tail]
-  const prefix = groups.slice(0, 4)
-  if (!prefix.every((g) => /^[0-9a-f]{1,4}$/.test(g))) return address.slice(0, 64)
-  return `${prefix.map((g) => g.padStart(4, "0")).join(":")}::/64`
+/**
+ * IP posée par la plateforme (`x-real-ip` : edge de Host, Vercel), jamais un `x-forwarded-for` que le
+ * navigateur peut écrire lui-même. `null` sans en-tête : l'entrée ne compte alors rien.
+ */
+export function demoEntryIp(headers: Headers): string | null {
+  const ip = headers.get("x-real-ip")?.trim()
+  return ip && ip.length <= 64 ? ip : null
 }
 
 /**
- * Côté serveur du front : clé du visiteur pour le seau de l'entrée. Le navigateur ne la choisit pas,
- * Convex ne voit jamais l'IP. `secret` : le secret de relais du produit, connu aussi de Convex.
+ * IPv4 entière (sans port) ou préfixe /64 d'une IPv6 : changer d'adresse dans son /64 ne remplit pas
+ * un seau neuf. Une IPv4 dans une IPv6 (`::ffff:192.0.2.7`, `::ffff:c000:207`) compte comme l'IPv4.
  */
-export async function demoEntryReader(secret: string, ip: string | null | undefined): Promise<string> {
+export function demoEntryAddressKey(ip: string): string {
+  const address =
+    ip
+      .trim()
+      .replace(/^\[|\](?::\d+)?$/g, "")
+      .split("%")[0] ?? ""
+  const v4 = /^(\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?$/.exec(address)?.[1]
+  if (v4) return v4
+  const halves = address.toLowerCase().split("::")
+  if (halves.length > 2) return address.slice(0, 64)
+  const head = halves[0] ? halves[0].split(":") : []
+  const tail = halves[1] ? halves[1].split(":") : []
+  // Fin en IPv4 pointée (`::ffff:192.0.2.7`) : deux groupes.
+  const groups = halves.length === 2 ? tail : head
+  const dotted = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(groups.at(-1) ?? "")
+  if (dotted) {
+    const [a, b, c, d] = dotted.slice(1).map(Number) as [number, number, number, number]
+    groups.splice(-1, 1, ((a << 8) | b).toString(16), ((c << 8) | d).toString(16))
+  }
+  const count = head.length + tail.length
+  if (count > 8 || (halves.length === 1 && count !== 8)) return address.slice(0, 64)
+  const full = [...head, ...Array.from({ length: 8 - count }, () => "0"), ...tail]
+  if (!full.every((g) => /^[0-9a-f]{1,4}$/.test(g))) return address.slice(0, 64)
+  const words = full.map((g) => Number.parseInt(g, 16))
+  // IPv4 mappée (`::ffff:a.b.c.d`, `::ffff:c000:207`) : la même clé que l'IPv4.
+  if (words.slice(0, 5).every((w) => w === 0) && words[5] === 0xffff) {
+    const [hi = 0, lo = 0] = words.slice(6)
+    return [hi >> 8, hi & 255, lo >> 8, lo & 255].join(".")
+  }
+  return `${full
+    .slice(0, 4)
+    .map((g) => g.padStart(4, "0"))
+    .join(":")}::/64`
+}
+
+/**
+ * Côté serveur du front : clé du visiteur pour le seau de l'entrée, ou `null` sans IP (rien n'est
+ * compté : les visiteurs sans IP ne partagent pas un seau qu'un seul pourrait vider). Le navigateur ne
+ * la choisit pas, Convex ne voit pas l'IP en clair. `secret` : le secret de relais du produit ; Convex
+ * le connaît aussi, l'empreinte est donc un pseudonyme, pas un anonymat.
+ */
+export async function demoEntryReader(secret: string, ip: string | null | undefined): Promise<string | null> {
+  if (!ip) return null
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(`demo-entry:${secret}`),
@@ -149,14 +184,15 @@ export type DemoEntryLimit = (reader: string) => Promise<{ ok: boolean; retryAft
 
 /**
  * Côté Convex, dans une mutation publique : vérifie le secret de relais (temps constant) et la forme
- * de la clé, puis prend un jeton. Sans secret configuré, refus : un appel direct depuis un navigateur
- * n'a pas le secret et ne remplit aucun seau.
+ * de la clé, puis prend un jeton. Un appel direct depuis un navigateur n'a pas le secret : refusé, sans
+ * toucher au seau. Sans secret configuré côté Convex, l'entrée passe sans rien compter (aucune ligne
+ * écrite pour une clé inventée), comme le front qui ne bloque jamais sur une panne.
  */
 export async function takeDemoEntry(
   args: { relay: string; reader: string },
   options: { secret: string | undefined; limit: DemoEntryLimit },
 ): Promise<DemoEntryResult> {
-  if (!options.secret || options.secret.length < 16) return { allowed: false }
+  if (!options.secret) return { allowed: true }
   if (!(await sameDigest(args.relay, options.secret)) || !DEMO_ENTRY_READER.test(args.reader)) return { allowed: false }
   const { ok, retryAfter } = await options.limit(args.reader)
   return ok ? { allowed: true } : { allowed: false, ...(retryAfter === undefined ? {} : { retryAfterMs: retryAfter }) }
@@ -209,7 +245,8 @@ export async function runDemoReset<T>(reset: () => Promise<T>, options: DemoRese
   try {
     result = await reset()
   } catch (error) {
-    await options.report(error)
+    // Un suivi des erreurs en panne ne doit ni masquer l'erreur ni empêcher le `/fail`.
+    await options.report(error).catch(() => undefined)
     await pingHeartbeat(options, "/fail")
     throw error
   }

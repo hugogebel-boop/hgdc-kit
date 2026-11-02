@@ -1,6 +1,7 @@
 import type { Auth, UserIdentity } from "convex/server"
 import { ConvexError } from "convex/values"
 
+import { refuseDemo } from "./demo.ts"
 import { acceptedIssuers, HGDC_ISSUER, HGDC_PROVIDER_ID, highestRole, ORG_ROLES, type OrgRole } from "./index.ts"
 
 export type AuthErrorCode = "UNAUTHENTICATED" | "FORBIDDEN"
@@ -344,12 +345,16 @@ function withSubject(identity: UserIdentity): UserAccess {
  *
  * Une personne étrangère à l'organisation et un membre au rôle insuffisant reçoivent
  * tous deux `FORBIDDEN`, distingués par `reason` (`not_member`, `insufficient_role`).
+ *
+ * L'organisation de démo (`@hgdc/auth/demo`) est refusée d'entrée, avant toute lecture de session :
+ * même une appartenance glissée dans la copie du produit n'y ouvre aucune écriture.
  */
 export async function requireOrgMember<Ctx extends { auth: Auth }>(
   ctx: Ctx,
   organizationId: string,
   options: UserOption<Ctx> & { load: MembershipLoader<Ctx>; minRole?: OrgRole },
 ): Promise<OrgAccess> {
+  refuseDemo(organizationId)
   const { identity, userId, via, accountUserId } = await requireUser(ctx, options)
   const membership = await options.load(ctx, { organizationId, userId })
   // Une copie mal synchronisée ne doit jamais ouvrir l'accès à la mauvaise personne.
