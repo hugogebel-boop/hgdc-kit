@@ -4,6 +4,10 @@
  * d'un usage, et données associées liées à l'organisation : une valeur copiée d'une organisation à
  * une autre ne s'ouvre pas, une fuite de la base seule ne révèle rien. `crypto.subtle` existe dans
  * les deux environnements Convex (V8 et Node).
+ *
+ * `sealWithKey` et `openWithKey` donnent le même format avec une clé AES déjà importée, pour un
+ * produit qui garde sa propre clé maître (Portal : `INTEGRATIONS_ENCRYPTION_KEY`, sans données
+ * associées, `context` vide explicite). Un `context` vide équivaut à l'absence de données associées en GCM.
  */
 
 const encoder = new TextEncoder()
@@ -32,6 +36,36 @@ function fromBase64(text: string): Uint8Array<ArrayBuffer> {
   return Uint8Array.from(atob(text), (c) => c.charCodeAt(0))
 }
 
+/** `v1.<iv>.<chiffré>` avec une clé AES-GCM importée par l'appelant ; `context` en données associées. */
+export async function sealWithKey(plain: string, key: CryptoKey, context: string): Promise<string> {
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const cipher = new Uint8Array(
+    await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv, additionalData: encoder.encode(context) },
+      key,
+      encoder.encode(plain),
+    ),
+  )
+  return `${VERSION}.${toBase64(iv)}.${toBase64(cipher)}`
+}
+
+/** Ouvre `v1.<iv>.<chiffré>` ; lève une erreur si la clé, le contexte ou la valeur diffèrent. */
+export async function openWithKey(sealed: string, key: CryptoKey, context: string): Promise<string> {
+  const [version, iv, cipher] = sealed.split(".")
+  if (version !== VERSION || !iv || !cipher) throw new Error("Secret scellé illisible")
+  try {
+    const plain = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: fromBase64(iv), additionalData: encoder.encode(context) },
+      key,
+      fromBase64(cipher),
+    )
+    return new TextDecoder().decode(plain)
+  } catch {
+    // Secret du déploiement changé, autre usage, autre organisation ou valeur abîmée.
+    throw new Error("Secret scellé illisible avec ce secret de déploiement")
+  }
+}
+
 export type SecretOptions = {
   /** Secret du déploiement, jamais en base : `process.env.BETTER_AUTH_SECRET`. */
   secret: string
@@ -46,15 +80,7 @@ export async function sealSecret(
   plain: string,
   { secret, context, purpose = "assistant-key" }: SecretOptions,
 ): Promise<string> {
-  const iv = crypto.getRandomValues(new Uint8Array(12))
-  const cipher = new Uint8Array(
-    await crypto.subtle.encrypt(
-      { name: "AES-GCM", iv, additionalData: encoder.encode(context) },
-      await aesKey(secret, purpose),
-      encoder.encode(plain),
-    ),
-  )
-  return `${VERSION}.${toBase64(iv)}.${toBase64(cipher)}`
+  return await sealWithKey(plain, await aesKey(secret, purpose), context)
 }
 
 /** Ouvre un secret scellé ; lève une erreur si le secret, l'usage ou l'organisation diffèrent. */
@@ -62,20 +88,7 @@ export async function openSecret(
   sealed: string,
   { secret, context, purpose = "assistant-key" }: SecretOptions,
 ): Promise<string> {
-  const [version, iv, cipher] = sealed.split(".")
-  if (version !== VERSION || !iv || !cipher) throw new Error("Secret scellé illisible")
-  const key = await aesKey(secret, purpose)
-  try {
-    const plain = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: fromBase64(iv), additionalData: encoder.encode(context) },
-      key,
-      fromBase64(cipher),
-    )
-    return new TextDecoder().decode(plain)
-  } catch {
-    // Secret du déploiement changé, autre usage, autre organisation ou valeur abîmée.
-    throw new Error("Secret scellé illisible avec ce secret de déploiement")
-  }
+  return await openWithKey(sealed, await aesKey(secret, purpose), context)
 }
 
 /** Les quatre derniers caractères, pour l'écran : la clé n'est plus jamais affichée. */
