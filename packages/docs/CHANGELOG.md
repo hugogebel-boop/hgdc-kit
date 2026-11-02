@@ -1,5 +1,11 @@
 # @hgdc/docs
 
+## 0.6.3
+
+### Patch Changes
+
+- 630281e: Exemple : « compte ID » au lieu de « compte HGDC ». Aperçu : sous Windows, la configuration d'Astro se remplace même quand le serveur du site la relit au même moment (EPERM au renommage).
+
 ## 0.6.2
 
 ### Patch Changes

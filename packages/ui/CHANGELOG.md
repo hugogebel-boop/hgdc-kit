@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.56.0
+
+### Minor Changes
+
+- 630281e: Le thème suit maintenant le réglage clair ou sombre du système tant que l'utilisateur n'a rien choisi dans le menu. Un choix clair ou sombre déjà mémorisé est gardé. Aucun changement à faire dans les produits.
+
 ## 0.55.0
 
 ### Minor Changes
