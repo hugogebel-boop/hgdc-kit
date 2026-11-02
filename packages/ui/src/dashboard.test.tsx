@@ -6,7 +6,7 @@ import { AccountMenu } from "./account-menu.tsx"
 import { CommandMenuButton } from "./command-menu.tsx"
 import { CopyButton } from "./copy-button.tsx"
 import { HGDC_ENTRY_PATH } from "../../auth/src/index.ts"
-import { HGDC_ACCOUNT, HGDC_PRODUCTS, PRODUCT_ENTRY_PATH, productMenuEntries } from "./products.ts"
+import { HGDC_ACCOUNT, HGDC_PRODUCTS, PRODUCT_ENTRY_PATH, productMenuEntries, productRailEntries } from "./products.ts"
 import { Meter, Progress } from "./progress.tsx"
 import { RankBar } from "./rank-bar.tsx"
 import { StatusBadge, StatusDot } from "./status.tsx"
@@ -43,10 +43,10 @@ describe("catalogue des produits", () => {
     }
   })
 
-  it("ne met au menu qu'Account et les produits ouverts, avec le produit courant coché", () => {
+  it("ne met au menu que Manager puis les produits ouverts, sans Account, avec le produit courant coché", () => {
     const entries = productMenuEntries({ current: "mail" })
     expect(entries.map((e) => e.name)).toEqual([
-      "Account",
+      "Manager",
       "Host",
       "Mail",
       "Portal",
@@ -55,17 +55,16 @@ describe("catalogue des produits", () => {
       "Docs",
       "IAssistant",
       "ID",
-      "Manager",
     ])
     expect(entries.find((e) => e.current)?.name).toBe("Mail")
     expect(entries.filter((e) => e.hint !== undefined).map((e) => e.name)).toEqual(["IAssistant"])
   })
 
-  it("envoie chaque produit vers son entrée connectée, Account vers sa racine", () => {
+  it("envoie chaque produit vers son entrée connectée, ID vers sa racine", () => {
     expect(PRODUCT_ENTRY_PATH).toBe(HGDC_ENTRY_PATH)
     const entries = productMenuEntries({ current: "Host" })
     expect(Object.fromEntries(entries.map((e) => [e.name, e.href]))).toEqual({
-      Account: "https://account.hgdc.ch",
+      Manager: "https://app.hgdc.ch/manager/auth/hgdc?refresh=background&next=/",
       Host: "https://app.hgdc.ch/host/auth/hgdc?refresh=background&next=/",
       Mail: "https://app.hgdc.ch/mail/auth/hgdc?refresh=background&next=/",
       Portal: "https://app.hgdc.ch/portal/auth/hgdc?refresh=background&next=/",
@@ -74,14 +73,22 @@ describe("catalogue des produits", () => {
       Docs: "https://app.hgdc.ch/docs/auth/hgdc?refresh=background&next=/",
       IAssistant: "https://app.hgdc.ch/iassistant/auth/hgdc?refresh=background&next=/",
       ID: "https://id.hgdc.ch",
-      Manager: "https://app.hgdc.ch/manager/auth/hgdc?refresh=background&next=/",
     })
     expect(HGDC_ACCOUNT.entryHref).toBe(HGDC_ACCOUNT.href)
     for (const product of HGDC_PRODUCTS) expect(product.href).toBe(`https://${product.subdomain}`)
   })
 
-  it("remplace l'adresse d'Account pour le développement", () => {
+  it("remplace l'adresse de Manager pour le développement", () => {
     expect(productMenuEntries({ accountHref: "http://localhost:3000" })[0]?.href).toBe("http://localhost:3000")
+  })
+
+  it("met Manager en tête de la barre des produits, sans Account ni doublon", () => {
+    const { products, account } = productRailEntries({ current: "host" })
+    expect(account.name).toBe("Manager")
+    expect(account.href).toBe("https://app.hgdc.ch/manager/auth/hgdc?refresh=background&next=/")
+    expect(products.map((e) => e.name)).not.toContain("Manager")
+    expect(products.map((e) => e.name)).not.toContain("Account")
+    expect(products.map((e) => e.name)).toContain("ID")
   })
 })
 
@@ -93,7 +100,10 @@ describe("AccountMenu et le catalogue", () => {
     fireEvent.click(screen.getByRole("button", { name: "Compte de Hugo Gebel" }))
     const mail = await screen.findByRole("menuitem", { name: "Mail" })
     expect(mail.getAttribute("href")).toBe("https://app.hgdc.ch/mail/auth/hgdc?refresh=background&next=/")
-    expect(screen.getByRole("menuitem", { name: "Account" }).getAttribute("href")).toBe("https://account.hgdc.ch")
+    expect(screen.queryByRole("menuitem", { name: "Account" })).toBeNull()
+    expect(screen.getByRole("menuitem", { name: "Manager" }).getAttribute("href")).toBe(
+      "https://app.hgdc.ch/manager/auth/hgdc?refresh=background&next=/",
+    )
     expect(screen.getByLabelText("Produit ouvert")).toBeDefined()
     expect(screen.getByRole("menuitem", { name: "Portal" }).getAttribute("href")).toBe(
       "https://app.hgdc.ch/portal/auth/hgdc?refresh=background&next=/",

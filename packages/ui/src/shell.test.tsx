@@ -300,7 +300,7 @@ describe("Barre des produits", () => {
     vi.useRealTimers()
   })
 
-  it("liste les huit produits, Account en tête, chacun par son entrée", () => {
+  it("liste les produits, Manager en tête et sans Account, chacun par son entrée", () => {
     render(
       <AppShell product="mail" nav={null} accountHref="http://localhost:3000">
         Page
@@ -309,7 +309,7 @@ describe("Barre des produits", () => {
     const rail = screen.getByRole("navigation", { name: "Produits" })
     const links = within(rail).getAllByRole("link")
     expect(links.map((link) => link.textContent)).toEqual([
-      "Account",
+      "Manager",
       "Host",
       "Mail",
       "Portal",
@@ -318,7 +318,6 @@ describe("Barre des produits", () => {
       "Docs",
       "IAssistant, Préversion",
       "ID",
-      "Manager",
     ])
     const host = within(rail).getByRole("link", { name: /Host/ })
     expect(host.getAttribute("href")).toBe(`https://app.hgdc.ch/host${PRODUCT_ENTRY_PATH}?refresh=background&next=/`)
@@ -326,7 +325,7 @@ describe("Barre des produits", () => {
     const mail = within(rail).getByRole("link", { name: "Mail" })
     expect(mail.getAttribute("aria-current")).toBe("page")
     expect(mail.getAttribute("href")).toBe("/")
-    expect(within(rail).getByRole("link", { name: "Account" }).getAttribute("href")).toBe("http://localhost:3000")
+    expect(within(rail).getByRole("link", { name: "Manager" }).getAttribute("href")).toBe("http://localhost:3000")
   })
 
   it("porte le sélecteur d'organisation en haut", () => {

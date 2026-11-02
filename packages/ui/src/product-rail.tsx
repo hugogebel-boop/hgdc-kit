@@ -270,7 +270,7 @@ export function ProductRail({
             <RailDivider />
           </>
         ) : null}
-        {/* Account en tête, sous l'organisation : en bas, personne ne le voyait. */}
+        {/* Manager en tête, sous l'organisation : en bas, personne ne le voyait. */}
         <ul className={RAIL_LIST}>
           <ProductLink entry={account} />
           {products.map((entry) => (
