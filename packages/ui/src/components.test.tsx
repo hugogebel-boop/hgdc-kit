@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { Badge } from "./badge.tsx"
 import { Button } from "./button.tsx"
 import { DemoNotice } from "./demo-notice.tsx"
+import { DEMO_READ_ONLY_HINT, DemoReadOnly, DemoReadOnlyProvider } from "./demo-read-only.tsx"
 import { FieldError } from "./field.tsx"
 import { Spinner } from "./spinner.tsx"
 import { ThemeProvider, useTheme } from "./theme.tsx"
@@ -116,5 +117,44 @@ describe("DemoNotice", () => {
   it("prend la phrase du produit", () => {
     render(<DemoNotice signIn={null}>Des visites fictives.</DemoNotice>)
     expect(screen.getByRole("status").textContent).toContain("Des visites fictives.")
+  })
+})
+
+describe("DemoReadOnly", () => {
+  it("laisse le bouton tel quel hors de la démo", () => {
+    render(
+      <DemoReadOnlyProvider value={false}>
+        <DemoReadOnly>
+          <Button>Envoyer</Button>
+        </DemoReadOnly>
+      </DemoReadOnlyProvider>,
+    )
+    const button = screen.getByRole("button", { name: "Envoyer" })
+    expect(button.hasAttribute("disabled")).toBe(false)
+    expect(document.querySelector("[data-demo-read-only]")).toBeNull()
+  })
+
+  it("désactive le bouton dans la démo et dit pourquoi sur une enveloppe focalisable", () => {
+    render(
+      <DemoReadOnlyProvider value>
+        <DemoReadOnly>
+          <Button>Envoyer</Button>
+        </DemoReadOnly>
+      </DemoReadOnlyProvider>,
+    )
+    const button = screen.getByRole("button", { name: "Envoyer" })
+    expect(button.hasAttribute("disabled")).toBe(true)
+    const wrapper = document.querySelector("[data-demo-read-only]")
+    expect(wrapper?.getAttribute("tabindex")).toBe("0")
+    expect(wrapper?.getAttribute("aria-label")).toBe(DEMO_READ_ONLY_HINT)
+  })
+
+  it("n'est pas en démo sans fournisseur", () => {
+    render(
+      <DemoReadOnly>
+        <Button>Envoyer</Button>
+      </DemoReadOnly>,
+    )
+    expect(screen.getByRole("button", { name: "Envoyer" }).hasAttribute("disabled")).toBe(false)
   })
 })
