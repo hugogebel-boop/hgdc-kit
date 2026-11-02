@@ -232,7 +232,7 @@ export type DemoResetOptions = {
   /** Adresse de ping du heartbeat Status qui suit la remise à zéro (`DEMO_RESET_PING_URL`) ; absente : aucun battement. */
   pingUrl: string | undefined
   /** Envoi de l'échec au suivi des erreurs du produit (GlitchTip). */
-  report: (error: unknown) => Promise<void>
+  report: (error: unknown) => Promise<unknown>
   fetch?: (url: string, init: RequestInit) => Promise<Response>
 }
 
