@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.57.0
+
+### Minor Changes
+
+- 5819a15: Démo d'une console sans compte. `@hgdc/auth/demo` : organisation `hgdc-demo` (slug `~demo`), garde fermé par défaut (`refuseDemo`, `readOrgOrDemo`), entrée plafonnée par IP (`demoEntryReader`, `takeDemoEntry`, `enterDemo`) et remise à zéro avec battement (`runDemoReset`). `@hgdc/ui/demo-notice` : bandeau « Démo ».
+
 ## 0.56.0
 
 ### Minor Changes
