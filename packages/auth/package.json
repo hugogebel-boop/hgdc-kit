@@ -31,6 +31,10 @@
       "types": "./dist/demo.d.ts",
       "default": "./dist/demo.js"
     },
+    "./demo/testing": {
+      "types": "./dist/demo-testing.d.ts",
+      "default": "./dist/demo-testing.js"
+    },
     "./events": {
       "types": "./dist/events.d.ts",
       "default": "./dist/events.js"
