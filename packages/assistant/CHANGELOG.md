@@ -1,5 +1,11 @@
 # @hgdc/assistant
 
+## 0.6.1
+
+### Patch Changes
+
+- b5c9302: Type the console runner handler context with `GenericDataModel` instead of `any`.
+
 ## 0.6.0
 
 ### Minor Changes

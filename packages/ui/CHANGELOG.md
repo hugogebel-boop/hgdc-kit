@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.59.0
+
+### Minor Changes
+
+- c833b84: Menu du compte et barre des produits : Manager prend la place d'Account en tête. Account n'y figure plus, ID reste dans la liste. `HGDC_MANAGER` exporté ; `accountHref` remplace désormais l'adresse de Manager.
+
 ## 0.58.0
 
 ### Minor Changes
