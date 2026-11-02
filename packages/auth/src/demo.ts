@@ -6,12 +6,12 @@
  * - Identification : `DEMO_ORGANIZATION_ID`, `DEMO_SLUG`, `isDemoOrganization`, `isDemoPath`.
  * - Garde : `refuseDemo` en tête de toute garde d'écriture ou d'action, `readOrgOrDemo` pour les
  *   seules queries d'affichage (fermé par défaut).
- * - Entrée : un jeton par IP et par entrée (`demoEntryReader` côté serveur du front,
- *   `takeDemoEntry` côté Convex, `enterDemo` qui ne bloque jamais sur une panne).
+ * - Entrée : un jeton par IP et par entrée (`demoEntryRequest` côté serveur du front, signée sans
+ *   transmettre le secret, `takeDemoEntry` côté Convex, `enterDemo` qui ne bloque jamais sur une panne).
  * - Remise à zéro : `runDemoReset` lance le remplissage, puis un battement de heartbeat.
  */
 
-import { ConvexError } from "convex/values"
+import { ConvexError, v, type VFloat64, type VString } from "convex/values"
 
 /** Identifiant fixe, le même dans chaque produit : jamais un identifiant d'Account (ceux-ci sont aléatoires). */
 export const DEMO_ORGANIZATION_ID = "hgdc-demo"
@@ -162,19 +162,46 @@ export function demoEntryAddressKey(ip: string): string {
  */
 export async function demoEntryReader(secret: string, ip: string | null | undefined): Promise<string | null> {
   if (!ip) return null
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(`demo-entry:${secret}`),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  )
-  const signature = new Uint8Array(
-    await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(demoEntryAddressKey(ip))),
-  )
-  let binary = ""
-  for (const byte of signature.subarray(0, 24)) binary += String.fromCharCode(byte)
-  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "")
+  return (await hmac(`demo-entry:${secret}`, demoEntryAddressKey(ip))).slice(0, 32)
+}
+
+/**
+ * Durée de validité d'une preuve d'entrée, de part et d'autre de l'heure de Convex : couvre l'écart
+ * d'horloge entre le front (edge, Vercel) et Convex. Une preuve relue dans un journal ne sert que
+ * pendant cette fenêtre, et seulement pour vider le seau du même visiteur.
+ */
+export const DEMO_ENTRY_PROOF_TTL_MS = 120_000
+
+/**
+ * Arguments de `demo.enter` : la clé du visiteur, l'heure de la demande et sa preuve. Le secret de
+ * relais ne voyage jamais, ni dans les arguments (journalisés par Convex) ni ailleurs.
+ */
+export type DemoEntryRequest = { reader: string; at: number; proof: string }
+
+/** Validateurs Convex de `DemoEntryRequest` : `args: DEMO_ENTRY_ARGS` dans la mutation `demo.enter`. */
+export const DEMO_ENTRY_ARGS: { reader: VString; at: VFloat64; proof: VString } = {
+  reader: v.string(),
+  at: v.number(),
+  proof: v.string(),
+}
+
+/**
+ * Côté serveur du front : la demande d'entrée du visiteur, signée par le secret de relais (HMAC-SHA-256
+ * de la clé et de l'heure), ou `null` sans IP. Convex refait la signature : il connaît le secret, il ne
+ * le reçoit pas.
+ */
+export async function demoEntryRequest(
+  secret: string,
+  ip: string | null | undefined,
+  now: number = Date.now(),
+): Promise<DemoEntryRequest | null> {
+  const reader = await demoEntryReader(secret, ip)
+  if (!reader) return null
+  return { reader, at: now, proof: await demoEntryProof(secret, reader, now) }
+}
+
+async function demoEntryProof(secret: string, reader: string, at: number): Promise<string> {
+  return await hmac(`demo-entry-proof:${secret}`, `${reader}.${at}`)
 }
 
 export type DemoEntryResult = { allowed: boolean; retryAfterMs?: number }
@@ -183,19 +210,41 @@ export type DemoEntryResult = { allowed: boolean; retryAfterMs?: number }
 export type DemoEntryLimit = (reader: string) => Promise<{ ok: boolean; retryAfter?: number | undefined }>
 
 /**
- * Côté Convex, dans une mutation publique : vérifie le secret de relais (temps constant) et la forme
- * de la clé, puis prend un jeton. Un appel direct depuis un navigateur n'a pas le secret : refusé, sans
- * toucher au seau. Sans secret configuré côté Convex, l'entrée passe sans rien compter (aucune ligne
- * écrite pour une clé inventée), comme le front qui ne bloque jamais sur une panne.
+ * Côté Convex, dans la mutation publique `demo.enter` : vérifie la preuve (temps constant) contre chaque
+ * secret accepté, puis prend un jeton dans le seau du visiteur.
+ *
+ * `secrets` : le secret courant et, pendant une rotation, l'ancien (`<NOM>_PREVIOUS`) ; les valeurs
+ * absentes sont ignorées. Sans aucun secret configuré, l'entrée passe sans rien compter.
+ *
+ * Une demande dont la preuve ne tient pas (secret désaccordé, horloge décalée, appel direct d'un
+ * navigateur) passe aussi, sans rien compter : l'entrée ne protège aucune donnée, elle freine les
+ * rechargements en boucle à travers le front. Ce qui compte est qu'une clé inventée n'écrive jamais
+ * de ligne dans le seau, et qu'un secret désaccordé ne ferme jamais la démo. L'écart se voit dans les
+ * journaux (`demo-entry-refused`, sans valeur).
  */
 export async function takeDemoEntry(
-  args: { relay: string; reader: string },
-  options: { secret: string | undefined; limit: DemoEntryLimit },
+  args: DemoEntryRequest,
+  options: { secrets: readonly (string | undefined)[]; limit: DemoEntryLimit; now?: number },
 ): Promise<DemoEntryResult> {
-  if (!options.secret) return { allowed: true }
-  if (!(await sameDigest(args.relay, options.secret)) || !DEMO_ENTRY_READER.test(args.reader)) return { allowed: false }
+  const secrets = options.secrets.filter((secret): secret is string => Boolean(secret))
+  if (secrets.length === 0) return { allowed: true }
+  if (!(await validEntryProof(args, secrets, options.now ?? Date.now()))) {
+    console.warn(JSON.stringify({ event: "demo-entry-refused" }))
+    return { allowed: true }
+  }
   const { ok, retryAfter } = await options.limit(args.reader)
   return ok ? { allowed: true } : { allowed: false, ...(retryAfter === undefined ? {} : { retryAfterMs: retryAfter }) }
+}
+
+async function validEntryProof(args: DemoEntryRequest, secrets: readonly string[], now: number): Promise<boolean> {
+  if (!DEMO_ENTRY_READER.test(args.reader) || !Number.isSafeInteger(args.at)) return false
+  if (Math.abs(now - args.at) > DEMO_ENTRY_PROOF_TTL_MS) return false
+  // Chaque secret est essayé, même après un succès : la durée ne dit pas lequel a servi.
+  let valid = false
+  for (const secret of secrets) {
+    if (await sameDigest(args.proof, await demoEntryProof(secret, args.reader, args.at))) valid = true
+  }
+  return valid
 }
 
 /**
@@ -216,6 +265,21 @@ export async function enterDemo(take: (() => Promise<DemoEntryResult>) | null): 
 /** Texte de l'écran « trop de visites ». */
 export function demoBusyMessage(seconds: number): string {
   return `Beaucoup de visites viennent de ton adresse. Réessaie dans ${seconds < 60 ? `${seconds} secondes` : "une minute"}.`
+}
+
+/** HMAC-SHA-256 en base64url, sans remplissage (43 caractères). */
+async function hmac(key: string, message: string): Promise<string> {
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(key),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  )
+  const signature = new Uint8Array(await crypto.subtle.sign("HMAC", cryptoKey, new TextEncoder().encode(message)))
+  let binary = ""
+  for (const byte of signature) binary += String.fromCharCode(byte)
+  return btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "")
 }
 
 async function sameDigest(a: string, b: string): Promise<boolean> {
