@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { Badge } from "./badge.tsx"
 import { Button } from "./button.tsx"
+import { DemoNotice } from "./demo-notice.tsx"
 import { FieldError } from "./field.tsx"
 import { Spinner } from "./spinner.tsx"
 import { ThemeProvider, useTheme } from "./theme.tsx"
@@ -100,5 +101,20 @@ describe("ThemeProvider", () => {
       </ThemeProvider>,
     )
     expect(screen.getByRole("button", { name: "dark" })).toBeDefined()
+  })
+})
+
+describe("DemoNotice", () => {
+  it("annonce la démo, sa phrase par défaut et le bouton de connexion du produit", () => {
+    render(<DemoNotice signIn={<a href="/connexion">Se connecter</a>} />)
+    const notice = screen.getByRole("status")
+    expect(notice.textContent).toContain("Démo")
+    expect(notice.textContent).toContain("rien n'est enregistré")
+    expect(screen.getByRole("link", { name: "Se connecter" }).getAttribute("href")).toBe("/connexion")
+  })
+
+  it("prend la phrase du produit", () => {
+    render(<DemoNotice signIn={null}>Des visites fictives.</DemoNotice>)
+    expect(screen.getByRole("status").textContent).toContain("Des visites fictives.")
   })
 })

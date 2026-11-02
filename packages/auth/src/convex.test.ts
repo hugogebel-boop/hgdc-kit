@@ -131,6 +131,19 @@ describe("convexAuthProviders", () => {
 })
 
 describe("requireOrgMember", () => {
+  it("refuse l'organisation de démo avant toute session, même avec une appartenance", async () => {
+    const demo: Membership[] = [{ organizationId: "hgdc-demo", userId: "ada", role: "owner" }]
+    const error = await requireOrgMember(ctxFor("ada", demo), "hgdc-demo", { issuer: ISSUER, load }).catch(
+      (e: unknown) => e,
+    )
+    expect(error).toBeInstanceOf(ConvexError)
+    expect((error as ConvexError<{ code: string }>).data.code).toBe("DEMO_READ_ONLY")
+    const anonymous = await requireOrgMember(ctxFor(null, demo), "hgdc-demo", { issuer: ISSUER, load }).catch(
+      (e: unknown) => e,
+    )
+    expect((anonymous as ConvexError<{ code: string }>).data.code).toBe("DEMO_READ_ONLY")
+  })
+
   it("laisse passer un membre et renvoie son rôle", async () => {
     const access = await requireOrgMember(ctxFor("ada", acme), "acme", { load, issuer: ISSUER })
     expect(access).toMatchObject({ userId: "ada", role: "owner" })
