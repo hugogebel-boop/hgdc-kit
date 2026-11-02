@@ -170,7 +170,7 @@ export async function demoEntryReader(secret: string, ip: string | null | undefi
  * d'horloge entre le front (edge, Vercel) et Convex. Une preuve relue dans un journal ne sert que
  * pendant cette fenêtre, et seulement pour vider le seau du même visiteur.
  */
-export const DEMO_ENTRY_PROOF_TTL_MS = 120_000
+export const DEMO_ENTRY_PROOF_TTL_MS = 60_000
 
 /**
  * Arguments de `demo.enter` : la clé du visiteur, l'heure de la demande et sa preuve. Le secret de

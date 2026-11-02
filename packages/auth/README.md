@@ -34,7 +34,7 @@ export const enter = mutation({
 })
 ```
 
-Rotation du secret : poser le nouveau dans `<NOM>` et l’ancien dans `<NOM>_PREVIOUS` côté Convex, redéployer le front avec le nouveau, puis retirer `<NOM>_PREVIOUS`. Une preuve qui ne tient pas (secret désaccordé, horloge décalée de plus de deux minutes) laisse entrer sans rien compter : la démo ne se ferme jamais.
+Rotation du secret : poser le nouveau dans `<NOM>` et l’ancien dans `<NOM>_PREVIOUS` côté Convex, redéployer le front avec le nouveau, puis retirer `<NOM>_PREVIOUS` (tant qu’elle reste posée, l’ancien secret compte encore). Pendant la rotation, un visiteur a deux seaux, un par secret : son quota double quelques minutes. Une preuve qui ne tient pas (secret désaccordé, horloge décalée de plus d’une minute) laisse entrer sans rien compter : la démo ne se ferme jamais.
 
 ## Connecter un produit
 

@@ -115,6 +115,8 @@ describe("entrée", () => {
     expect(await demoEntryReader(SECRET, "192.0.2.7")).toBe(a)
     expect(await demoEntryReader(SECRET, "192.0.2.8")).not.toBe(a)
     expect(await demoEntryReader(`${SECRET}x`, "192.0.2.7")).not.toBe(a)
+    // Vecteur figé (kit 0.32.0) : changer la dérivation viderait tous les seaux en place.
+    expect(a).toBe("D2ZY85QYFTwSCE2z6Pn9Ipgh3GT9uW2m")
     // Sans IP, rien n'est compté : pas de seau commun à tous les visiteurs sans adresse.
     expect(await demoEntryReader(SECRET, null)).toBeNull()
     expect(await demoEntryReader(SECRET, "")).toBeNull()
