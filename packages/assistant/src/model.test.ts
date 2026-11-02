@@ -10,7 +10,7 @@ import {
   requestCost,
   requestMicros,
 } from "./model.ts"
-import { keyHint, openSecret, sealSecret } from "./secret.ts"
+import { keyHint, openSecret, openWithKey, sealSecret, sealWithKey } from "./secret.ts"
 
 describe("clés", () => {
   it("reconnaît une clé Anthropic à son préfixe", () => {
@@ -59,5 +59,27 @@ describe("secret scellé", () => {
     await expect(sealSecret("x", { secret: "court", context: "org_1" })).rejects.toThrow("trop court")
     // Copiée dans une autre organisation, la valeur ne s'ouvre pas.
     await expect(openSecret(sealed, { secret, context: "org_2" })).rejects.toThrow("illisible")
+  })
+})
+
+describe("secret scellé avec une clé importée", () => {
+  const raw = Uint8Array.from({ length: 32 }, (_, i) => i)
+  const other = Uint8Array.from({ length: 32 }, (_, i) => 255 - i)
+  const importKey = (bytes: Uint8Array<ArrayBuffer>) =>
+    crypto.subtle.importKey("raw", bytes, "AES-GCM", false, ["encrypt", "decrypt"])
+
+  it("relit une valeur scellée par l'ancien secretBox de Portal (sans données associées)", async () => {
+    // Produit par portal convex/lib/secretBox.ts avant sa reprise par le kit, clé 0..31.
+    const legacy = "v1.4zijZoB+Je2P3tHc.adB1KB8G8Ju70sfpkQ9K5NKjgPrD0OSR2WmD46pbUo4gzA=="
+    expect(await openWithKey(legacy, await importKey(raw), "")).toBe("re_live_abcdef1234")
+  })
+
+  it("refuse une autre clé, un autre contexte ou une valeur abîmée", async () => {
+    const key = await importKey(raw)
+    const sealed = await sealWithKey("whsec_abc", key, "org_1")
+    expect(await openWithKey(sealed, key, "org_1")).toBe("whsec_abc")
+    await expect(openWithKey(sealed, key, "")).rejects.toThrow("illisible")
+    await expect(openWithKey(sealed, await importKey(other), "org_1")).rejects.toThrow("illisible")
+    await expect(openWithKey("v2.a.b", key, "")).rejects.toThrow("illisible")
   })
 })
