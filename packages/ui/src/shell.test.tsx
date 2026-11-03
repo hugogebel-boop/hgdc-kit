@@ -312,7 +312,6 @@ describe("Barre des produits", () => {
       "Manager",
       "Host",
       "Mail",
-      "Portal",
       "Status",
       "Analytics",
       "Docs",

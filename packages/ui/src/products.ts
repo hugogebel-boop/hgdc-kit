@@ -149,7 +149,8 @@ export const HGDC_MANAGER: HgdcCatalogProduct = product(
 export const HGDC_PRODUCTS: ReadonlyArray<HgdcCatalogProduct> = [
   product("Host", "Ton site en ligne, déployé à chaque modification.", Rocket01Icon, "live"),
   product("Mail", "Tes e-mails, newsletters et formulaires, envoyés depuis ton adresse.", Mail01Icon, "live"),
-  product("Portal", "Un espace partagé où ton client suit son projet, signe et paie.", Briefcase01Icon, "live"),
+  // Masqué temporairement le 2026-11-03 ; la console reste en ligne.
+  product("Portal", "Un espace partagé où ton client suit son projet, signe et paie.", Briefcase01Icon, "soon"),
   product("Status", "La surveillance de tes sites et ta page de statut.", Activity01Icon, "live"),
   product("Analytics", "Tes visiteurs mesurés, sans cookies ni bannière.", Analytics01Icon, "live"),
   product("Docs", "Ta documentation en ligne, avec un assistant qui y répond.", BookOpen01Icon, "live"),

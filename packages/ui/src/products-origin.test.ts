@@ -57,7 +57,7 @@ describe("barre des produits sous une origine partagée (ADR 0020)", () => {
     expect(by.mail).toMatchObject({ href: "/mail/auth/hgdc?refresh=background&next=/", sameOrigin: true })
     expect(by.host).toMatchObject({ href: "/host/auth/hgdc?refresh=background&next=/", sameOrigin: true })
     expect(by.status).toMatchObject({ href: "/status/auth/hgdc?refresh=background&next=/", sameOrigin: true })
-    expect(by.portal).toMatchObject({ href: "/portal/auth/hgdc?refresh=background&next=/", sameOrigin: true })
+    expect(by.portal).toBeUndefined()
     // Le produit courant : sa racine sous sa base, sans détour par l'entrée, jamais marqué.
     expect(by.analytics).toMatchObject({ href: "/analytics/", current: true })
     expect(by.analytics?.sameOrigin).toBeUndefined()

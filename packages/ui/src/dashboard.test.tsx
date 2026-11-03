@@ -49,7 +49,6 @@ describe("catalogue des produits", () => {
       "Manager",
       "Host",
       "Mail",
-      "Portal",
       "Status",
       "Analytics",
       "Docs",
@@ -67,7 +66,6 @@ describe("catalogue des produits", () => {
       Manager: "https://app.hgdc.ch/manager/auth/hgdc?refresh=background&next=/",
       Host: "https://app.hgdc.ch/host/auth/hgdc?refresh=background&next=/",
       Mail: "https://app.hgdc.ch/mail/auth/hgdc?refresh=background&next=/",
-      Portal: "https://app.hgdc.ch/portal/auth/hgdc?refresh=background&next=/",
       Status: "https://app.hgdc.ch/status/auth/hgdc?refresh=background&next=/",
       Analytics: "https://app.hgdc.ch/analytics/auth/hgdc?refresh=background&next=/",
       Docs: "https://app.hgdc.ch/docs/auth/hgdc?refresh=background&next=/",
@@ -105,9 +103,7 @@ describe("AccountMenu et le catalogue", () => {
       "https://app.hgdc.ch/manager/auth/hgdc?refresh=background&next=/",
     )
     expect(screen.getByLabelText("Produit ouvert")).toBeDefined()
-    expect(screen.getByRole("menuitem", { name: "Portal" }).getAttribute("href")).toBe(
-      "https://app.hgdc.ch/portal/auth/hgdc?refresh=background&next=/",
-    )
+    expect(screen.queryByRole("menuitem", { name: "Portal" })).toBeNull()
   })
 
   it("garde une liste passée par le produit, et la retire si elle est vide", async () => {
