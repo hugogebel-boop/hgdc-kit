@@ -36,7 +36,8 @@ describe("catalogue des produits", () => {
       "Manager",
     ])
     for (const product of [HGDC_ACCOUNT, ...HGDC_PRODUCTS]) {
-      expect(product.name).toBe(product.word)
+      // Basalte est le nom affiché de host ; les autres s'affichent par leur mot.
+      expect(product.name).toBe(product.word === "Host" ? "Basalte" : product.word)
       expect(product.href).toBe(`https://${product.subdomain}`)
       expect(product.subdomain).toBe(`${product.word.toLowerCase()}.hgdc.ch`)
       expect(product.pitch).not.toMatch(/[–—]|\b(vous|votre|vos)\b/i)
@@ -47,7 +48,7 @@ describe("catalogue des produits", () => {
     const entries = productMenuEntries({ current: "mail" })
     expect(entries.map((e) => e.name)).toEqual([
       "Manager",
-      "Host",
+      "Basalte",
       "Mail",
       "Status",
       "Analytics",
@@ -64,7 +65,7 @@ describe("catalogue des produits", () => {
     const entries = productMenuEntries({ current: "Host" })
     expect(Object.fromEntries(entries.map((e) => [e.name, e.href]))).toEqual({
       Manager: "https://app.hgdc.ch/manager/auth/hgdc?refresh=background&next=/",
-      Host: "https://app.hgdc.ch/host/auth/hgdc?refresh=background&next=/",
+      Basalte: "https://app.hgdc.ch/host/auth/hgdc?refresh=background&next=/",
       Mail: "https://app.hgdc.ch/mail/auth/hgdc?refresh=background&next=/",
       Status: "https://app.hgdc.ch/status/auth/hgdc?refresh=background&next=/",
       Analytics: "https://app.hgdc.ch/analytics/auth/hgdc?refresh=background&next=/",
