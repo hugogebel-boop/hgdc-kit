@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.61.1
+
+### Patch Changes
+
+- 1eb02e2: `productPage` mène à `https://hgdc.ch/logiciels/<mot>` : la page des produits du site a changé d'adresse (l'ancienne redirige en 301).
+
 ## 0.61.0
 
 ### Minor Changes
