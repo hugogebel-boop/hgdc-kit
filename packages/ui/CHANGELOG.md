@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.61.0
+
+### Minor Changes
+
+- df22e8a: Portal passe au stade `soon` : il disparaît de la barre des produits, du menu du compte et des listes de produits ouverts. Sa console reste en ligne.
+
 ## 0.60.0
 
 ### Minor Changes
