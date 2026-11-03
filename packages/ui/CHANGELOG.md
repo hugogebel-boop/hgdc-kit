@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.60.0
+
+### Minor Changes
+
+- 1a5a525: `AppShell` retient le dernier produit ouvert (`SHELL_LAST_PRODUCT_KEY`, `rememberLastProduct` de `@hgdc/ui/shell-memory`), pour que l'accueil d'`app.hgdc.ch` y renvoie.
+
 ## 0.59.0
 
 ### Minor Changes
