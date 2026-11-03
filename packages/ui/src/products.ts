@@ -26,7 +26,7 @@ export const PRODUCT_STAGE_LABEL: Readonly<Record<ProductStage, string>> = {
 export type HgdcCatalogProduct = {
   /** Le mot du produit, qui sert de sous-domaine : « Host ». */
   word: string
-  /** Nom affiché, le mot seul (« Host ») : la famille ne se répète pas devant chaque produit. */
+  /** Nom affiché, le mot seul (« Mail », « Basalte » pour `host`) : la famille ne se répète pas devant chaque produit. */
   name: string
   /** « host.hgdc.ch ». */
   subdomain: string
@@ -108,14 +108,21 @@ export function productEntryHref(
  */
 export const PRODUCT_ENTRY_REFRESH_QUERY = "refresh=background&next=/"
 
-function product(word: string, pitch: string, icon: IconSvgElement, stage: ProductStage): HgdcCatalogProduct {
+function product(
+  word: string,
+  pitch: string,
+  icon: IconSvgElement,
+  stage: ProductStage,
+  /** Nom affiché quand il diffère du mot de l'adresse (Basalte, servi sous `host`). */
+  name = word,
+): HgdcCatalogProduct {
   const badge = word.toLowerCase()
   if (!isFamilyProduct(badge)) throw new Error(`@hgdc/ui/products : pas de pastille pour « ${word} »`)
   const subdomain = `${badge}.hgdc.ch`
   const href = `https://${subdomain}`
   return {
     word,
-    name: word,
+    name,
     subdomain,
     href,
     entryHref: productEntryHref(badge),
@@ -147,7 +154,8 @@ export const HGDC_MANAGER: HgdcCatalogProduct = product(
 
 /** Les produits de la famille, dans leur ordre d'affichage. Account n'en fait pas partie (`HGDC_ACCOUNT`). */
 export const HGDC_PRODUCTS: ReadonlyArray<HgdcCatalogProduct> = [
-  product("Host", "Ton site en ligne, déployé à chaque modification.", Rocket01Icon, "live"),
+  // Basalte est le nom affiché de Host depuis le 2026-11-03 ; adresses, pastille et clés restent en `host`.
+  product("Host", "Ton site en ligne, déployé à chaque modification.", Rocket01Icon, "live", "Basalte"),
   product("Mail", "Tes e-mails, newsletters et formulaires, envoyés depuis ton adresse.", Mail01Icon, "live"),
   // Masqué temporairement le 2026-11-03 ; la console reste en ligne.
   product("Portal", "Un espace partagé où ton client suit son projet, signe et paie.", Briefcase01Icon, "soon"),

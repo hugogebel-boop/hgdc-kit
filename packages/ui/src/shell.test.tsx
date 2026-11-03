@@ -310,7 +310,7 @@ describe("Barre des produits", () => {
     const links = within(rail).getAllByRole("link")
     expect(links.map((link) => link.textContent)).toEqual([
       "Manager",
-      "Host",
+      "Basalte",
       "Mail",
       "Status",
       "Analytics",
@@ -318,7 +318,7 @@ describe("Barre des produits", () => {
       "IAssistant, Préversion",
       "ID",
     ])
-    const host = within(rail).getByRole("link", { name: /Host/ })
+    const host = within(rail).getByRole("link", { name: /Basalte/ })
     expect(host.getAttribute("href")).toBe(`https://app.hgdc.ch/host${PRODUCT_ENTRY_PATH}?refresh=background&next=/`)
     expect(host.getAttribute("aria-current")).toBeNull()
     const mail = within(rail).getByRole("link", { name: "Mail" })
