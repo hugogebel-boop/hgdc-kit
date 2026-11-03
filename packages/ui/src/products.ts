@@ -41,7 +41,7 @@ export type HgdcCatalogProduct = {
    */
   entryHref: string
   /**
-   * Page du produit sur le site : `https://hgdc.ch/h-collection/<mot>`. Absente tant que le produit
+   * Page du produit sur le site : `https://hgdc.ch/logiciels/<mot>`. Absente tant que le produit
    * est « soon » : sa page n'existe pas encore.
    */
   productPage?: string | undefined
@@ -65,7 +65,7 @@ export type HgdcCatalogProduct = {
  * quand cette session existe.
  */
 /** Base des pages produit du site : `<base>/<mot>`. */
-export const PRODUCT_PAGE_BASE = "https://hgdc.ch/h-collection"
+export const PRODUCT_PAGE_BASE = "https://hgdc.ch/logiciels"
 
 export const PRODUCT_ENTRY_PATH = "/auth/hgdc"
 
