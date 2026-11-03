@@ -5,9 +5,9 @@ import { HGDC_PRODUCTS, productMenuEntries, productRailEntries } from "./product
 describe("page produit sur le site (productPage)", () => {
   it("déduit l'adresse du mot pour chaque produit ouvert", () => {
     const host = HGDC_PRODUCTS.find((item) => item.word === "Host")
-    expect(host?.productPage).toBe("https://hgdc.ch/h-collection/host")
+    expect(host?.productPage).toBe("https://hgdc.ch/logiciels/host")
     for (const item of HGDC_PRODUCTS.filter((p) => p.stage !== "soon")) {
-      expect(item.productPage).toBe(`https://hgdc.ch/h-collection/${item.badge}`)
+      expect(item.productPage).toBe(`https://hgdc.ch/logiciels/${item.badge}`)
     }
   })
 
@@ -25,7 +25,7 @@ describe("ID", () => {
       badge: "id",
       href: "https://id.hgdc.ch",
       entryHref: "https://id.hgdc.ch",
-      productPage: "https://hgdc.ch/h-collection/id",
+      productPage: "https://hgdc.ch/logiciels/id",
     })
   })
 
