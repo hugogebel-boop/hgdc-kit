@@ -24,7 +24,7 @@ import {
 import { ShellContext } from "./shell-context.ts"
 import { familyProductName } from "./shell-frame.tsx"
 import { OtherViewLink, ShellCommonLinks, type AppShellLinks } from "./shell-links.tsx"
-import { rememberShellNavHeight } from "./shell-memory.ts"
+import { rememberLastProduct, rememberShellNavHeight } from "./shell-memory.ts"
 import { ProductRailShownContext, ShellLeaveContext, StatusPageContext } from "./shell-placement.ts"
 import { SidebarHead } from "./sidebar-head.tsx"
 import { useToggleShortcut } from "./sidebar-rail.ts"
@@ -186,6 +186,7 @@ export function AppShell({
   // barre latérale à la prochaine arrivée sur ce produit.
   useIsomorphicLayoutEffect(() => {
     document.documentElement.dataset.hgdcProduct = product
+    rememberLastProduct(product)
   }, [product])
   const navHeight = useRef(0)
   useEffect(() => {
