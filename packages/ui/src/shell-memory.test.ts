@@ -5,9 +5,11 @@ import { afterEach, describe, expect, it } from "vitest"
 import {
   forgetShellOrganization,
   markProductSwitch,
+  rememberLastProduct,
   rememberShellNavHeight,
   rememberShellOrganization,
   SHELL_BOOT_CONFIG,
+  SHELL_LAST_PRODUCT_KEY,
   SHELL_NAV_KEY_PREFIX,
   SHELL_ORG_KEY,
   SHELL_SWITCH_KEY,
@@ -190,6 +192,12 @@ describe("mémoire de l'organisation et du passage", () => {
     expect(localStorage.getItem(`${SHELL_NAV_KEY_PREFIX}mail`)).toBeNull()
     rememberShellNavHeight("mail", 151.6)
     expect(localStorage.getItem(`${SHELL_NAV_KEY_PREFIX}mail`)).toBe("152")
+  })
+
+  it("retient le dernier produit ouvert, pour l'accueil d'app.hgdc.ch", () => {
+    rememberLastProduct("mail")
+    rememberLastProduct("host")
+    expect(localStorage.getItem(SHELL_LAST_PRODUCT_KEY)).toBe("host")
   })
 
   it("le passage d'un produit à l'autre se lit une fois, et seulement s'il est récent", () => {

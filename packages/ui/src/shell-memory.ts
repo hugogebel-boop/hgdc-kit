@@ -20,6 +20,8 @@ import { PRODUCT_ORIGINS } from "./products.ts"
 export const SHELL_ORG_KEY = "hgdc-shell:org"
 /** Hauteur en pixels de la navigation d'un produit : `hgdc-shell:nav:<produit>`. */
 export const SHELL_NAV_KEY_PREFIX = "hgdc-shell:nav:"
+/** Dernier produit ouvert (son mot), en `localStorage` : l'accueil d'`app.hgdc.ch` y renvoie. */
+export const SHELL_LAST_PRODUCT_KEY = "hgdc-shell:last"
 /** Passage d'un produit à l'autre (horodatage), en `sessionStorage`. */
 export const SHELL_SWITCH_KEY = "hgdc-shell:switch"
 /** Au-delà, un passage noté n'est plus celui qu'on vit (onglet laissé, retour bien plus tard). */
@@ -190,6 +192,12 @@ export function forgetShellOrganization(): void {
 export function rememberShellNavHeight(product: string, height: number): void {
   if (!browser() || !(height > 0)) return
   storageSet("localStorage", SHELL_NAV_KEY_PREFIX + product, String(Math.round(height)))
+}
+
+/** Retient le produit affiché (`AppShell` le fait), pour que l'accueil d'`app.hgdc.ch` y renvoie. */
+export function rememberLastProduct(product: string): void {
+  if (!browser()) return
+  storageSet("localStorage", SHELL_LAST_PRODUCT_KEY, product)
 }
 
 /** Note le départ vers un autre produit (clic dans la barre des produits). */
