@@ -40,10 +40,15 @@ describe("identité H Collection", () => {
   })
 
   it("garde le même dégradé dans la pastille, PRODUCT_GRADIENT et les jetons", () => {
-    for (const product of FAMILY_PRODUCTS) {
+    // Le logo de Basalte (host) est une image, sans dégradé : seuls ses jetons de couleur restent.
+    const drawn = FAMILY_PRODUCTS.filter((product) => !PRODUCT_BADGE_SVG[product].includes("<image"))
+    for (const product of drawn) {
       const { from, to } = PRODUCT_GRADIENT[product]
       expect(PRODUCT_BADGE_SVG[product]).toContain(`stop-color="${from}"`)
       expect(PRODUCT_BADGE_SVG[product]).toContain(`stop-color="${to}"`)
+    }
+    for (const product of FAMILY_PRODUCTS) {
+      const { from, to } = PRODUCT_GRADIENT[product]
       expect(css).toContain(`--product-${product}-from: ${from};`)
       expect(css).toContain(`--product-${product}-to: ${to};`)
     }

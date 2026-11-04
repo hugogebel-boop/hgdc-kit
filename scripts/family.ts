@@ -14,6 +14,8 @@
 // la place de l'ancienne tuile. La maskable garde l'encre dans le cercle sûr (80 %), toujours
 // sans fond. Le favicon reste sans fond, marge 4 %, variante sombre sous prefers-color-scheme: dark.
 // Le H « Double » reste sans fond, en deux variantes (clair, sombre).
+// Basalte (`host`) est une image (pierre dessinée par Hugo, PNG de 384 px dans `family/host.svg`), pas un
+// tracé : même chaîne pour le clair et le sombre, et pas de dégradé à reprendre dans PRODUCT_GRADIENT.
 //
 // Écrit :
 //   packages/ui/family/tile/<mot>.svg
