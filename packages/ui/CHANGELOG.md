@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.63.0
+
+### Minor Changes
+
+- d6de6d7: Basalte (`host`) gets its stone logo: product icon, favicons, app icons and e-mail icon. The strata drawing stays the Déploiements module icon on hgdc.ch.
+
 ## 0.62.0
 
 ### Minor Changes
