@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.63.1
+
+### Patch Changes
+
+- 440a15c: Host keeps its strata icon: the stone logo belongs to Basalte, the platform, not to the Déploiements module.
+
 ## 0.63.0
 
 ### Minor Changes
