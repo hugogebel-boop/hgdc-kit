@@ -4,6 +4,7 @@ import {
   applyCoreEvent,
   coreEventSchema,
   coreLogoUrl,
+  coreNameSchema,
   coreProjectDomainsPath,
   fetchCoreSnapshot,
   handleCoreEventRequest,
@@ -399,5 +400,24 @@ describe("verifyCoreCall", () => {
     expect(await verify({ ...headers, "x-hgdc-nonce": "court" })).toBeNull()
     expect(await verify({ ...headers, "x-hgdc-timestamp": "abc" })).toBeNull()
     expect(await verify({})).toBeNull()
+  })
+})
+
+describe("revue du cœur", () => {
+  it("ne laisse pas des traces cacher un projet en ligne", async () => {
+    const { db, tables } = fakeDb()
+    for (let index = 0; index < 1000; index++)
+      await db.insert("coreProjects", { organizationId: "o1", projectId: `t${index}`, syncedAt: NOW, removedAt: NOW })
+    await applyCoreEvent({ db }, changed())
+    expect((await listCoreProjects({ db }, "o1")).map((row) => row.id)).toEqual(["p1"])
+    await purgeCoreCopy({ db }, "o1")
+    expect(tables.coreProjects!.filter((row) => row.removedAt === undefined)).toEqual([])
+  })
+
+  it("refuse un logo dont l'hôte finit par un point et un nom avec un séparateur de ligne", () => {
+    expect(coreLogoUrl("https://localhost./a.png")).toBeNull()
+    expect(coreLogoUrl("https://metadata.google.internal./a.png")).toBeNull()
+    expect(coreNameSchema.safeParse("Un\u2028deux").success).toBe(false)
+    expect(coreNameSchema.safeParse("Un\u2029deux").success).toBe(false)
   })
 })
