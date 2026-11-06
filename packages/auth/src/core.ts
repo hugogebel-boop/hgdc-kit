@@ -468,6 +468,10 @@ export const coreSnapshotPath = (organizationId: string): string =>
 export const coreProjectsPath = (organizationId: string): string =>
   `/products/v1/organizations/${encodeURIComponent(organizationId)}/projects`
 
+/** Route de Déploiements, sur `actions.host` : domaines de production vérifiés d'un projet du cœur. */
+export const coreProjectDomainsPath = (organizationId: string, projectId: string): string =>
+  `/hgdc/v1/organizations/${encodeURIComponent(organizationId)}/projects/${encodeURIComponent(projectId)}/domains`
+
 export type CoreSnapshot = { readAt: number; projects: Array<CoreProject>; branding: CoreBranding }
 
 /** Ce que le cœur rend à un module : ses seuls projets activés, et la personnalisation de l'organisation. */
@@ -501,6 +505,37 @@ export async function signCoreCall(options: {
     "x-hgdc-nonce": nonce,
     "x-hgdc-signature": `v2=${mac}`,
   }
+}
+
+/**
+ * Vérifie un appel signé par `signCoreCall` reçu par un module (ADR 0019, chemin d'un module à un autre) :
+ * produit connu de `secrets`, horodatage dans la fenêtre, route et corps signés. `null` : refus, sans
+ * dire pourquoi. Le nonce revient à l'appelant : à réserver dès qu'une route écrit.
+ */
+export async function verifyCoreCall(
+  headers: Headers,
+  options: {
+    method: "GET" | "POST"
+    path: string
+    body: string
+    secrets: Partial<Record<AccountEventAudience, string | undefined>>
+    now?: number
+  },
+): Promise<{ product: AccountEventAudience; nonce: string } | null> {
+  const product = headers.get("x-hgdc-product") ?? ""
+  const timestamp = headers.get("x-hgdc-timestamp") ?? ""
+  const nonce = headers.get("x-hgdc-nonce") ?? ""
+  const signature = headers.get("x-hgdc-signature") ?? ""
+  if (!Object.hasOwn(options.secrets, product)) return null
+  const secret = options.secrets[product as AccountEventAudience]
+  if (typeof secret !== "string" || secret.length < ACCOUNT_EVENT_SECRET_MIN_LENGTH) return null
+  if (!/^\d{1,12}$/.test(timestamp) || !/^[A-Za-z0-9_-]{16,64}$/.test(nonce)) return null
+  const now = options.now ?? Date.now()
+  if (Math.abs(now / 1000 - Number(timestamp)) > ACCOUNT_EVENT_TOLERANCE_SECONDS) return null
+  const route = `${options.method} ${options.path}`
+  const expected = `v2=${await hmacHex(secret, `v2.${product}.${timestamp}.${nonce}.${route}.${options.body}`)}`
+  if (!constantTimeEqual(signature, expected)) return null
+  return { product: product as AccountEventAudience, nonce }
 }
 
 /**
