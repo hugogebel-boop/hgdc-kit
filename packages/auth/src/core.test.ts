@@ -363,7 +363,10 @@ describe("adresse d'un logo", () => {
 describe("verifyCoreCall", () => {
   const path = coreProjectDomainsPath("o1", "p1")
   const signed = () => signCoreCall({ product: "status", secret: SECRET, method: "GET", path, body: "", now: NOW })
-  const verify = async (headers: Record<string, string>, overrides: Partial<Parameters<typeof verifyCoreCall>[1]> = {}) =>
+  const verify = async (
+    headers: Record<string, string>,
+    overrides: Partial<Parameters<typeof verifyCoreCall>[1]> = {},
+  ) =>
     await verifyCoreCall(new Headers(headers), {
       method: "GET",
       path,
