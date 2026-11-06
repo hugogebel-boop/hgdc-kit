@@ -4,6 +4,7 @@ import {
   applyCoreEvent,
   coreEventSchema,
   coreLogoUrl,
+  coreProjectDomainsPath,
   fetchCoreSnapshot,
   handleCoreEventRequest,
   listCoreProjects,
@@ -12,6 +13,7 @@ import {
   reconcileCoreCopy,
   signCoreCall,
   signCoreEvent,
+  verifyCoreCall,
   CORE_TOMBSTONE_RETENTION_MS,
   type CoreEvent,
   type CoreSnapshot,
@@ -355,5 +357,44 @@ describe("adresse d'un logo", () => {
       "javascript:alert(1)",
     ])
       expect(coreLogoUrl(bad), bad).toBeNull()
+  })
+})
+
+describe("verifyCoreCall", () => {
+  const path = coreProjectDomainsPath("o1", "p1")
+  const signed = () => signCoreCall({ product: "status", secret: SECRET, method: "GET", path, body: "", now: NOW })
+  const verify = async (headers: Record<string, string>, overrides: Partial<Parameters<typeof verifyCoreCall>[1]> = {}) =>
+    await verifyCoreCall(new Headers(headers), {
+      method: "GET",
+      path,
+      body: "",
+      secrets: { status: SECRET },
+      now: NOW,
+      ...overrides,
+    })
+
+  it("accepte un appel signé et rend le produit et le nonce", async () => {
+    const headers = await signed()
+    expect(await verify(headers)).toEqual({ product: "status", nonce: headers["x-hgdc-nonce"] })
+  })
+
+  it("refuse une autre route, un autre corps, un secret faux ou un produit non prévu", async () => {
+    const headers = await signed()
+    expect(await verify(headers, { path: coreProjectDomainsPath("o2", "p1") })).toBeNull()
+    expect(await verify(headers, { method: "POST" })).toBeNull()
+    expect(await verify(headers, { body: "x" })).toBeNull()
+    expect(await verify(headers, { secrets: { status: "t".repeat(32) } })).toBeNull()
+    expect(await verify(headers, { secrets: { mail: SECRET } })).toBeNull()
+    expect(await verify(headers, { secrets: { status: undefined } })).toBeNull()
+    expect(await verify(headers, { secrets: { status: "court" } })).toBeNull()
+    expect(await verify({ ...headers, "x-hgdc-product": "constructor" })).toBeNull()
+  })
+
+  it("refuse un appel hors de la fenêtre ou mal formé", async () => {
+    const headers = await signed()
+    expect(await verify(headers, { now: NOW + 3_600_000 })).toBeNull()
+    expect(await verify({ ...headers, "x-hgdc-nonce": "court" })).toBeNull()
+    expect(await verify({ ...headers, "x-hgdc-timestamp": "abc" })).toBeNull()
+    expect(await verify({})).toBeNull()
   })
 })
