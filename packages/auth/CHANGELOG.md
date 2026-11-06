@@ -1,5 +1,11 @@
 # @hgdc/auth
 
+## 0.36.1
+
+### Patch Changes
+
+- f4d0886: `@hgdc/auth/core` : les traces de projets retirés ne cachent plus un projet en ligne (index `by_organization` sur `organizationId` et `removedAt`), un logo dont l'hôte finit par un point et un nom avec un séparateur de ligne sont refusés.
+
 ## 0.36.0
 
 ### Minor Changes
