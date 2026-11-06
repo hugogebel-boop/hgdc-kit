@@ -1,5 +1,11 @@
 # @hgdc/auth
 
+## 0.36.0
+
+### Minor Changes
+
+- 59a3645: `@hgdc/auth/core` : `verifyCoreCall`, vérification d'un appel signé reçu par un module, et `coreProjectDomainsPath` pour lire les domaines d'un projet chez Déploiements.
+
 ## 0.35.0
 
 ### Minor Changes
