@@ -1,5 +1,11 @@
 # @hgdc/auth
 
+## 0.35.0
+
+### Minor Changes
+
+- 08a9aa5: Nouveau `@hgdc/auth/core` : copie locale des projets et de la personnalisation de Basalte dans chaque module, événements signés, tables et application idempotente.
+
 ## 0.34.0
 
 ### Minor Changes
