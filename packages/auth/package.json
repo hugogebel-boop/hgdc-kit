@@ -27,6 +27,10 @@
       "types": "./dist/convex.d.ts",
       "default": "./dist/convex.js"
     },
+    "./core": {
+      "types": "./dist/core.d.ts",
+      "default": "./dist/core.js"
+    },
     "./demo": {
       "types": "./dist/demo.d.ts",
       "default": "./dist/demo.js"

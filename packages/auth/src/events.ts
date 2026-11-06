@@ -173,14 +173,14 @@ function constantTimeEqual(a: string, b: string): boolean {
   return diff === 0
 }
 
-function assertSecret(secret: string | undefined | null): asserts secret is string {
+export function assertSecret(secret: string | undefined | null): asserts secret is string {
   if (typeof secret !== "string" || secret.length < ACCOUNT_EVENT_SECRET_MIN_LENGTH)
     throw new Error(
       `Secret des événements Account absent ou trop court (${ACCOUNT_EVENT_SECRET_MIN_LENGTH} caractères au moins).`,
     )
 }
 
-function assertAudience(audience: unknown): asserts audience is AccountEventAudience {
+export function assertAudience(audience: unknown): asserts audience is AccountEventAudience {
   if (!(ACCOUNT_EVENT_AUDIENCES as readonly unknown[]).includes(audience))
     throw new Error("Audience d'événement Account inconnue.")
 }
@@ -231,7 +231,7 @@ export type BodyText = { ok: true; text: string } | { ok: false; reason: "too_la
  * (en octets, « é » en compte deux). `request.text()` lit tout avant qu'on puisse compter, y
  * compris un envoi sans `content-length` (chunked).
  */
-export async function readBodyText(request: Request, maxBytes: number): Promise<BodyText> {
+export async function readBodyText(request: Pick<Request, "headers" | "body">, maxBytes: number): Promise<BodyText> {
   const declared = Number(request.headers.get("content-length") ?? 0)
   if (declared > maxBytes) return { ok: false, reason: "too_large" }
   if (!request.body) return { ok: true, text: "" }
