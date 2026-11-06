@@ -7,6 +7,7 @@ import type { ReactNode } from "react"
 import { soloHref, type ProductView } from "./addresses.ts"
 import type { FamilyProduct } from "./family-svg.ts"
 import { otherViewHref, otherViewLabel } from "./products.ts"
+import type { ShellMenuLinks } from "./shell-placement.ts"
 import { SidebarNavItem } from "./sidebar-nav.tsx"
 
 /**
@@ -15,7 +16,7 @@ import { SidebarNavItem } from "./sidebar-nav.tsx"
  */
 export type ShellLink = string | { href?: string; render?: React.ReactElement; active?: boolean }
 
-/** Les trois accès que la coque pose juste au-dessus du compte, toujours dans cet ordre. */
+/** Les trois accès communs : au-dessus du compte ou dans son menu, selon la coque (`AppShell`). */
 export type AppShellLinks = {
   /** Documentation du produit. */
   documentation?: ShellLink
@@ -72,6 +73,19 @@ export function ShellCommonLinks({
   )
 }
 
+function otherViewClick(product: FamilyProduct, view: ProductView, fallback: string) {
+  return (event: React.MouseEvent<HTMLAnchorElement>): void => {
+    const path = soloHref(`/${product}`, `${window.location.pathname}${window.location.search}`)
+    event.currentTarget.href = otherViewHref(product, view, path) ?? fallback
+  }
+}
+
+/** L'autre vue, pour le menu du compte. `undefined` pour un produit qui n'en a pas. */
+export function otherViewMenuLink(product: FamilyProduct, view: ProductView): ShellMenuLinks["otherView"] {
+  const href = otherViewHref(product, view)
+  return href ? { label: otherViewLabel(view), href, onClick: otherViewClick(product, view, href) } : undefined
+}
+
 /**
  * « Ouvrir seul » (vers `<mot>.hgdc.ch`) ou « Ouvrir dans app.hgdc.ch », discret, sous les accès communs.
  * Le chemin courant n'est lu qu'au clic : le lien rendu par le serveur mène à l'accueil.
@@ -85,11 +99,11 @@ export function OtherViewLink({
 }): React.JSX.Element | null {
   const href = otherViewHref(product, view)
   if (!href) return null
-  const onClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    const path = soloHref(`/${product}`, `${window.location.pathname}${window.location.search}`)
-    event.currentTarget.href = otherViewHref(product, view, path) ?? href
-  }
   return (
-    <SidebarNavItem icon={LinkSquare02Icon} label={otherViewLabel(view)} render={<a href={href} onClick={onClick} />} />
+    <SidebarNavItem
+      icon={LinkSquare02Icon}
+      label={otherViewLabel(view)}
+      render={<a href={href} onClick={otherViewClick(product, view, href)} />}
+    />
   )
 }

@@ -20,9 +20,7 @@ import { CommandMenu, matchCommand } from "./command-menu.tsx"
 import { OrgSwitcher } from "./org-switcher.tsx"
 import { FamilyLoaderRoot } from "./family-loader.tsx"
 import { PagePending, routerPendingDefaults, shellNavigation } from "./page-pending.tsx"
-import { PRODUCT_RAIL_OPEN_DELAY } from "./product-rail.tsx"
-import { PRODUCT_ENTRY_PATH } from "./products.ts"
-import { markProductSwitch, SHELL_ORG_KEY, SHELL_SWITCH_KEY } from "./shell-memory.ts"
+import { SHELL_ORG_KEY } from "./shell-memory.ts"
 import { ThemeProvider } from "./theme.tsx"
 
 afterEach(cleanup)
@@ -35,10 +33,8 @@ beforeEach(() => {
 })
 afterEach(() => {
   vi.unstubAllGlobals()
-  // Mémoire de la coque (ADR 0020) : un test ne reprend pas le passage ou l'organisation d'un autre.
-  sessionStorage.clear()
+  // Mémoire de la coque (ADR 0020) : un test ne reprend pas l'organisation d'un autre.
   localStorage.clear()
-  delete document.documentElement.dataset.hgdcSwitching
 })
 
 describe("matchCommand", () => {
@@ -259,13 +255,13 @@ describe("AppShell", () => {
 
   it("garde le bouton Déplier à la place du logo, jamais dessous", () => {
     const { container } = render(
-      <AppShell product="mail" nav={nav}>
+      <AppShell product="mail" productRail={false} nav={nav}>
         Page
       </AppShell>,
     )
     const aside = screen.getByRole("complementary", { name: "Barre latérale" })
     const brand = container.querySelector("[data-slot=sidebar-brand]")
-    expect(brand?.textContent).toBe("Mail")
+    expect(brand?.textContent).toBe("E-mails")
     const expand = screen.getByRole("button", { name: "Déplier la barre latérale" })
     // Le logo du produit est dans le bouton : en rail, il devient le bouton au survol.
     expect(expand.querySelector("img")).not.toBeNull()
@@ -295,39 +291,8 @@ describe("AppShell", () => {
   })
 })
 
-describe("Barre des produits", () => {
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it("liste les produits, Manager en tête et sans Account, chacun par son entrée", () => {
-    render(
-      <AppShell product="mail" nav={null} accountHref="http://localhost:3000">
-        Page
-      </AppShell>,
-    )
-    const rail = screen.getByRole("navigation", { name: "Produits" })
-    const links = within(rail).getAllByRole("link")
-    expect(links.map((link) => link.textContent)).toEqual([
-      "Manager",
-      "Basalte",
-      "Mail",
-      "Status",
-      "Analytics",
-      "Docs",
-      "IAssistant, Préversion",
-      "ID",
-    ])
-    const host = within(rail).getByRole("link", { name: /Basalte/ })
-    expect(host.getAttribute("href")).toBe(`https://app.hgdc.ch/host${PRODUCT_ENTRY_PATH}?refresh=background&next=/`)
-    expect(host.getAttribute("aria-current")).toBeNull()
-    const mail = within(rail).getByRole("link", { name: "Mail" })
-    expect(mail.getAttribute("aria-current")).toBe("page")
-    expect(mail.getAttribute("href")).toBe("/")
-    expect(within(rail).getByRole("link", { name: "Manager" }).getAttribute("href")).toBe("http://localhost:3000")
-  })
-
-  it("porte le sélecteur d'organisation en haut", () => {
+describe("Barre de Basalte, organisation", () => {
+  it("porte le sélecteur d'organisation en haut, avant Manager", () => {
     render(
       <AppShell
         product="status"
@@ -337,112 +302,29 @@ describe("Barre des produits", () => {
         Page
       </AppShell>,
     )
-    const rail = screen.getByRole("navigation", { name: "Produits" })
-    expect(within(rail).getByRole("button", { name: "Organisation Acme, changer d'organisation" })).toBeDefined()
-    expect(rail.firstElementChild?.tagName).toBe("BUTTON")
+    const aside = screen.getByRole("complementary", { name: "Barre latérale" })
+    const head = aside.firstElementChild as HTMLElement
+    expect(head.dataset.slot).toBe("shell-organization")
+    expect(within(head).getByRole("button", { name: "Organisation Acme, changer d'organisation" })).toBeDefined()
+    expect(within(head).getByRole("button", { name: "Réduire la barre latérale" })).toBeDefined()
   })
 
-  it("s'élargit au survol après un délai d'intention, se referme dès la sortie", () => {
-    vi.useFakeTimers()
-    render(
-      <AppShell product="docs" nav={null}>
-        Page
-      </AppShell>,
-    )
-    const rail = screen.getByRole("navigation", { name: "Produits" })
-    fireEvent.pointerEnter(rail, { pointerType: "mouse" })
-    act(() => {
-      vi.advanceTimersByTime(PRODUCT_RAIL_OPEN_DELAY - 10)
-    })
-    expect(rail.dataset.expanded).toBeUndefined()
-    act(() => {
-      vi.advanceTimersByTime(10)
-    })
-    expect(rail.dataset.expanded).toBe("")
-    // La barre latérale se plie le temps du survol : la barre prend sa place, sans recouvrir la page.
-    const shell = document.querySelector<HTMLElement>("[data-slot=app-shell]")
-    expect(shell?.dataset.railPeek).toBe("")
-    fireEvent.pointerLeave(rail, { pointerType: "mouse" })
-    expect(rail.dataset.expanded).toBeUndefined()
-    expect(shell?.dataset.railPeek).toBeUndefined()
-
-    // Un passage plus court que le délai n'ouvre rien.
-    fireEvent.pointerEnter(rail, { pointerType: "mouse" })
-    fireEvent.pointerLeave(rail, { pointerType: "mouse" })
-    act(() => {
-      vi.advanceTimersByTime(PRODUCT_RAIL_OPEN_DELAY * 2)
-    })
-    expect(rail.dataset.expanded).toBeUndefined()
-  })
-
-  it("se replie au clic sur un produit, la souris restant dessus (la page d'arrivée la montre repliée)", () => {
-    vi.useFakeTimers()
-    render(
-      <AppShell product="docs" nav={null}>
-        Page
-      </AppShell>,
-    )
-    const rail = screen.getByRole("navigation", { name: "Produits" })
-    fireEvent.pointerEnter(rail, { pointerType: "mouse" })
-    act(() => {
-      vi.advanceTimersByTime(PRODUCT_RAIL_OPEN_DELAY)
-    })
-    expect(rail.dataset.expanded).toBe("")
-    const mail = within(rail).getByRole("link", { name: /Mail/ })
-    // Ctrl+clic (nouvel onglet) : la barre reste ouverte.
-    fireEvent.click(mail, { ctrlKey: true })
-    expect(rail.dataset.expanded).toBe("")
-    const stay = (event: MouseEvent) => event.preventDefault()
-    window.addEventListener("click", stay)
-    fireEvent.click(mail)
-    window.removeEventListener("click", stay)
-    expect(rail.dataset.expanded).toBeUndefined()
-    // Repliée sans transition, et le passage noté pour la page d'arrivée (ADR 0020).
-    expect(document.documentElement.dataset.hgdcSwitching).toBe("")
-    expect(sessionStorage.getItem(SHELL_SWITCH_KEY)).not.toBeNull()
-  })
-
-  it("arrivée depuis la barre, la souris restée dessus : ne s'élargit qu'après en être sortie", () => {
-    markProductSwitch()
-    vi.useFakeTimers()
-    render(
-      <AppShell product="mail" nav={null}>
-        Page
-      </AppShell>,
-    )
-    const rail = screen.getByRole("navigation", { name: "Produits" })
-    fireEvent.pointerEnter(rail, { pointerType: "mouse" })
-    act(() => {
-      vi.advanceTimersByTime(PRODUCT_RAIL_OPEN_DELAY * 2)
-    })
-    expect(rail.dataset.expanded).toBeUndefined()
-    fireEvent.pointerLeave(rail, { pointerType: "mouse" })
-    fireEvent.pointerEnter(rail, { pointerType: "mouse" })
-    act(() => {
-      vi.advanceTimersByTime(PRODUCT_RAIL_OPEN_DELAY)
-    })
-    expect(rail.dataset.expanded).toBe("")
-  })
-
-  it("organisation pas encore là : sa place tenue (marque retenue ou squelette), les pastilles ne bougent pas", () => {
+  it("organisation pas encore là : sa place tenue (marque retenue ou squelette) ; `null` : rien", () => {
     const { unmount } = render(
       <AppShell product="mail" nav={null}>
         Page
       </AppShell>,
     )
-    const rail = screen.getByRole("navigation", { name: "Produits" })
-    expect(rail.firstElementChild?.getAttribute("data-slot")).toBe("org-placeholder")
-    expect(rail.querySelector("[data-slot=org-placeholder-mark]")?.className).toContain("size-8")
-    expect(rail.children[1]?.className).toContain("h-px")
+    const head = () => document.querySelector("[data-slot=shell-organization]")
+    expect(head()?.querySelector("[data-slot=org-placeholder]")).not.toBeNull()
+    expect(head()?.querySelector("[data-slot=org-placeholder-mark]")?.className).toContain("size-8")
     unmount()
-    // `null` : pas d'organisation du tout, rien en haut.
     render(
       <AppShell product="mail" organization={null} nav={null}>
         Page
       </AppShell>,
     )
-    const bare = screen.getByRole("navigation", { name: "Produits" })
-    expect(bare.firstElementChild?.tagName).toBe("UL")
+    expect(head()?.querySelector("[data-slot=org-placeholder]")).toBeNull()
   })
 
   it("l'organisation affichée est retenue pour la première image du produit suivant", () => {
@@ -465,55 +347,8 @@ describe("Barre des produits", () => {
     expect(document.documentElement.dataset.hgdcProduct).toBe("host")
   })
 
-  it("reste élargie tant qu'un menu ouvert depuis la barre est ouvert, se replie à sa fermeture", async () => {
-    vi.useFakeTimers()
-    render(
-      <AppShell
-        product="host"
-        organization={
-          <OrgSwitcher
-            organizations={[
-              { id: "a", name: "Acme" },
-              { id: "b", name: "Beta" },
-            ]}
-            activeId="a"
-            onSelect={() => {}}
-          />
-        }
-        nav={null}
-      >
-        Page
-      </AppShell>,
-    )
-    const rail = screen.getByRole("navigation", { name: "Produits" })
-    const shell = document.querySelector<HTMLElement>("[data-slot=app-shell]")
-    fireEvent.pointerEnter(rail, { pointerType: "mouse" })
-    act(() => {
-      vi.advanceTimersByTime(PRODUCT_RAIL_OPEN_DELAY)
-    })
-    vi.useRealTimers()
-    expect(rail.dataset.expanded).toBe("")
-
-    const trigger = within(rail).getByRole("button", { name: "Organisation Acme, changer d'organisation" })
-    fireEvent.click(trigger)
-    await screen.findByRole("menuitem", { name: /Beta/ })
-    // La souris quitte la barre pour aller dans le menu (dans un portail) : la barre reste élargie.
-    fireEvent.pointerLeave(rail, { pointerType: "mouse" })
-    await vi.waitFor(() => expect(trigger.getAttribute("aria-expanded")).toBe("true"))
-    expect(rail.dataset.expanded).toBe("")
-    expect(shell?.dataset.railPeek).toBe("")
-
-    // Organisation choisie à la souris, menu fermé, souris dehors : la barre se replie.
-    const beta = screen.getByRole("menuitem", { name: /Beta/ })
-    fireEvent.pointerDown(beta, { pointerType: "mouse" })
-    fireEvent.click(beta)
-    await vi.waitFor(() => expect(trigger.getAttribute("aria-expanded")).not.toBe("true"))
-    await vi.waitFor(() => expect(rail.dataset.expanded).toBeUndefined())
-    expect(shell?.dataset.railPeek).toBeUndefined()
-  })
-
-  it("se coupe par `productRail={false}`, l'organisation passe dans la barre latérale", () => {
-    render(
+  it("se coupe par `productRail={false}` : marque du produit, organisation dessous", () => {
+    const { container } = render(
       <AppShell
         product="account"
         productRail={false}
@@ -523,7 +358,8 @@ describe("Barre des produits", () => {
         Page
       </AppShell>,
     )
-    expect(screen.queryByRole("navigation", { name: "Produits" })).toBeNull()
+    expect(container.querySelector("[data-slot=shell-navigation]")).toBeNull()
+    expect(container.querySelector("[data-slot=sidebar-brand]")).not.toBeNull()
     const aside = screen.getByRole("complementary", { name: "Barre latérale" })
     expect(within(aside).getByRole("button", { name: "Organisation Acme, changer d'organisation" })).toBeDefined()
   })
@@ -581,7 +417,7 @@ describe("AccountMenu", () => {
     expect(onSignOut).toHaveBeenCalledOnce()
   })
 
-  it("dans une coque avec la barre des produits : section Produits masquée au-delà de lg, gardée sur téléphone", async () => {
+  it("section Produits retirée dans la barre de Basalte, gardée sans barre", async () => {
     const menu = (
       <AccountMenu
         user={{ name: "Hugo Gebel", email: "hugo@example.ch" }}
@@ -592,35 +428,31 @@ describe("AccountMenu", () => {
         ]}
       />
     )
+    const open = () =>
+      fireEvent.click(
+        within(screen.getByRole("complementary", { name: "Barre latérale" })).getByRole("button", {
+          name: "Compte de Hugo Gebel",
+        }),
+      )
     const { unmount } = render(
       <AppShell product="host" nav={null} sidebarFooter={menu}>
         Page
       </AppShell>,
     )
-    const aside = screen.getByRole("complementary", { name: "Barre latérale" })
-    fireEvent.click(within(aside).getByRole("button", { name: "Compte de Hugo Gebel" }))
-    const mail = await screen.findByRole("menuitem", { name: "Mail" })
-    // Toujours dans le menu (téléphone, < lg), caché par `lg:hidden` (≥ lg, la barre les montre).
-    const group = mail.closest("[role=group]")
-    expect(group?.className).toContain("lg:hidden")
-    expect(
-      screen.getByRole("menuitem", { name: "Se déconnecter" }).closest("[role=group]")?.className ?? "",
-    ).not.toContain("lg:hidden")
+    open()
+    await screen.findByRole("menuitem", { name: "Se déconnecter" })
+    expect(screen.queryByRole("menuitem", { name: "Mail" })).toBeNull()
+    expect(screen.queryByText("Produits")).toBeNull()
     unmount()
 
-    // Sans barre des produits (`productRail={false}`), la section reste visible partout.
     render(
       <AppShell product="account" productRail={false} nav={null} sidebarFooter={menu}>
         Page
       </AppShell>,
     )
-    fireEvent.click(
-      within(screen.getByRole("complementary", { name: "Barre latérale" })).getByRole("button", {
-        name: "Compte de Hugo Gebel",
-      }),
-    )
-    const mailAgain = await screen.findByRole("menuitem", { name: "Mail" })
-    expect(mailAgain.closest("[role=group]")?.className ?? "").not.toContain("lg:hidden")
+    open()
+    expect(await screen.findByRole("menuitem", { name: "Mail" })).toBeDefined()
+    expect(screen.getByText("Produits")).toBeDefined()
   })
 
   it("dans l'ordre : identité, Profil, Sécurité, Thème, puis Se déconnecter à part ; ni raccourcis, ni état du service", async () => {
@@ -647,7 +479,7 @@ describe("AccountMenu", () => {
   })
 })
 
-describe("AppShell, accès au-dessus du compte", () => {
+describe("AppShell sans barre, accès au-dessus du compte", () => {
   const account = (
     <AccountMenu user={{ name: "Hugo Gebel", email: "hugo@example.ch" }} onSignOut={() => {}} products={[]} />
   )
@@ -656,6 +488,7 @@ describe("AppShell, accès au-dessus du compte", () => {
     render(
       <AppShell
         product="docs"
+        productRail={false}
         nav={null}
         links={{ documentation: "https://docs.example/docs", settings: { href: "/reglages", active: true } }}
         account={account}
@@ -681,7 +514,13 @@ describe("AppShell, accès au-dessus du compte", () => {
 
   it("chaque accès est optionnel : `status: false` le retire, `statusPage` le change", () => {
     const { unmount } = render(
-      <AppShell product="host" nav={null} statusPage="https://status.example/host" account={account}>
+      <AppShell
+        product="host"
+        productRail={false}
+        nav={null}
+        statusPage="https://status.example/host"
+        account={account}
+      >
         Page
       </AppShell>,
     )
@@ -693,7 +532,7 @@ describe("AppShell, accès au-dessus du compte", () => {
     ).toEqual(["https://status.example/host"])
     unmount()
     render(
-      <AppShell product="host" nav={null} links={{ status: false }} account={account}>
+      <AppShell product="host" productRail={false} nav={null} links={{ status: false }} account={account}>
         Page
       </AppShell>,
     )
@@ -702,7 +541,7 @@ describe("AppShell, accès au-dessus du compte", () => {
 
   it("`sidebarFooter` sans `account` (déprécié) : rendu tel quel, sous les accès communs", () => {
     render(
-      <AppShell product="host" nav={null} sidebarFooter={<a href="/ancien">Ancien pied</a>}>
+      <AppShell product="host" productRail={false} nav={null} sidebarFooter={<a href="/ancien">Ancien pied</a>}>
         Page
       </AppShell>,
     )
@@ -718,13 +557,13 @@ describe("AppShell, accès au-dessus du compte", () => {
 describe("AppShell, vue seule et réglage « Barre des produits » (ADR 0014)", () => {
   afterEach(() => window.localStorage.clear())
 
-  it("vue seule : pas de barre des produits, lien vers app.hgdc.ch", () => {
+  it("vue seule : pas de barre de Basalte, lien vers app.hgdc.ch", () => {
     const { container } = render(
       <AppShell product="mail" view="seul" nav={null}>
         Page
       </AppShell>,
     )
-    expect(container.querySelector("[data-product-rail]")).toBeNull()
+    expect(container.querySelector("[data-module-bar]")).toBeNull()
     expect(screen.getByRole("link", { name: "Ouvrir dans app.hgdc.ch" }).getAttribute("href")).toBe(
       "https://app.hgdc.ch/mail/auth/hgdc?next=%2F",
     )
@@ -737,7 +576,7 @@ describe("AppShell, vue seule et réglage « Barre des produits » (ADR 0014)", 
         Page
       </AppShell>,
     )
-    expect(container.querySelector("[data-product-rail]")).not.toBeNull()
+    expect(container.querySelector("[data-module-bar]")).not.toBeNull()
     unmount()
     window.localStorage.setItem("hgdc-product-bar", "never")
     const again = render(
@@ -745,16 +584,23 @@ describe("AppShell, vue seule et réglage « Barre des produits » (ADR 0014)", 
         Page
       </AppShell>,
     )
-    expect(again.container.querySelector("[data-product-rail]")).toBeNull()
+    expect(again.container.querySelector("[data-module-bar]")).toBeNull()
   })
 
-  it("vue app : « Ouvrir seul » vers l'entrée de la vue seule", () => {
+  it("vue app : « Ouvrir seul » dans le menu du compte, vers l'entrée de la vue seule", async () => {
     render(
-      <AppShell product="docs" view="app" nav={null}>
+      <AppShell
+        product="docs"
+        view="app"
+        nav={null}
+        account={<AccountMenu user={{ name: "Hugo Gebel", email: "hugo@example.ch" }} onSignOut={() => {}} />}
+      >
         Page
       </AppShell>,
     )
-    expect(screen.getByRole("link", { name: "Ouvrir seul" }).getAttribute("href")).toBe(
+    expect(screen.queryByRole("link", { name: "Ouvrir seul" })).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: "Compte de Hugo Gebel" }))
+    expect((await screen.findByRole("menuitem", { name: "Ouvrir seul" })).getAttribute("href")).toBe(
       "https://docs.hgdc.ch/auth/hgdc?next=%2F",
     )
   })
@@ -767,7 +613,7 @@ describe("AppShell, vue seule et réglage « Barre des produits » (ADR 0014)", 
           Page
         </AppShell>,
       )
-      expect(container.querySelector("[data-product-rail]")).not.toBeNull()
+      expect(container.querySelector("[data-module-bar]")).not.toBeNull()
       expect(screen.queryByRole("link", { name: /Ouvrir/ })).toBeNull()
       unmount()
     }
@@ -780,7 +626,7 @@ describe("AppShell, vue seule et réglage « Barre des produits » (ADR 0014)", 
         Page
       </AppShell>,
     )
-    expect(container.querySelector("[data-product-rail]")).not.toBeNull()
+    expect(container.querySelector("[data-module-bar]")).not.toBeNull()
   })
 })
 
@@ -831,7 +677,7 @@ describe("AppShell, assistant", () => {
     expect(screen.getByRole("button", { name: "Action de la page" }).closest("[inert]")).toBeNull()
     // Quatrième colonne de la grille : la page se rétrécit.
     const shell = document.querySelector('[data-slot="app-shell"]')
-    expect(shell?.className).toContain("lg:grid-cols-[auto_auto_minmax(0,1fr)_auto]")
+    expect(shell?.className).toContain("lg:grid-cols-[auto_minmax(0,1fr)_auto]")
     expect(shell?.hasAttribute("data-assistant")).toBe(true)
     expect(panel.className).toContain("xl:data-open:w-[26rem]")
     expect(panel.className).toContain("motion-reduce:transition-none")
@@ -1035,7 +881,7 @@ describe("Chargement d'une page", () => {
       </AppShell>,
     )
     expect(document.querySelector<HTMLElement>("[data-slot=app-shell]")?.dataset.hydrated).toBe("")
-    expect(document.querySelector<HTMLElement>("[data-slot=app-shell]")?.dataset.productRail).toBe("")
+    expect(document.querySelector<HTMLElement>("[data-slot=app-shell]")?.dataset.moduleBar).toBe("")
   })
 
   it("sous FamilyLoaderRoot : ni la coque ni la page ne montent leur propre H", () => {
@@ -1096,14 +942,15 @@ describe("Chargement d'une page", () => {
     expect(await screen.findByText("Nouvelle page")).toBeDefined()
   })
 
-  it("clic sur un autre produit dans la barre : le H couvre la zone de contenu après un court délai", async () => {
+  it("clic sur un autre module dans la barre : le H couvre la zone de contenu après un court délai", async () => {
     render(
       <AppShell product="host" nav={null}>
         Page
       </AppShell>,
     )
-    const rail = screen.getByRole("navigation", { name: "Produits" })
-    const mail = within(rail).getByRole("link", { name: /Mail/ })
+    fireEvent.click(screen.getByRole("button", { name: "Retour aux modules" }))
+    const modules = screen.getByRole("navigation", { name: "Modules" })
+    const mail = within(modules).getByRole("link", { name: "E-mails" })
     // Clic avec Ctrl (nouvel onglet) : la page reste.
     fireEvent.click(mail, { ctrlKey: true })
     expect(loading()).toBeUndefined()

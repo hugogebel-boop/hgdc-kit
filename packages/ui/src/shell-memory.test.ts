@@ -4,7 +4,6 @@ import { afterEach, describe, expect, it } from "vitest"
 
 import {
   forgetShellOrganization,
-  markProductSwitch,
   rememberLastProduct,
   rememberShellNavHeight,
   rememberShellOrganization,
@@ -12,12 +11,9 @@ import {
   SHELL_LAST_PRODUCT_KEY,
   SHELL_NAV_KEY_PREFIX,
   SHELL_ORG_KEY,
-  SHELL_SWITCH_KEY,
-  SHELL_SWITCH_MAX_AGE_MS,
   shellBoot,
   shellBootScript,
   shellOrganization,
-  takeProductSwitch,
   type ShellBootConfig,
 } from "./shell-memory.ts"
 import { orgTone } from "./initials.ts"
@@ -46,7 +42,6 @@ function fakeWindow(href: string, stored: Record<string, string> = {}) {
 
 afterEach(() => {
   localStorage.clear()
-  sessionStorage.clear()
   const root = document.documentElement
   for (const key of ["sidebar", "hgdcProduct", "hgdcOrg"]) delete root.dataset[key]
   root.removeAttribute("style")
@@ -167,7 +162,7 @@ describe("shellBoot : la mémoire de la coque sur <html>, avant la première pei
   })
 })
 
-describe("mémoire de l'organisation et du passage", () => {
+describe("mémoire de l'organisation", () => {
   it("retient les initiales et le logo, pas le nom ; l'applique à la page ; l'oublie à la déconnexion", () => {
     expect(shellOrganization({ name: "Atelier Gebel" })).toEqual({
       initials: "AG",
@@ -198,14 +193,5 @@ describe("mémoire de l'organisation et du passage", () => {
     rememberLastProduct("mail")
     rememberLastProduct("host")
     expect(localStorage.getItem(SHELL_LAST_PRODUCT_KEY)).toBe("host")
-  })
-
-  it("le passage d'un produit à l'autre se lit une fois, et seulement s'il est récent", () => {
-    markProductSwitch(1_000)
-    expect(takeProductSwitch(1_500)).toBe(true)
-    expect(takeProductSwitch(1_500)).toBe(false)
-    markProductSwitch(1_000)
-    expect(takeProductSwitch(1_000 + SHELL_SWITCH_MAX_AGE_MS)).toBe(false)
-    expect(sessionStorage.getItem(SHELL_SWITCH_KEY)).toBeNull()
   })
 })

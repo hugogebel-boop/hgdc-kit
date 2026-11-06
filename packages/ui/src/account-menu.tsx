@@ -1,4 +1,7 @@
+import Activity01Icon from "@hugeicons/core-free-icons/Activity01Icon"
+import BookOpen01Icon from "@hugeicons/core-free-icons/BookOpen01Icon"
 import DashboardSquare01Icon from "@hugeicons/core-free-icons/DashboardSquare01Icon"
+import LinkSquare02Icon from "@hugeicons/core-free-icons/LinkSquare02Icon"
 import Logout01Icon from "@hugeicons/core-free-icons/Logout01Icon"
 import SecurityLockIcon from "@hugeicons/core-free-icons/SecurityLockIcon"
 import Tick02Icon from "@hugeicons/core-free-icons/Tick02Icon"
@@ -23,7 +26,8 @@ import type { FamilyProduct } from "./family-svg.ts"
 import { ProductBadge } from "./product-badge.tsx"
 import { productMenuEntries } from "./products.ts"
 import { forgetShellOrganization } from "./shell-memory.ts"
-import { useLeaveOnClick, useProductRailShown } from "./shell-placement.ts"
+import type { ShellLink } from "./shell-links.tsx"
+import { useLeaveOnClick, useModuleBarShown, useShellMenuLinks, type ShellMenuLinks } from "./shell-placement.ts"
 import { ThemeSwitch } from "./theme-switch.tsx"
 
 export type HgdcProduct = {
@@ -62,11 +66,11 @@ function AccountAvatar({ user, size }: { user: AccountUser; size?: "default" | "
  * l'avatar seul, pour une barre du haut. Le produit passe les actions ; le thème passe par
  * `ThemeProvider`.
  *
- * Documentation, Réglages et État du service ne sont pas ici : la coque les pose au-dessus du
- * compte (`links` d'`AppShell`). L'aide des raccourcis garde sa touche `?`, sans entrée de menu.
+ * Dans la barre de Basalte, ce menu porte aussi Documentation, État du service et l'autre vue
+ * (`links` d'`AppShell`), et plus la liste des produits : la barre la montre. L'aide des raccourcis
+ * garde sa touche `?`, sans entrée de menu.
  *
- * « Produits » (masquée au-delà de `lg` dans une coque qui affiche la barre des produits, où ils
- * sont déjà ; gardée sur téléphone) liste par défaut Account et les produits ouverts du catalogue
+ * Dans une vue seule, « Produits » liste Manager et les modules ouverts du catalogue
  * (`productMenuEntries`, `@hgdc/ui/products`), avec `product` coché. `products` remplace cette
  * liste ; `products={[]}` la retire.
  */
@@ -105,8 +109,10 @@ export function AccountMenu({
   children?: ReactNode
   variant?: "row" | "avatar"
 }): React.JSX.Element {
-  const products = productsProp ?? productMenuEntries({ current: currentProduct, accountHref })
-  const railShown = useProductRailShown()
+  const moduleBar = useModuleBarShown()
+  // La barre de Basalte montre déjà Manager et les modules, au téléphone comme à l'ordinateur.
+  const products = moduleBar ? [] : (productsProp ?? productMenuEntries({ current: currentProduct, accountHref }))
+  const menuLinks = useShellMenuLinks()
   const leaveOnClick = useLeaveOnClick()
   return (
     <DropdownMenu>
@@ -169,11 +175,11 @@ export function AccountMenu({
             {children}
           </>
         ) : null}
+        <AccountMenuLinks links={menuLinks} />
         {products.length ? (
           <>
-            {/* Sur ordinateur, la barre des produits les montre déjà : la section reste pour le téléphone. */}
-            <DropdownMenuSeparator className={railShown ? "lg:hidden" : undefined} />
-            <DropdownMenuGroup className={railShown ? "lg:hidden" : undefined}>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
               <DropdownMenuLabel>Produits</DropdownMenuLabel>
               {products.map((product) =>
                 product.current ? (
@@ -213,6 +219,53 @@ export function AccountMenu({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+}
+
+/** Documentation, État du service et l'autre vue, dans le menu du compte de la barre de Basalte. */
+function AccountMenuLinks({ links }: { links: ShellMenuLinks }): React.JSX.Element | null {
+  const documentation = links.documentation
+  const status = links.status
+  const { otherView } = links
+  if (documentation === undefined && status === undefined && otherView === undefined) return null
+  return (
+    <>
+      <DropdownMenuSeparator />
+      <DropdownMenuGroup>
+        {documentation !== undefined ? (
+          <ShellLinkItem link={documentation} icon={BookOpen01Icon} label="Documentation" />
+        ) : null}
+        {status !== undefined ? <ShellLinkItem link={status} icon={Activity01Icon} label="État du service" /> : null}
+        {otherView ? (
+          <MenuPrimitive.LinkItem href={otherView.href} onClick={otherView.onClick} className={MENU_LINK_ITEM}>
+            <HugeiconsIcon icon={LinkSquare02Icon} aria-hidden />
+            {otherView.label}
+          </MenuPrimitive.LinkItem>
+        ) : null}
+      </DropdownMenuGroup>
+    </>
+  )
+}
+
+function ShellLinkItem({
+  link,
+  icon,
+  label,
+}: {
+  link: ShellLink
+  icon: IconSvgElement
+  label: string
+}): React.JSX.Element {
+  const props = typeof link === "string" ? { href: link } : link
+  return (
+    <MenuPrimitive.LinkItem
+      {...(props.href !== undefined ? { href: props.href } : {})}
+      {...(props.render !== undefined ? { render: props.render } : {})}
+      className={MENU_LINK_ITEM}
+    >
+      <HugeiconsIcon icon={icon} aria-hidden />
+      {label}
+    </MenuPrimitive.LinkItem>
   )
 }
 

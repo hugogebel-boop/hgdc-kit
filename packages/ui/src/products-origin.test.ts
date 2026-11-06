@@ -6,7 +6,7 @@ import {
   productEntryHref,
   productMenuEntries,
   productOrigin,
-  productRailEntries,
+  shellProductEntries,
   sameOriginPath,
 } from "./products.ts"
 
@@ -52,7 +52,7 @@ describe("barre des produits sous une origine partagée (ADR 0020)", () => {
   })
 
   it("depuis app.hgdc.ch : liens relatifs et marqués pour les produits servis là, absolus ailleurs", () => {
-    const { products, account } = productRailEntries({ current: "analytics", pageOrigin: APP })
+    const { products, account } = shellProductEntries({ current: "analytics", pageOrigin: APP })
     const by = Object.fromEntries(products.map((entry) => [entry.badge, entry]))
     expect(by.mail).toMatchObject({ href: "/mail/auth/hgdc?refresh=background&next=/", sameOrigin: true })
     expect(by.host).toMatchObject({ href: "/host/auth/hgdc?refresh=background&next=/", sameOrigin: true })
@@ -70,7 +70,7 @@ describe("barre des produits sous une origine partagée (ADR 0020)", () => {
 
   it("au rendu serveur ou sur une autre origine (développement) : comme avant", () => {
     for (const pageOrigin of [undefined, "http://localhost:3300"]) {
-      const { products } = productRailEntries({ current: "mail", pageOrigin })
+      const { products } = shellProductEntries({ current: "mail", pageOrigin })
       const by = Object.fromEntries(products.map((entry) => [entry.badge, entry]))
       expect(by.mail).toMatchObject({ href: "/", current: true })
       expect(by.host?.href).toBe(productEntryHref("host"))
@@ -79,7 +79,7 @@ describe("barre des produits sous une origine partagée (ADR 0020)", () => {
   })
 
   it("depuis un produit sur son sous-domaine : la racine du produit courant reste /", () => {
-    const { products } = productRailEntries({ current: "status", pageOrigin: "https://status.hgdc.ch" })
+    const { products } = shellProductEntries({ current: "status", pageOrigin: "https://status.hgdc.ch" })
     expect(products.find((entry) => entry.badge === "status")).toMatchObject({ href: "/", current: true })
     expect(products.some((entry) => entry.sameOrigin)).toBe(false)
   })

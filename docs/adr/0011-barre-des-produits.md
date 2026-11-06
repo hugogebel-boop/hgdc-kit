@@ -1,8 +1,10 @@
 ---
 owner: Hugo Gebel
 last_reviewed: 2026-10-16
-status: accepted
+status: superseded
 ---
+
+> Remplacée par l'[ADR 0024](0024-barre-unique-de-basalte.md) : une seule barre latérale, plus de barre des produits.
 
 # 0011. Barre des produits et marque du produit dans `AppShell`
 

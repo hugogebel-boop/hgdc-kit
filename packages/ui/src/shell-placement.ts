@@ -1,25 +1,28 @@
 import { createContext, useContext } from "react"
 
+import type { ShellLink } from "./shell-links.tsx"
+
 /**
- * Où `AppShell` pose un élément du produit (le sélecteur d'organisation) : dans la barre latérale
- * ou le tiroir mobile, ou en haut de la barre des produits, où il n'a qu'une colonne de 56 px.
+ * Vrai quand la coque montre la barre de Basalte (Manager et modules) : le menu du compte ne répète
+ * pas les produits et reprend les accès d'aide (`ShellMenuLinksContext`).
  */
-export type ShellPlacement = "sidebar" | "product-rail"
+export const ModuleBarShownContext: React.Context<boolean> = createContext<boolean>(false)
 
-export const ShellPlacementContext: React.Context<ShellPlacement> = createContext<ShellPlacement>("sidebar")
-
-export function useShellPlacement(): ShellPlacement {
-  return useContext(ShellPlacementContext)
+export function useModuleBarShown(): boolean {
+  return useContext(ModuleBarShownContext)
 }
 
-/**
- * Vrai quand la coque affiche la barre des produits (sur ordinateur) : les produits y sont déjà,
- * le menu du compte ne les répète pas au-delà de `lg`.
- */
-export const ProductRailShownContext: React.Context<boolean> = createContext<boolean>(false)
+/** Les accès que le menu du compte porte dans la barre de Basalte. */
+export type ShellMenuLinks = {
+  documentation?: ShellLink | undefined
+  status?: ShellLink | undefined
+  otherView?: { label: string; href: string; onClick: (event: React.MouseEvent<HTMLAnchorElement>) => void } | undefined
+}
 
-export function useProductRailShown(): boolean {
-  return useContext(ProductRailShownContext)
+export const ShellMenuLinksContext: React.Context<ShellMenuLinks> = createContext<ShellMenuLinks>({})
+
+export function useShellMenuLinks(): ShellMenuLinks {
+  return useContext(ShellMenuLinksContext)
 }
 
 /**

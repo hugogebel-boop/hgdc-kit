@@ -200,7 +200,7 @@ export function EmailLayout({
                 <span style={{ verticalAlign: "middle" }}>
                   Envoyé avec{" "}
                   <Link href={MAIL_HREF} className="hg-muted" style={{ color: l.muted, textDecoration: "underline" }}>
-                    Mail de la H Collection
+                    Basalte
                   </Link>
                 </span>
               </Text>

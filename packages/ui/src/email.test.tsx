@@ -28,19 +28,19 @@ function attributes(html: string, name: string): string[] {
 }
 
 describe("EmailLayout", () => {
-  it("met en tête l'icône et le nom du produit, en pied « Envoyé avec Mail » et les mentions légales", async () => {
+  it("met en tête l'icône et le nom du produit, en pied « Envoyé avec Basalte » et les mentions légales", async () => {
     const { html } = await renderEmail(
       <EmailLayout product="status" preview="Aperçu">
         <EmailText>Bonjour</EmailText>
       </EmailLayout>,
     )
-    expect(html).toContain(">Status<")
+    expect(html).toContain(">Surveillance<")
     expect(attributes(html, "src")).toEqual([
       `https://hgdc.ch/email/status.png?v=${EMAIL_ICON_VERSION.status}`,
       `https://hgdc.ch/email/mail.png?v=${EMAIL_ICON_VERSION.mail}`,
     ])
     expect(html).toContain("Envoyé avec")
-    expect(html).toContain(">Mail de la H Collection</a>")
+    expect(html).toContain(">Basalte</a>")
     expect(attributes(html, "href")).toContain("https://mail.hgdc.ch")
     expect(html).toContain("Hugo Gebel Développement Conseil, Lausanne")
     expect(html).toMatch(/<html[^>]*lang="fr"/)
@@ -87,7 +87,7 @@ describe("EmailLayout", () => {
       </EmailLayout>,
     )
     expect(html).toContain("Statut · Atelier")
-    expect(html).not.toContain(">Status<")
+    expect(html).not.toContain(">Surveillance<")
     expect(attributes(html, "src")[0]).toBe("https://status.hgdc.ch/p/atelier/icon.png")
   })
 
@@ -203,7 +203,7 @@ describe("blocs", () => {
     expect(text).not.toMatch(/<[a-z]/i)
     expect(text).not.toContain("Texte d'aperçu seul")
     expect(text).toContain("Ton domaine est prêt")
-    expect(text.startsWith("Mail")).toBe(true)
+    expect(text.startsWith("E-mails")).toBe(true)
     expect(text.endsWith("Hugo Gebel Développement Conseil, Lausanne")).toBe(true)
   })
 })

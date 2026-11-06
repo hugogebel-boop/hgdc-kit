@@ -6,7 +6,7 @@ import { AccountMenu } from "./account-menu.tsx"
 import { CommandMenuButton } from "./command-menu.tsx"
 import { CopyButton } from "./copy-button.tsx"
 import { HGDC_ENTRY_PATH } from "../../auth/src/index.ts"
-import { HGDC_ACCOUNT, HGDC_PRODUCTS, PRODUCT_ENTRY_PATH, productMenuEntries, productRailEntries } from "./products.ts"
+import { HGDC_ACCOUNT, HGDC_PRODUCTS, PRODUCT_ENTRY_PATH, productMenuEntries, shellProductEntries } from "./products.ts"
 import { Meter, Progress } from "./progress.tsx"
 import { RankBar } from "./rank-bar.tsx"
 import { StatusBadge, StatusDot } from "./status.tsx"
@@ -22,6 +22,16 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+const MODULE_NAMES: Record<string, string> = {
+  Host: "Déploiements",
+  Mail: "E-mails",
+  Status: "Surveillance",
+  Analytics: "Statistiques",
+  Docs: "Documentation",
+  IAssistant: "Assistant IA",
+  ID: "Connexion",
+}
+
 describe("catalogue des produits", () => {
   it("décrit chaque produit par son mot, son sous-domaine et son état", () => {
     expect(HGDC_PRODUCTS.map((p) => p.word)).toEqual([
@@ -36,8 +46,8 @@ describe("catalogue des produits", () => {
       "Manager",
     ])
     for (const product of [HGDC_ACCOUNT, ...HGDC_PRODUCTS]) {
-      // Basalte est le nom affiché de host ; les autres s'affichent par leur mot.
-      expect(product.name).toBe(product.word === "Host" ? "Basalte" : product.word)
+      // Un module de Basalte s'affiche sous son nom de fonction ; les autres par leur mot.
+      expect(product.name).toBe(MODULE_NAMES[product.word] ?? product.word)
       expect(product.href).toBe(`https://${product.subdomain}`)
       expect(product.subdomain).toBe(`${product.word.toLowerCase()}.hgdc.ch`)
       expect(product.pitch).not.toMatch(/[–—]|\b(vous|votre|vos)\b/i)
@@ -48,16 +58,16 @@ describe("catalogue des produits", () => {
     const entries = productMenuEntries({ current: "mail" })
     expect(entries.map((e) => e.name)).toEqual([
       "Manager",
-      "Basalte",
-      "Mail",
-      "Status",
-      "Analytics",
-      "Docs",
-      "IAssistant",
-      "ID",
+      "Déploiements",
+      "E-mails",
+      "Surveillance",
+      "Statistiques",
+      "Documentation",
+      "Assistant IA",
+      "Connexion",
     ])
-    expect(entries.find((e) => e.current)?.name).toBe("Mail")
-    expect(entries.filter((e) => e.hint !== undefined).map((e) => e.name)).toEqual(["IAssistant"])
+    expect(entries.find((e) => e.current)?.name).toBe("E-mails")
+    expect(entries.filter((e) => e.hint !== undefined).map((e) => e.name)).toEqual(["Assistant IA"])
   })
 
   it("envoie chaque produit vers son entrée connectée, ID vers sa racine", () => {
@@ -65,13 +75,13 @@ describe("catalogue des produits", () => {
     const entries = productMenuEntries({ current: "Host" })
     expect(Object.fromEntries(entries.map((e) => [e.name, e.href]))).toEqual({
       Manager: "https://app.hgdc.ch/manager/auth/hgdc?refresh=background&next=/",
-      Basalte: "https://app.hgdc.ch/host/auth/hgdc?refresh=background&next=/",
-      Mail: "https://app.hgdc.ch/mail/auth/hgdc?refresh=background&next=/",
-      Status: "https://app.hgdc.ch/status/auth/hgdc?refresh=background&next=/",
-      Analytics: "https://app.hgdc.ch/analytics/auth/hgdc?refresh=background&next=/",
-      Docs: "https://app.hgdc.ch/docs/auth/hgdc?refresh=background&next=/",
-      IAssistant: "https://app.hgdc.ch/iassistant/auth/hgdc?refresh=background&next=/",
-      ID: "https://id.hgdc.ch",
+      Déploiements: "https://app.hgdc.ch/host/auth/hgdc?refresh=background&next=/",
+      "E-mails": "https://app.hgdc.ch/mail/auth/hgdc?refresh=background&next=/",
+      Surveillance: "https://app.hgdc.ch/status/auth/hgdc?refresh=background&next=/",
+      Statistiques: "https://app.hgdc.ch/analytics/auth/hgdc?refresh=background&next=/",
+      Documentation: "https://app.hgdc.ch/docs/auth/hgdc?refresh=background&next=/",
+      "Assistant IA": "https://app.hgdc.ch/iassistant/auth/hgdc?refresh=background&next=/",
+      Connexion: "https://id.hgdc.ch",
     })
     expect(HGDC_ACCOUNT.entryHref).toBe(HGDC_ACCOUNT.href)
     for (const product of HGDC_PRODUCTS) expect(product.href).toBe(`https://${product.subdomain}`)
@@ -81,13 +91,13 @@ describe("catalogue des produits", () => {
     expect(productMenuEntries({ accountHref: "http://localhost:3000" })[0]?.href).toBe("http://localhost:3000")
   })
 
-  it("met Manager en tête de la barre des produits, sans Account ni doublon", () => {
-    const { products, account } = productRailEntries({ current: "host" })
+  it("sépare Manager des modules de la barre, sans Account ni doublon", () => {
+    const { products, account } = shellProductEntries({ current: "host" })
     expect(account.name).toBe("Manager")
     expect(account.href).toBe("https://app.hgdc.ch/manager/auth/hgdc?refresh=background&next=/")
     expect(products.map((e) => e.name)).not.toContain("Manager")
     expect(products.map((e) => e.name)).not.toContain("Account")
-    expect(products.map((e) => e.name)).toContain("ID")
+    expect(products.map((e) => e.name)).toContain("Connexion")
   })
 })
 
@@ -97,7 +107,7 @@ describe("AccountMenu et le catalogue", () => {
   it("liste les produits du kit par défaut et coche le produit ouvert", async () => {
     render(<AccountMenu user={user} onSignOut={() => {}} product="Host" />)
     fireEvent.click(screen.getByRole("button", { name: "Compte de Hugo Gebel" }))
-    const mail = await screen.findByRole("menuitem", { name: "Mail" })
+    const mail = await screen.findByRole("menuitem", { name: "E-mails" })
     expect(mail.getAttribute("href")).toBe("https://app.hgdc.ch/mail/auth/hgdc?refresh=background&next=/")
     expect(screen.queryByRole("menuitem", { name: "Account" })).toBeNull()
     expect(screen.getByRole("menuitem", { name: "Manager" }).getAttribute("href")).toBe(

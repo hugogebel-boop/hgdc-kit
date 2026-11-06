@@ -71,7 +71,7 @@ describe("AppShell, barre du haut", () => {
     )
     const header = container.querySelector("header") as HTMLElement
     const brand = header.querySelector("[data-slot=app-shell-brand]") as HTMLElement
-    expect(brand.textContent).toBe("Analytics")
+    expect(brand.textContent).toBe("Statistiques")
     expect(brand.querySelector("img")).not.toBeNull()
     expect(brand.className).toContain("lg:hidden")
     const search = screen.getByRole("button", { name: /Rechercher/ })

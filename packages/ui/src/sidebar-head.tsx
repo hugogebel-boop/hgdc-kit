@@ -1,10 +1,12 @@
 import PanelLeftCloseIcon from "@hugeicons/core-free-icons/PanelLeftCloseIcon"
 import PanelLeftOpenIcon from "@hugeicons/core-free-icons/PanelLeftOpenIcon"
 import { HugeiconsIcon } from "@hugeicons/react"
+import type { ReactNode } from "react"
 
 import { cn } from "./cn.ts"
 import type { FamilyProduct } from "./family-svg.ts"
 import { isApplePlatform, Kbd, KbdGroup } from "./kbd.tsx"
+import { OrgPlaceholder } from "./org-placeholder.tsx"
 import { ProductBadge } from "./product-badge.tsx"
 import { familyProductName, SIDEBAR_BRAND, SIDEBAR_BRAND_NAME, SIDEBAR_HEAD } from "./shell-frame.tsx"
 import { toggleSidebar } from "./sidebar-rail.ts"
@@ -32,7 +34,62 @@ function ShortcutHint({ label }: { label: string }): React.JSX.Element {
 }
 
 /**
- * Haut de la barre latérale. Dépliée : la marque du produit, et le bouton « Réduire » à droite.
+ * Haut de la barre de Basalte : l'organisation et le bouton « Réduire ». En rail, l'organisation
+ * se réduit à sa marque et le bouton « Déplier » passe dessous.
+ */
+export function ShellOrganizationHead({ organization }: { organization: ReactNode }): React.JSX.Element {
+  return (
+    <div
+      data-slot="shell-organization"
+      className="mt-2 flex min-h-14 shrink-0 items-center gap-1 px-3 lg:rail:flex-col"
+    >
+      <div className="flex min-w-0 flex-1 items-center lg:rail:flex-none">
+        {organization === undefined ? <OrgPlaceholder /> : organization}
+      </div>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              type="button"
+              data-slot="sidebar-collapse"
+              onClick={toggleSidebar}
+              aria-label="Réduire la barre latérale"
+              aria-keyshortcuts="Control+B Meta+B"
+              className={cn(TOGGLE, "rail:hidden")}
+            />
+          }
+        >
+          <HugeiconsIcon icon={COLLAPSE_ICON} strokeWidth={1.8} aria-hidden className="size-[1.125rem]" />
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          <ShortcutHint label="Réduire" />
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              type="button"
+              data-slot="sidebar-expand"
+              onClick={toggleSidebar}
+              aria-label="Déplier la barre latérale"
+              aria-keyshortcuts="Control+B Meta+B"
+              className={cn(TOGGLE, "hidden rail:grid")}
+            />
+          }
+        >
+          <HugeiconsIcon icon={EXPAND_ICON} strokeWidth={1.8} aria-hidden className="size-[1.125rem]" />
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          <ShortcutHint label="Déplier" />
+        </TooltipContent>
+      </Tooltip>
+    </div>
+  )
+}
+
+/**
+ * Haut de la barre latérale d'une vue seule, sans barre de Basalte. Dépliée : la marque du produit, et le bouton « Réduire » à droite.
  * En rail : la marque seule, qui devient le bouton « Déplier » au survol de la barre ou au focus,
  * à la même place : le bouton ne descend jamais sous le logo. Les deux états sont dans la page et
  * choisis par la variante CSS `rail:`, donc justes dès la première peinture.

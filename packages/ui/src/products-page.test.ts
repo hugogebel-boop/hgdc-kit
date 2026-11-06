@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { HGDC_PRODUCTS, productMenuEntries, productRailEntries } from "./products.ts"
+import { HGDC_PRODUCTS, productMenuEntries, shellProductEntries } from "./products.ts"
 
 describe("page produit sur le site (productPage)", () => {
   it("déduit l'adresse du mot pour chaque produit ouvert", () => {
@@ -31,6 +31,6 @@ describe("ID", () => {
 
   it("apparaît dans le menu et la barre des produits", () => {
     expect(productMenuEntries().some((entry) => entry.badge === "id" && entry.href === "https://id.hgdc.ch")).toBe(true)
-    expect(productRailEntries().products.some((entry) => entry.badge === "id")).toBe(true)
+    expect(shellProductEntries().products.some((entry) => entry.badge === "id")).toBe(true)
   })
 })

@@ -17,7 +17,6 @@ import {
 } from "./dropdown-menu.tsx"
 import { AVATAR_TONE_CLASSES, initials, orgTone } from "./initials.ts"
 import { rememberShellOrganization } from "./shell-memory.ts"
-import { useShellPlacement } from "./shell-placement.ts"
 import { cn } from "./cn.ts"
 
 /** Les trois rôles d'une organisation de la famille. */
@@ -90,10 +89,8 @@ export function OrgMark({
 }
 
 /**
- * L'organisation active, et le menu pour en changer ou en créer une. En haut de la barre des
- * produits d'`AppShell` (la marque seule, le nom quand la barre s'élargit), dans le tiroir sur
- * téléphone, ou en haut de la barre latérale quand le produit coupe la barre des produits.
- * Présentationnel : le produit passe la liste, l'active et ce qu'il faut faire au choix (changer
+ * L'organisation active, et le menu pour en changer ou en créer une. En haut de la barre latérale
+ * d'`AppShell` (la marque seule en rail) et du tiroir sur téléphone. Présentationnel : le produit passe la liste, l'active et ce qu'il faut faire au choix (changer
  * l'URL `/o/<slug>/…`), le kit n'appelle rien.
  */
 export function OrgSwitcher({
@@ -113,7 +110,6 @@ export function OrgSwitcher({
   onCreate?: () => void
   className?: string
 }): React.JSX.Element | null {
-  const placement = useShellPlacement()
   const active = organizations.find((org) => org.id === activeId)
   // Retenue pour la première image du prochain produit ouvert sous la même origine (ADR 0020).
   const activeName = active?.name
@@ -122,8 +118,6 @@ export function OrgSwitcher({
     if (activeName !== undefined) rememberShellOrganization({ id: activeId, name: activeName, logo: activeLogo })
   }, [activeId, activeName, activeLogo])
   if (!active) return null
-  // En haut de la barre des produits : la marque seule dans 40 px, le nom quand la barre s'élargit.
-  const inRail = placement === "product-rail"
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -134,27 +128,15 @@ export function OrgSwitcher({
             title={active.name}
             className={cn(
               "flex min-h-10 w-full min-w-0 items-center gap-2.5 rounded-xl px-1.5 py-1 text-left coarse:min-h-11 outline-none transition-colors duration-(--duration-fast) ease-out hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-muted",
-              inRail
-                ? "h-10 shrink-0 gap-3 px-1 py-0 hover:bg-shell-hover aria-expanded:bg-shell-hover coarse:h-11"
-                : "lg:hover:bg-shell-hover lg:aria-expanded:bg-shell-hover lg:rail:w-auto lg:rail:justify-center lg:rail:px-1",
+              "lg:hover:bg-shell-hover lg:aria-expanded:bg-shell-hover lg:rail:w-auto lg:rail:justify-center lg:rail:px-1",
               className,
             )}
           />
         }
       >
         <OrgMark org={active} />
-        <span
-          className={cn(
-            "min-w-0 flex-1",
-            inRail
-              ? "opacity-0 transition-opacity duration-(--duration-fast) ease-out group-data-expanded/rail:opacity-100 motion-reduce:transition-none"
-              : "lg:rail:hidden",
-          )}
-        >
-          {/* Dans la barre latérale, le nom entier sur deux lignes au plus ; dans la barre des produits, une ligne. */}
-          <span className={cn("block text-sm font-medium", inRail ? "truncate" : "line-clamp-2 break-words")}>
-            {active.name}
-          </span>
+        <span className="min-w-0 flex-1 lg:rail:hidden">
+          <span className="line-clamp-2 block text-sm font-medium break-words">{active.name}</span>
           {active.role ? (
             <span className="block truncate text-xs text-muted-foreground lg:text-shell-muted">
               {ORG_ROLE_LABEL[active.role]}
@@ -164,12 +146,7 @@ export function OrgSwitcher({
         <HugeiconsIcon
           icon={UnfoldMoreIcon}
           aria-hidden
-          className={cn(
-            "size-4 shrink-0 text-muted-foreground lg:text-shell-muted",
-            inRail
-              ? "opacity-0 transition-opacity duration-(--duration-fast) group-data-expanded/rail:opacity-100"
-              : "lg:rail:hidden",
-          )}
+          className="size-4 shrink-0 text-muted-foreground lg:text-shell-muted lg:rail:hidden"
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">

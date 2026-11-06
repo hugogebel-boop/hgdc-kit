@@ -26,7 +26,7 @@ export const PRODUCT_STAGE_LABEL: Readonly<Record<ProductStage, string>> = {
 export type HgdcCatalogProduct = {
   /** Le mot du produit, qui sert de sous-domaine : « Host ». */
   word: string
-  /** Nom affiché, le mot seul (« Mail », « Basalte » pour `host`) : la famille ne se répète pas devant chaque produit. */
+  /** Nom affiché : celui du module de Basalte (« Déploiements » pour `host`), sinon le mot seul. */
   name: string
   /** « host.hgdc.ch ». */
   subdomain: string
@@ -113,7 +113,7 @@ function product(
   pitch: string,
   icon: IconSvgElement,
   stage: ProductStage,
-  /** Nom affiché quand il diffère du mot de l'adresse (Basalte, servi sous `host`). */
+  /** Nom affiché quand il diffère du mot de l'adresse : le nom du module (« Déploiements » pour `host`). */
   name = word,
 ): HgdcCatalogProduct {
   const badge = word.toLowerCase()
@@ -154,22 +154,40 @@ export const HGDC_MANAGER: HgdcCatalogProduct = product(
 
 /** Les produits de la famille, dans leur ordre d'affichage. Account n'en fait pas partie (`HGDC_ACCOUNT`). */
 export const HGDC_PRODUCTS: ReadonlyArray<HgdcCatalogProduct> = [
-  // Basalte est le nom affiché de Host depuis le 2026-11-03 ; adresses, pastille et clés restent en `host`.
-  product("Host", "Ton site en ligne, déployé à chaque modification.", Rocket01Icon, "live", "Basalte"),
-  product("Mail", "Tes e-mails, newsletters et formulaires, envoyés depuis ton adresse.", Mail01Icon, "live"),
+  // Basalte est le produit ; chacun de ceux-ci y est un module, sous son nom de fonction. Adresses, pastille et clés gardent le mot.
+  product("Host", "Ton site en ligne, déployé à chaque modification.", Rocket01Icon, "live", "Déploiements"),
+  product(
+    "Mail",
+    "Tes e-mails, newsletters et formulaires, envoyés depuis ton adresse.",
+    Mail01Icon,
+    "live",
+    "E-mails",
+  ),
   // Masqué temporairement le 2026-11-03 ; la console reste en ligne.
   product("Portal", "Un espace partagé où ton client suit son projet, signe et paie.", Briefcase01Icon, "soon"),
-  product("Status", "La surveillance de tes sites et ta page de statut.", Activity01Icon, "live"),
-  product("Analytics", "Tes visiteurs mesurés, sans cookies ni bannière.", Analytics01Icon, "live"),
-  product("Docs", "Ta documentation en ligne, avec un assistant qui y répond.", BookOpen01Icon, "live"),
-  product("IAssistant", "Une bulle de chat IA sur ton site, qui répond à tes visiteurs.", BubbleChatIcon, "preview"),
+  product("Status", "La surveillance de tes sites et ta page de statut.", Activity01Icon, "live", "Surveillance"),
+  product("Analytics", "Tes visiteurs mesurés, sans cookies ni bannière.", Analytics01Icon, "live", "Statistiques"),
+  product(
+    "Docs",
+    "Ta documentation en ligne, avec un assistant qui y répond.",
+    BookOpen01Icon,
+    "live",
+    "Documentation",
+  ),
+  product(
+    "IAssistant",
+    "Une bulle de chat IA sur ton site, qui répond à tes visiteurs.",
+    BubbleChatIcon,
+    "preview",
+    "Assistant IA",
+  ),
   id(),
   HGDC_MANAGER,
 ]
 
 /** ID, le compte de connexion ouvert aux applications tierces : pas d'entrée `/auth/hgdc`, sa racine. */
 function id(): HgdcCatalogProduct {
-  const item = product("ID", "Ton compte pour te connecter à tes applications.", UserCircleIcon, "live")
+  const item = product("ID", "Ton compte pour te connecter à tes applications.", UserCircleIcon, "live", "Connexion")
   return { ...item, entryHref: item.href }
 }
 
@@ -232,7 +250,7 @@ export function sameOriginPath(href: string, pageOrigin: string | undefined): st
 }
 
 /** Une entrée de la barre des produits d'`AppShell`. */
-export type ProductRailEntry = {
+export type ShellProductEntry = {
   name: string
   href: string
   badge: FamilyProduct
@@ -257,17 +275,17 @@ export type ProductRailEntry = {
  * (`PRODUCT_ORIGINS`, `app.hgdc.ch/<produit>`) reçoit un lien relatif et `sameOrigin` (ADR 0020),
  * et le produit courant sa base (`/mail/`) plutôt que `/`.
  */
-export function productRailEntries(
+export function shellProductEntries(
   options: {
     current?: string | undefined
     accountHref?: string | undefined
     catalog?: ReadonlyArray<HgdcCatalogProduct> | undefined
     pageOrigin?: string | undefined
   } = {},
-): { products: Array<ProductRailEntry>; account: ProductRailEntry } {
+): { products: Array<ShellProductEntry>; account: ShellProductEntry } {
   const current = options.current?.toLowerCase()
   const { pageOrigin } = options
-  const entry = (item: HgdcCatalogProduct, href: string, product: boolean): ProductRailEntry => {
+  const entry = (item: HgdcCatalogProduct, href: string, product: boolean): ShellProductEntry => {
     const base = {
       name: item.name,
       badge: item.badge,
