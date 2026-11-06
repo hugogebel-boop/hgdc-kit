@@ -4,13 +4,11 @@ import { PRODUCT_ORIGINS } from "./products.ts"
 
 /*
  * Mémoire de la coque, partagée par les produits servis sous la même origine (`app.hgdc.ch/<produit>`,
- * ADR 0020) : ce qu'il faut pour que la première image d'un produit ait déjà la barre des produits
- * complète et la barre latérale à sa taille, avant que ses données n'arrivent.
+ * ADR 0020) : ce qu'il faut pour que la première image d'un produit ait déjà l'organisation
+ * et la barre latérale à sa taille, avant que ses données n'arrivent.
  *
  * - l'organisation affichée en dernier : ses initiales et son logo (rien d'autre, pas le nom) ;
  * - la hauteur de la navigation de chaque produit, pour un squelette à la bonne taille ;
- * - le passage en cours d'un produit à l'autre (session de l'onglet), pour que la barre d'arrivée
- *   ne s'élargisse pas sous une souris restée immobile.
  *
  * `shellBoot` applique la mémoire sur `<html>` avant la première peinture : il tourne en ligne
  * dans le `<head>` (`sidebarInitScript`), donc il ne dépend de rien d'autre que de ses arguments.
@@ -22,10 +20,6 @@ export const SHELL_ORG_KEY = "hgdc-shell:org"
 export const SHELL_NAV_KEY_PREFIX = "hgdc-shell:nav:"
 /** Dernier produit ouvert (son mot), en `localStorage` : l'accueil d'`app.hgdc.ch` y renvoie. */
 export const SHELL_LAST_PRODUCT_KEY = "hgdc-shell:last"
-/** Passage d'un produit à l'autre (horodatage), en `sessionStorage`. */
-export const SHELL_SWITCH_KEY = "hgdc-shell:switch"
-/** Au-delà, un passage noté n'est plus celui qu'on vit (onglet laissé, retour bien plus tard). */
-export const SHELL_SWITCH_MAX_AGE_MS = 10_000
 
 export type ShellOrganization = { initials: string; logo?: string; tone?: number }
 
@@ -150,10 +144,10 @@ function browser(): BootWindow | null {
   return typeof window === "undefined" ? null : (window as unknown as BootWindow)
 }
 
-function storageSet(storage: "localStorage" | "sessionStorage", key: string, value: string | null): void {
+function storageSet(key: string, value: string | null): void {
   try {
-    if (value === null) window[storage].removeItem(key)
-    else window[storage].setItem(key, value)
+    if (value === null) window.localStorage.removeItem(key)
+    else window.localStorage.setItem(key, value)
   } catch {
     // Stockage bloqué : la première image d'un autre produit montrera un squelette, rien de plus.
   }
@@ -176,7 +170,7 @@ export function rememberShellOrganization(org: {
 }): void {
   const win = browser()
   if (!win) return
-  storageSet("localStorage", SHELL_ORG_KEY, JSON.stringify(shellOrganization(org)))
+  storageSet(SHELL_ORG_KEY, JSON.stringify(shellOrganization(org)))
   shellBoot(SHELL_BOOT_CONFIG, win)
 }
 
@@ -184,38 +178,18 @@ export function rememberShellOrganization(org: {
 export function forgetShellOrganization(): void {
   const win = browser()
   if (!win) return
-  storageSet("localStorage", SHELL_ORG_KEY, null)
+  storageSet(SHELL_ORG_KEY, null)
   shellBoot(SHELL_BOOT_CONFIG, win)
 }
 
 /** Retient la hauteur de la navigation d'un produit (`AppShell` le fait après l'affichage). */
 export function rememberShellNavHeight(product: string, height: number): void {
   if (!browser() || !(height > 0)) return
-  storageSet("localStorage", SHELL_NAV_KEY_PREFIX + product, String(Math.round(height)))
+  storageSet(SHELL_NAV_KEY_PREFIX + product, String(Math.round(height)))
 }
 
 /** Retient le produit affiché (`AppShell` le fait), pour que l'accueil d'`app.hgdc.ch` y renvoie. */
 export function rememberLastProduct(product: string): void {
   if (!browser()) return
-  storageSet("localStorage", SHELL_LAST_PRODUCT_KEY, product)
-}
-
-/** Note le départ vers un autre produit (clic dans la barre des produits). */
-export function markProductSwitch(now: number = Date.now()): void {
-  if (!browser()) return
-  storageSet("sessionStorage", SHELL_SWITCH_KEY, String(now))
-}
-
-/** Lit et efface la note : vrai si la page vient d'un passage depuis la barre, il y a peu. */
-export function takeProductSwitch(now: number = Date.now()): boolean {
-  if (!browser()) return false
-  let value: string | null = null
-  try {
-    value = window.sessionStorage.getItem(SHELL_SWITCH_KEY)
-    window.sessionStorage.removeItem(SHELL_SWITCH_KEY)
-  } catch {
-    return false
-  }
-  const at = Number(value)
-  return value !== null && at > 0 && now - at >= 0 && now - at < SHELL_SWITCH_MAX_AGE_MS
+  storageSet(SHELL_LAST_PRODUCT_KEY, product)
 }

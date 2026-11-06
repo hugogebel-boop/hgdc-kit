@@ -21,7 +21,6 @@ export function useProductLeave(): { leaving: boolean; leave: () => void } {
       if (!event.persisted) return
       window.clearTimeout(leaveTimer.current)
       setLeaving(false)
-      delete document.documentElement.dataset.hgdcSwitching
     }
     window.addEventListener("pageshow", onPageShow)
     return () => {

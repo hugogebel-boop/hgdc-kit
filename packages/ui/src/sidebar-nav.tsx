@@ -8,6 +8,16 @@ import { useAppShell } from "./shell-context.ts"
 import { useSidebarRail } from "./sidebar-rail.ts"
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip.tsx"
 
+/** Une entrée de la barre : la même pour un onglet et pour un module. */
+export const SIDEBAR_ITEM: string = cn(
+  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium whitespace-nowrap text-muted-foreground outline-none transition-colors duration-(--duration-fast) ease-out",
+  "hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50",
+  "aria-[current=page]:bg-muted aria-[current=page]:text-foreground data-[status=active]:bg-muted data-[status=active]:text-foreground",
+  "min-h-11 lg:min-h-9 coarse:min-h-11 lg:gap-2.5 lg:py-2 lg:text-shell-muted lg:hover:bg-shell-hover lg:hover:text-shell-foreground",
+  "lg:aria-[current=page]:bg-shell-active lg:aria-[current=page]:text-shell-foreground lg:data-[status=active]:bg-shell-active lg:data-[status=active]:text-shell-foreground",
+  "lg:rail:justify-center lg:rail:px-0",
+)
+
 /**
  * La navigation du produit : 4 à 7 entrées, à plat. Une navigation imbriquée (l'espace d'une page,
  * d'un projet) commence par `SidebarNavBack` et range ses entrées dans des `SidebarNavGroup`.
@@ -57,14 +67,7 @@ export function SidebarNavItem({
       href,
       "aria-current": active ? "page" : undefined,
       onClick: closeMobileNav,
-      className: cn(
-        "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium whitespace-nowrap text-muted-foreground outline-none transition-colors duration-(--duration-fast) ease-out",
-        "hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50",
-        "aria-[current=page]:bg-muted aria-[current=page]:text-foreground data-[status=active]:bg-muted data-[status=active]:text-foreground",
-        "min-h-11 lg:min-h-9 coarse:min-h-11 lg:gap-2.5 lg:py-2 lg:text-shell-muted lg:hover:bg-shell-hover lg:hover:text-shell-foreground",
-        "lg:aria-[current=page]:bg-shell-active lg:aria-[current=page]:text-shell-foreground lg:data-[status=active]:bg-shell-active lg:data-[status=active]:text-shell-foreground",
-        "lg:rail:justify-center lg:rail:px-0",
-      ),
+      className: SIDEBAR_ITEM,
       children: (
         <>
           <HugeiconsIcon icon={icon} strokeWidth={1.8} aria-hidden className="size-5 shrink-0 lg:size-[1.125rem]" />
@@ -93,12 +96,15 @@ export function SidebarNavBack({
   label,
   href,
   render,
+  keepMenuOpen = false,
 }: {
   /** « Retour aux pages » */
   label: string
   href?: string
   /** Lien du routeur : `render={<Link to="…" />}`. */
   render?: React.ReactElement
+  /** Sur téléphone, le tiroir reste ouvert : le retour change la liste sans changer de page. */
+  keepMenuOpen?: boolean
 }): React.JSX.Element {
   const rail = useSidebarRail()
   const { closeMobileNav } = useAppShell()
@@ -107,7 +113,7 @@ export function SidebarNavBack({
     render,
     props: {
       href,
-      onClick: closeMobileNav,
+      ...(keepMenuOpen ? {} : { onClick: closeMobileNav }),
       "data-slot": "sidebar-nav-back",
       className: cn(
         // Jamais marqué actif : le lien du routeur pose `data-status="active"` sur un parent ouvert.

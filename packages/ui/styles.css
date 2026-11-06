@@ -19,11 +19,8 @@
 
 @custom-variant dark (&:is(.dark *));
 /* Barre latérale réduite en rail : `data-sidebar="rail"` sur <html>, posé avant la première
-   peinture par `sidebarInitScript` (`@hgdc/ui/app-shell`), ou `data-rail-peek` sur la coque le
-   temps que la barre des produits est élargie (ADR 0011). */
-@custom-variant rail (&:where([data-sidebar="rail"] *, [data-rail-peek] *));
-/* Pliée par la personne seulement (pas le temps du survol de la barre des produits). */
-@custom-variant folded (&:where([data-sidebar="rail"] *));
+   peinture par `sidebarInitScript` (`@hgdc/ui/app-shell`). */
+@custom-variant rail (&:where([data-sidebar="rail"] *));
 /* Écran tactile, quelle que soit la largeur : `coarse:min-h-11` rend ses 44 px à une entrée que
    `lg:` avait resserrée pour la souris. Déclarée après les points de rupture, elle les emporte. */
 @custom-variant coarse (@media (pointer: coarse));
@@ -772,10 +769,9 @@
 
 /* Scène du chargement (ADR 0015) : la zone de contenu de la coque, calculée depuis l'écran, pour
    que le H soit au même pixel dans la coque, avant elle (rendu serveur, page d'entrée) et d'un
-   produit à l'autre. Téléphone : sous l'en-tête de 56 px. Ordinateur : barre des produits (56 px),
-   barre latérale (256 px, 64 en rail), marge de 8 px, en-tête de 56 px. */
+   produit à l'autre. Téléphone : sous l'en-tête de 56 px. Ordinateur : barre latérale
+   (256 px, 64 en rail), marge de 8 px, en-tête de 56 px. */
 :root {
-  --hgdc-rail-w: 0px;
   --hgdc-content-left: 0px;
   --hgdc-stage-top: calc(env(safe-area-inset-top, 0px) + 3.5rem);
   --hgdc-stage-right: 0px;
@@ -784,9 +780,8 @@
 }
 @media (width >= 64rem) {
   :root {
-    --hgdc-rail-w: 3.5rem;
     --hgdc-sidebar-w: 16rem;
-    --hgdc-content-left: calc(var(--hgdc-rail-w) + var(--hgdc-sidebar-w));
+    --hgdc-content-left: var(--hgdc-sidebar-w);
     --hgdc-stage-top: 4rem;
     --hgdc-stage-right: 0.5rem;
     --hgdc-stage-bottom: 0.5rem;
@@ -794,9 +789,6 @@
   }
   :root[data-sidebar="rail"] {
     --hgdc-sidebar-w: 4rem;
-  }
-  :root:has([data-slot="app-shell"]:not([data-product-rail])) {
-    --hgdc-rail-w: 0px;
   }
 }
 
@@ -844,20 +836,16 @@
 :root:not(:has([data-slot="app-shell"])) [data-slot="family-loader-root"] > [data-frame] {
   display: block;
 }
-/* Sur ordinateur, le cadre est la coque elle-même (`ShellFrame`) : barre des produits complète,
-   marque du produit, navigation en squelette, carte du contenu (ADR 0020). */
+/* Sur ordinateur, le cadre est la coque elle-même (`ShellFrame`) : organisation retenue,
+   nom du module, navigation en squelette, carte du contenu (ADR 0020). */
 @media (width >= 64rem) {
   [data-slot="family-loader-root"] > [data-frame] {
     background: var(--shell);
   }
 }
-/* La marque du produit de l'adresse (`<html data-hgdc-product>`, `sidebarInitScript`), seule ; le
-   produit courant marqué dans la barre, comme `aria-current` dans la coque. */
+/* Le nom du module de l'adresse (`<html data-hgdc-product>`, `sidebarInitScript`), seul. */
 [data-slot="shell-frame"] [data-product] {
   display: none;
-}
-[data-slot="shell-frame-rail"] [data-product] {
-  display: flex;
 }
 :root[data-hgdc-product="account"] [data-slot="shell-frame"] [data-product="account"],
 :root[data-hgdc-product="host"] [data-slot="shell-frame"] [data-product="host"],
@@ -870,20 +858,6 @@
 :root[data-hgdc-product="id"] [data-slot="shell-frame"] [data-product="id"],
 :root[data-hgdc-product="manager"] [data-slot="shell-frame"] [data-product="manager"] {
   display: contents;
-}
-:root[data-hgdc-product="account"] [data-slot="shell-frame-rail"] [data-product="account"],
-:root[data-hgdc-product="host"] [data-slot="shell-frame-rail"] [data-product="host"],
-:root[data-hgdc-product="mail"] [data-slot="shell-frame-rail"] [data-product="mail"],
-:root[data-hgdc-product="portal"] [data-slot="shell-frame-rail"] [data-product="portal"],
-:root[data-hgdc-product="status"] [data-slot="shell-frame-rail"] [data-product="status"],
-:root[data-hgdc-product="analytics"] [data-slot="shell-frame-rail"] [data-product="analytics"],
-:root[data-hgdc-product="docs"] [data-slot="shell-frame-rail"] [data-product="docs"],
-:root[data-hgdc-product="iassistant"] [data-slot="shell-frame-rail"] [data-product="iassistant"],
-:root[data-hgdc-product="id"] [data-slot="shell-frame-rail"] [data-product="id"],
-:root[data-hgdc-product="manager"] [data-slot="shell-frame-rail"] [data-product="manager"] {
-  display: flex;
-  background: var(--shell-active);
-  color: var(--shell-foreground);
 }
 /* Navigation en squelette, à la hauteur retenue pour ce produit (`--hgdc-nav-height`). */
 [data-slot="shell-frame-nav"] {
@@ -922,7 +896,7 @@
 }
 
 /* Passage d'un produit à l'autre sous la même origine (`app.hgdc.ch/<produit>`, ADR 0020) : une
-   transition de vue entre documents. La barre des produits, la barre latérale et la barre du haut
+   transition de vue entre documents. La barre latérale et la barre du haut
    gardent leur place (même nom des deux côtés : elles ne bougent pas, leur contenu passe en
    fondu) ; le reste de la page passe en fondu court. Le navigateur garde l'ancienne page à l'écran
    jusqu'à ce que la nouvelle soit prête : pas de page blanche. Chrome, Edge et Safari 18.2+ ;
@@ -934,9 +908,6 @@
     navigation: auto;
   }
 }
-[data-slot="product-rail"] {
-  view-transition-name: hgdc-product-rail;
-}
 [data-slot="app-shell-sidebar"] {
   view-transition-name: hgdc-sidebar;
 }
@@ -946,9 +917,6 @@
 /* Le cadre du chargeur (hors de la coque) et le H lui-même portent les mêmes noms, seulement quand
    ils sont à l'écran : mêmes conditions que l'affichage du chargeur, plus haut. */
 :root:has([data-slot="page-pending"]):not(:has([data-slot="app-shell"])) {
-  & [data-slot="shell-frame-rail"] {
-    view-transition-name: hgdc-product-rail;
-  }
   & [data-slot="shell-frame-sidebar"] {
     view-transition-name: hgdc-sidebar;
   }
@@ -962,12 +930,6 @@
   & [data-slot="family-loader-root"] > [data-stage] {
     view-transition-name: hgdc-loader;
   }
-}
-/* Un clic dans la barre des produits : la barre se replie et la barre latérale revient d'un coup,
-   pour que l'image de départ soit déjà celle de l'arrivée (`ProductRail`). */
-:root[data-hgdc-switching] [data-slot="product-rail"],
-:root[data-hgdc-switching] [data-slot="app-shell-sidebar"] {
-  transition: none;
 }
 ::view-transition-old(root),
 ::view-transition-new(root) {
@@ -985,27 +947,21 @@
   animation-duration: var(--duration-base);
   animation-timing-function: var(--ease-ios);
 }
-/* Barre des produits et H : identiques des deux côtés (la barre ne change que d'indicateur, le H
-   est à la même phase, calé sur l'horloge). Ni fondu ni mouvement : l'ancienne image est masquée,
-   la nouvelle, vivante, s'affiche telle quelle. Présents d'un seul côté (une page sans coque,
-   une page prête sans H), ils apparaissent ou s'effacent en fondu court. */
-::view-transition-group(hgdc-product-rail),
+/* Le H : identique des deux côtés, à la même phase, calé sur l'horloge. Ni fondu ni mouvement :
+   l'ancienne image est masquée, la nouvelle, vivante, s'affiche telle quelle. Présent d'un seul côté
+   (une page prête sans H), il apparaît ou s'efface en fondu court. */
 ::view-transition-group(hgdc-loader),
-::view-transition-new(hgdc-product-rail),
 ::view-transition-new(hgdc-loader) {
   animation: none;
 }
-::view-transition-old(hgdc-product-rail),
 ::view-transition-old(hgdc-loader) {
   animation: none;
   opacity: 0;
 }
-::view-transition-old(hgdc-product-rail):only-child,
 ::view-transition-old(hgdc-loader):only-child {
   opacity: 1;
   animation: hgdc-view-out var(--duration-fast) var(--ease-out) both;
 }
-::view-transition-new(hgdc-product-rail):only-child,
 ::view-transition-new(hgdc-loader):only-child {
   animation: hgdc-view-in var(--duration-fast) var(--ease-out) both;
 }

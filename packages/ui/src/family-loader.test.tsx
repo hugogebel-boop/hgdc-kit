@@ -179,8 +179,8 @@ describe("Scène du chargement", () => {
     expect(stage).toContain("position:fixed")
     expect(stage).toContain("top:var(--hgdc-stage-top)")
     expect(stage).toContain("left:var(--hgdc-stage-left)")
-    // Ordinateur : barre des produits 56 px + barre latérale 256 px (64 en rail), en-tête 56 px + marge 8 px.
-    expect(css).toContain("--hgdc-rail-w: 3.5rem;")
+    // Ordinateur : barre latérale 256 px (64 en rail), en-tête 56 px + marge 8 px.
+    expect(css).not.toContain("--hgdc-rail-w")
     expect(css).toContain("--hgdc-sidebar-w: 16rem;")
     expect(css).toMatch(/:root\[data-sidebar="rail"\] \{\s*--hgdc-sidebar-w: 4rem;/)
     expect(css).toContain("--hgdc-stage-top: 4rem;")
@@ -206,33 +206,18 @@ describe("Scène du chargement", () => {
 })
 
 describe("Cadre de la coque, hors de la coque (ADR 0020)", () => {
-  it("dès le rendu serveur : la barre des produits complète, la marque de chaque produit, la barre du haut", () => {
+  it("dès le rendu serveur : organisation, Manager, retour aux modules, nom de chaque module, barre du haut", () => {
     const html = renderToString(<FamilyLoaderHost />)
-    const rail = html.slice(
-      html.indexOf('data-slot="shell-frame-rail"'),
-      html.indexOf('data-slot="shell-frame-sidebar"'),
-    )
-    expect(rail).toContain('data-slot="org-placeholder"')
-    // Manager, puis les autres produits ouverts du catalogue, dans l'ordre de la barre.
-    expect([...rail.matchAll(/data-product="(\w+)"/g)].map((m) => m[1])).toEqual([
-      "manager",
-      "host",
-      "mail",
-      "status",
-      "analytics",
-      "docs",
-      "iassistant",
-      "id",
-    ])
     const sidebar = html.slice(html.indexOf('data-slot="shell-frame-sidebar"'))
-    for (const name of ["Manager", "Basalte", "Mail", "Status", "Analytics", "Docs", "IAssistant"])
+    expect(sidebar).toContain('data-slot="org-placeholder"')
+    for (const name of ["Manager", "Retour aux modules", "Déploiements", "E-mails", "Surveillance", "Statistiques"])
       expect(sidebar).toContain(`>${name}<`)
     expect(html).toContain('data-slot="shell-frame-nav"')
     expect(html).toContain('data-slot="shell-frame-header"')
   })
 
-  it("le produit de l'adresse marqué par le CSS, l'organisation retenue dessinée comme OrgMark", () => {
-    expect(minified).toContain(":root[data-hgdc-product=mail] [data-slot=shell-frame-rail] [data-product=mail]")
+  it("le nom du module de l'adresse montré par le CSS, l'organisation retenue dessinée comme OrgMark", () => {
+    expect(minified).toContain(":root[data-hgdc-product=mail] [data-slot=shell-frame] [data-product=mail]")
     expect(minified).toMatch(
       /:root\[data-hgdc-org\] \[data-slot=org-placeholder-mark\]:before\{content:var\(--hgdc-org-initials,""\)\}/,
     )
