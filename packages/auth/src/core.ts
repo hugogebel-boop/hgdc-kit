@@ -59,7 +59,7 @@ const SNAPSHOT_MAX_BYTES = 2 * 1024 * 1024
 const id = z.string().min(1).max(64)
 
 /** Ni caractère de contrôle ni caractère de mise en forme (retour à la ligne, inversion du sens de lecture). */
-const hasNoControl = (value: string) => !/[\p{Cc}\p{Cf}]/u.test(value)
+const hasNoControl = (value: string) => !/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(value)
 export const coreNameSchema: z.ZodType<string> = z.string().trim().min(1).max(100).refine(hasNoControl)
 
 /**
@@ -79,7 +79,8 @@ export function coreLogoUrl(value: unknown): string | null {
   if (url.href !== value || url.protocol !== "https:" || url.username || url.password || url.port || url.hash)
     return null
   const host = url.hostname
-  if (!host.includes(".") || host.startsWith("[") || /^[\d.]+$/.test(host) || /^0x/i.test(host)) return null
+  if (!host.includes(".") || host.endsWith(".") || host.startsWith("[") || /^[\d.]+$/.test(host) || /^0x/i.test(host))
+    return null
   if (/\.(?:local|localhost|internal|intranet|lan|home|corp|ts\.net)$/i.test(host)) return null
   return value
 }
@@ -213,7 +214,7 @@ type CoreProjectsTable = TableDefinition<
     }
   >,
   {
-    by_organization: ["organizationId", "_creationTime"]
+    by_organization: ["organizationId", "removedAt", "_creationTime"]
     by_project: ["projectId", "_creationTime"]
     by_removed: ["removedAt", "_creationTime"]
   }
@@ -247,7 +248,8 @@ export const coreTables: { coreProjects: CoreProjectsTable; coreBrandings: CoreB
     /** Présent : projet retiré. La ligne reste pour écarter un événement en retard, puis se purge. */
     removedAt: v.optional(v.number()),
   })
-    .index("by_organization", ["organizationId"])
+    // `removedAt` dans l'index : les traces de projets retirés ne prennent jamais la place d'un projet en ligne.
+    .index("by_organization", ["organizationId", "removedAt"])
     .index("by_project", ["projectId"])
     .index("by_removed", ["removedAt"]),
   coreBrandings: defineTable({
@@ -335,10 +337,9 @@ export async function applyCoreEvent(ctx: { db: unknown }, event: CoreEvent): Pr
 export async function listCoreProjects(ctx: { db: unknown }, organizationId: string): Promise<Array<CoreProject>> {
   const rows = await coreDb(ctx)
     .query("coreProjects")
-    .withIndex("by_organization", (q) => q.eq("organizationId", organizationId))
+    .withIndex("by_organization", (q) => q.eq("organizationId", organizationId).eq("removedAt", undefined))
     .take(1000)
   return rows
-    .filter((row) => row.removedAt === undefined)
     .map(({ projectId, slug, name, kind, modules }) => ({ id: projectId, slug, name, kind, modules }))
     .sort((a, b) => a.name.localeCompare(b.name, "fr"))
 }
@@ -351,12 +352,12 @@ export async function readCoreBranding(ctx: { db: unknown }, organizationId: str
   return { displayName, logoUrl, color }
 }
 
-/** Efface la copie d'une organisation supprimée : à appeler sur `organization.deleted`. */
+/** Efface la copie d'une organisation supprimée : à appeler sur `organization.deleted`. Ses traces partent avec la purge. */
 export async function purgeCoreCopy(ctx: { db: unknown }, organizationId: string): Promise<void> {
   const db = coreDb(ctx)
   const rows = await db
     .query("coreProjects")
-    .withIndex("by_organization", (q) => q.eq("organizationId", organizationId))
+    .withIndex("by_organization", (q) => q.eq("organizationId", organizationId).eq("removedAt", undefined))
     .take(1000)
   for (const row of rows) await db.delete(row._id)
   const branding = await brandingRow(db, organizationId)
@@ -585,11 +586,11 @@ export async function reconcileCoreCopy(
   const { readAt: syncedAt } = snapshot
   const rows = await db
     .query("coreProjects")
-    .withIndex("by_organization", (q) => q.eq("organizationId", organizationId))
+    .withIndex("by_organization", (q) => q.eq("organizationId", organizationId).eq("removedAt", undefined))
     .take(1000)
   const wanted = new Set(snapshot.projects.map((project) => project.id))
   for (const row of rows)
-    if (!wanted.has(row.projectId) && row.removedAt === undefined && row.syncedAt <= syncedAt)
+    if (!wanted.has(row.projectId) && row.syncedAt <= syncedAt)
       await db.patch(row._id, { removedAt: syncedAt, syncedAt })
   for (const project of snapshot.projects) await writeProject(db, organizationId, project, syncedAt)
   await writeBranding(db, organizationId, snapshot.branding, syncedAt)
