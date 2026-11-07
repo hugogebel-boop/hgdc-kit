@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.66.2
+
+### Patch Changes
+
+- 83c649a: Le focus ne se perd plus : `SettingsSection` le rend au titre du bloc après un enregistrement, `DestructiveDialog` au bouton de confirmation après un refus.
+
 ## 0.66.1
 
 ### Patch Changes
