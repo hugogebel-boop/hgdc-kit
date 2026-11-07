@@ -330,7 +330,7 @@ describe("lecture signée", () => {
   })
 
   it("lève une erreur à message fixe, et garde donc la copie, sur tout ce qui ne va pas", async () => {
-    await expect(read(new Response("{}", { status: 404 }))).rejects.toThrow("lecture refusée (404)")
+    await expect(read(new Response("{}", { status: 404 }))).rejects.toThrow("organisation inconnue (404)")
     await expect(read(new Response("<html>secret"))).rejects.toThrow(/^Cœur de Basalte : réponse illisible\.$/)
     await expect(read(new Response('{"readAt":"x"}'))).rejects.toThrow("réponse invalide")
     const future = JSON.stringify({ readAt: NOW + 3_600_000, projects: [], branding: {} })
@@ -441,7 +441,7 @@ describe("runCoreRound", () => {
       write: async (organizationId) => void written.push(organizationId),
     })
     expect(written).toEqual(["a", "b", "c"])
-    expect(result).toEqual({ failures: 0, lastFailure: null, stopped: false })
+    expect(result).toEqual({ failures: 0, missing: 0, lastFailure: null, stopped: false })
   })
 
   it("s'arrête après trop d'échecs de suite, sans rien écrire", async () => {
@@ -463,5 +463,25 @@ describe("runCoreRound", () => {
     expect(calls).toBe(2)
     expect(result.stopped).toBe(true)
     expect(result.failures).toBe(2)
+  })
+
+  it("passe une organisation inconnue du cœur sans la compter comme un échec", async () => {
+    const written: Array<string> = []
+    const fetcher = (async (url: string) =>
+      url.includes("/supprimee-")
+        ? new Response(null, { status: 404 })
+        : Response.json(snapshot)) as unknown as typeof fetch
+    const result = await runCoreRound({
+      ...base,
+      fetcher,
+      maxFailuresInARow: 2,
+      nextPage: async () => ({
+        organizationIds: ["supprimee-1", "supprimee-2", "supprimee-3", "vivante"],
+        cursor: null,
+      }),
+      write: async (organizationId) => void written.push(organizationId),
+    })
+    expect(written).toEqual(["vivante"])
+    expect(result).toEqual({ failures: 0, missing: 3, lastFailure: null, stopped: false })
   })
 })

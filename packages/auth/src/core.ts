@@ -540,6 +540,17 @@ export async function verifyCoreCall(
 }
 
 /**
+ * Le cœur ne connaît pas (ou plus) cette organisation. Ce n'est pas une panne, mais la copie reste : un cœur
+ * vide pendant une bascule de secours répond pareil, et seul `organization.deleted` autorise la purge.
+ */
+export class CoreOrganizationNotFound extends Error {
+  constructor() {
+    super("Cœur de Basalte : organisation inconnue (404).")
+    this.name = "CoreOrganizationNotFound"
+  }
+}
+
+/**
  * Lit l'état du cœur pour une organisation. Lève une erreur à message fixe, sans rien de la réponse :
  * la copie locale reste telle quelle, et l'appelant la signale.
  */
@@ -557,6 +568,7 @@ export async function fetchCoreSnapshot(options: {
     headers,
     signal: AbortSignal.timeout(10_000),
   })
+  if (response.status === 404) throw new CoreOrganizationNotFound()
   if (!response.ok) throw new Error(`Cœur de Basalte : lecture refusée (${response.status}).`)
   const read = await readBodyText(response, SNAPSHOT_MAX_BYTES)
   if (!read.ok) throw new Error("Cœur de Basalte : réponse trop grande.")
@@ -577,6 +589,7 @@ export async function fetchCoreSnapshot(options: {
  * Un tour de relecture pour toutes les organisations d'un module, depuis son action de cron. L'échec d'une
  * organisation laisse sa copie telle quelle. S'arrête après `maxFailuresInARow` échecs de suite (le cœur est
  * injoignable ou le plafond atteint) ou à `deadline`, pour que le bilan parte toujours : le tour suivant reprend.
+ * Une organisation inconnue du cœur n'est ni un échec ni une raison de s'arrêter : elle est comptée dans `missing`.
  */
 export async function runCoreRound(options: {
   product: AccountEventAudience
@@ -587,10 +600,11 @@ export async function runCoreRound(options: {
   deadline?: number
   maxFailuresInARow?: number
   fetcher?: typeof fetch
-}): Promise<{ failures: number; lastFailure: string | null; stopped: boolean }> {
+}): Promise<{ failures: number; missing: number; lastFailure: string | null; stopped: boolean }> {
   const deadline = options.deadline ?? Date.now() + 8 * 60_000
   const maxFailures = options.maxFailuresInARow ?? 5
   let failures = 0
+  let missing = 0
   let inARow = 0
   let lastFailure: string | null = null
   let cursor: string | null = null
@@ -610,6 +624,10 @@ export async function runCoreRound(options: {
         await options.write(organizationId, snapshot)
         inARow = 0
       } catch (error) {
+        if (error instanceof CoreOrganizationNotFound) {
+          missing += 1
+          continue
+        }
         failures += 1
         inARow += 1
         lastFailure = error instanceof Error ? error.message : "échec inconnu"
@@ -617,7 +635,7 @@ export async function runCoreRound(options: {
     }
     cursor = page.cursor
   } while (cursor !== null && !mustStop())
-  return { failures, lastFailure, stopped: mustStop() }
+  return { failures, missing, lastFailure, stopped: mustStop() }
 }
 
 /**
