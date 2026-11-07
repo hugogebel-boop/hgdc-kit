@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it } from "vitest"
 
 import {
   forgetShellOrganization,
+  lastOrganization,
+  rememberLastOrganization,
   rememberLastProduct,
   rememberShellNavHeight,
   rememberShellOrganization,
@@ -193,5 +195,17 @@ describe("mémoire de l'organisation", () => {
     rememberLastProduct("mail")
     rememberLastProduct("host")
     expect(localStorage.getItem(SHELL_LAST_PRODUCT_KEY)).toBe("host")
+  })
+})
+
+describe("dernière organisation ouverte", () => {
+  afterEach(() => window.localStorage.clear())
+
+  it("est la même pour tous les modules et part à la déconnexion", () => {
+    expect(lastOrganization()).toBeNull()
+    rememberLastOrganization("atelier")
+    expect(lastOrganization()).toBe("atelier")
+    forgetShellOrganization()
+    expect(lastOrganization()).toBeNull()
   })
 })

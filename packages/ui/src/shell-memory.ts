@@ -20,6 +20,8 @@ export const SHELL_ORG_KEY = "hgdc-shell:org"
 export const SHELL_NAV_KEY_PREFIX = "hgdc-shell:nav:"
 /** Dernier produit ouvert (son mot), en `localStorage` : l'accueil d'`app.hgdc.ch` y renvoie. */
 export const SHELL_LAST_PRODUCT_KEY = "hgdc-shell:last"
+/** Slug de la dernière organisation ouverte, le même pour tous les modules : Basalte est un seul produit (ADR 0019 de la famille). */
+export const SHELL_LAST_ORG_KEY = "hgdc-shell:last-org"
 
 export type ShellOrganization = { initials: string; logo?: string; tone?: number }
 
@@ -179,7 +181,24 @@ export function forgetShellOrganization(): void {
   const win = browser()
   if (!win) return
   storageSet(SHELL_ORG_KEY, null)
+  storageSet(SHELL_LAST_ORG_KEY, null)
   shellBoot(SHELL_BOOT_CONFIG, win)
+}
+
+/** Retient l'organisation ouverte : à appeler sur la page d'une organisation, jamais pour la démo. */
+export function rememberLastOrganization(slug: string): void {
+  if (browser()) storageSet(SHELL_LAST_ORG_KEY, slug)
+}
+
+/** Slug de la dernière organisation ouverte dans un module. À comparer aux organisations de la personne. */
+export function lastOrganization(): string | null {
+  const win = browser()
+  if (!win) return null
+  try {
+    return win.localStorage.getItem(SHELL_LAST_ORG_KEY)
+  } catch {
+    return null
+  }
 }
 
 /** Retient la hauteur de la navigation d'un produit (`AppShell` le fait après l'affichage). */
