@@ -89,6 +89,9 @@ describe("catalogue des produits", () => {
 
   it("remplace l'adresse de Manager pour le développement", () => {
     expect(productMenuEntries({ accountHref: "http://localhost:3000" })[0]?.href).toBe("http://localhost:3000")
+    expect(productMenuEntries({ accountHref: "https://account.hgdc.ch" })[0]?.href).toBe(productMenuEntries()[0]?.href)
+    expect(productMenuEntries()[0]?.name).toBe("Manager")
+    expect(productMenuEntries()[0]?.href).not.toContain("account.hgdc.ch")
   })
 
   it("sépare Manager des modules de la barre, sans Account ni doublon", () => {

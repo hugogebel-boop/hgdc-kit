@@ -232,7 +232,7 @@ export function AppShell({
     <>
       {account !== undefined ? sidebarFooter : null}
       {productRail && project ? (
-        <div className="px-3 pb-1">
+        <div className="pb-1">
           <a href={project.settingsHref} className={SIDEBAR_ITEM}>
             <HugeiconsIcon
               icon={Settings02Icon}

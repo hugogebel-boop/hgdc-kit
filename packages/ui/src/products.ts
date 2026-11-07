@@ -224,7 +224,8 @@ export function productMenuEntries(
 ): Array<ProductMenuEntry> {
   const current = options.current?.toLowerCase()
   const { manager, others } = managerFirst(options.catalog ?? HGDC_PRODUCTS)
-  const head = manager && options.accountHref ? { ...manager, entryHref: options.accountHref } : manager
+  const local = localManagerHref(options.accountHref)
+  const head = manager && local ? { ...manager, entryHref: local } : manager
   return [...(head ? [head] : []), ...others.filter(isProductOpen)].map((item) => ({
     name: item.name,
     href: item.entryHref,
@@ -300,13 +301,22 @@ export function shellProductEntries(
   }
   const { manager, others } = managerFirst(options.catalog ?? HGDC_PRODUCTS)
   const head = manager ?? HGDC_MANAGER
+  const local = localManagerHref(options.accountHref)
   return {
     products: others.filter(isProductOpen).map((item) => entry(item, item.entryHref, true)),
-    account: entry(head, options.accountHref ?? head.entryHref, options.accountHref === undefined),
+    account: entry(head, local ?? head.entryHref, local === undefined),
   }
 }
 
 /** Manager du catalogue, s'il y est, sorti des autres produits : il prend la place d'Account en tête. */
+/**
+ * L'adresse reçue, seulement pour un Manager local : les consoles passent aussi l'adresse d'Account en
+ * production, et `account.hgdc.ch` redirige vers ID, pas vers Manager.
+ */
+function localManagerHref(accountHref: string | undefined): string | undefined {
+  return accountHref?.startsWith("https://account.hgdc.ch") ? undefined : accountHref
+}
+
 function managerFirst(catalog: ReadonlyArray<HgdcCatalogProduct>): {
   manager: HgdcCatalogProduct | undefined
   others: Array<HgdcCatalogProduct>
