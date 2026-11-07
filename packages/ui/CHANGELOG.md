@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.68.0
+
+### Minor Changes
+
+- e233687: `@hgdc/ui/image-file` : type réel, dimensions et métadonnées d'un fichier image, sans I/O, repris de Surveillance. `OrgMark` revient aux initiales si l'image ne charge pas et ne la recadre plus.
+
 ## 0.67.0
 
 ### Minor Changes
