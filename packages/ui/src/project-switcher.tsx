@@ -68,6 +68,9 @@ export function ProjectMark({
   )
 }
 
+const startsWithVowel = (word: string) => /^[aeiouyàâéèêh]/i.test(word)
+const changeLabel = (noun: string) => `changer ${startsWithVowel(noun) ? "d'" : "de "}${noun}`
+
 /** Rend une destination du menu : un lien (`href`, par `renderLink`) ou une action. */
 function SwitcherEntry({
   href,
@@ -116,7 +119,7 @@ export function ProjectSwitcher({
   onCreate,
   renderLink,
   noun = { one: "projet", many: "projets" },
-  createLabel = `${noun.feminine ? "Nouvelle" : "Nouveau"} ${noun.one}`,
+  createLabel = `${noun.feminine ? "Nouvelle" : startsWithVowel(noun.one) ? "Nouvel" : "Nouveau"} ${noun.one}`,
   className,
 }: {
   projects: ReadonlyArray<SwitcherProject> | undefined
@@ -155,7 +158,9 @@ export function ProjectSwitcher({
           <button
             type="button"
             aria-label={
-              hasActive ? `${capitalized(noun.one)} ${label}, changer de ${noun.one}` : `${all}, changer de ${noun.one}`
+              hasActive
+                ? `${capitalized(noun.one)} ${label}, ${changeLabel(noun.one)}`
+                : `${all}, ${changeLabel(noun.one)}`
             }
             className={cn(
               "flex h-10 max-w-full min-w-0 items-center gap-2 rounded-xl px-2.5 text-sm font-medium outline-none transition-colors duration-(--duration-fast) ease-out hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-muted coarse:h-11",

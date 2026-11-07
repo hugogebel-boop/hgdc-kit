@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { soloOrigin } from "../../ui/src/addresses.ts"
-import { viewAuthSites } from "./index.ts"
+import { authErrorOptions, viewAuthSites } from "./index.ts"
 
 describe("viewAuthSites (ADR 0014)", () => {
   it("sous app.hgdc.ch : instance app sous la base, instance seule sur <mot>.hgdc.ch", () => {
@@ -37,5 +37,22 @@ describe("viewAuthSites (ADR 0014)", () => {
   it("refuse un produit invalide et une base invalide", () => {
     expect(() => viewAuthSites("mail.evil", {})).toThrow(/produit invalide/)
     expect(() => viewAuthSites("mail", { basePath: "/a/../b" })).toThrow(/basePath invalide/)
+  })
+})
+
+describe("authErrorOptions", () => {
+  it("renvoie vers la page de connexion de la bonne adresse", () => {
+    const { app, solo } = viewAuthSites("host", { siteUrl: "https://app.hgdc.ch", basePath: "/host" })
+    expect(authErrorOptions(app).errorURL).toBe("https://app.hgdc.ch/host/connexion")
+    expect(authErrorOptions(solo).errorURL).toBe("https://host.hgdc.ch/host/connexion")
+    expect(authErrorOptions(app, "/connexion?erreur=refus").errorURL).toBe(
+      "https://app.hgdc.ch/host/connexion?erreur=refus",
+    )
+  })
+
+  it("marche sans base, et ne dit rien sans adresse", () => {
+    expect(authErrorOptions({ baseURL: "http://localhost:3000" }).errorURL).toBe("http://localhost:3000/connexion")
+    expect(authErrorOptions({ baseURL: "" })).toEqual({})
+    expect(authErrorOptions({ baseURL: undefined })).toEqual({})
   })
 })
