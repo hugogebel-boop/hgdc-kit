@@ -271,12 +271,15 @@ export function ShellNavigation({
   accountHref,
   level,
   onLevelChange,
+  projectModules,
 }: {
   product: FamilyProduct
   nav: ReactNode
   accountHref?: string | undefined
   level: ShellNavLevel
   onLevelChange: (level: ShellNavLevel) => void
+  /** Modules activés sur le projet choisi : la liste s'y limite. Absent : tous les projets. */
+  projectModules?: ReadonlyArray<ModuleWord> | undefined
 }): React.JSX.Element {
   const pageOrigin = usePageOrigin()
   const order = useModuleBar()
@@ -292,7 +295,9 @@ export function ShellNavigation({
       {level === "modules" ? (
         <ModuleList
           entries={products}
-          order={shownModules(order, product)}
+          order={shownModules(order, product).filter(
+            (word) => !projectModules || word === product || projectModules.includes(word),
+          )}
           onOpenCurrent={() => onLevelChange("tabs")}
           onCustomize={() => onLevelChange("edit")}
         />

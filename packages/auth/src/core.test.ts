@@ -12,6 +12,7 @@ import {
   purgeCoreCopy,
   purgeCoreTombstones,
   reconcileCoreCopy,
+  runCoreRound,
   signCoreCall,
   signCoreEvent,
   verifyCoreCall,
@@ -419,5 +420,48 @@ describe("revue du cœur", () => {
     expect(coreLogoUrl("https://metadata.google.internal./a.png")).toBeNull()
     expect(coreNameSchema.safeParse("Un\u2028deux").success).toBe(false)
     expect(coreNameSchema.safeParse("Un\u2029deux").success).toBe(false)
+  })
+})
+
+describe("runCoreRound", () => {
+  const snapshot = { readAt: Date.now() - 1000, projects: [], branding: {} }
+  const base = { product: "status", secret: SECRET, baseUrl: "https://coeur.exemple" } as const
+
+  it("écrit chaque organisation de chaque page", async () => {
+    const written: Array<string> = []
+    const fetcher = (async () => Response.json(snapshot)) as unknown as typeof fetch
+    const pages: Record<string, { organizationIds: Array<string>; cursor: string | null }> = {
+      start: { organizationIds: ["a", "b"], cursor: "suite" },
+      suite: { organizationIds: ["c"], cursor: null },
+    }
+    const result = await runCoreRound({
+      ...base,
+      fetcher,
+      nextPage: async (cursor) => pages[cursor ?? "start"]!,
+      write: async (organizationId) => void written.push(organizationId),
+    })
+    expect(written).toEqual(["a", "b", "c"])
+    expect(result).toEqual({ failures: 0, lastFailure: null, stopped: false })
+  })
+
+  it("s'arrête après trop d'échecs de suite, sans rien écrire", async () => {
+    let calls = 0
+    const fetcher = (async () => {
+      calls += 1
+      return new Response(null, { status: 503 })
+    }) as unknown as typeof fetch
+    const write = async () => {
+      throw new Error("jamais")
+    }
+    const result = await runCoreRound({
+      ...base,
+      fetcher,
+      maxFailuresInARow: 2,
+      nextPage: async () => ({ organizationIds: ["a", "b", "c", "d"], cursor: null }),
+      write,
+    })
+    expect(calls).toBe(2)
+    expect(result.stopped).toBe(true)
+    expect(result.failures).toBe(2)
   })
 })
