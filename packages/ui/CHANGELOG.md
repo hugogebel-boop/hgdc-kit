@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.69.0
+
+### Minor Changes
+
+- c683a0b: `rememberLastOrganization` et `lastOrganization` : la dernière organisation ouverte est la même pour tous les modules.
+
 ## 0.68.0
 
 ### Minor Changes
