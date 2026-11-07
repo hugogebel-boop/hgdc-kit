@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.65.0
+
+### Minor Changes
+
+- bdc6649: `@hgdc/ui/shell-project` : sélecteur de projet commun aux consoles de Basalte, projet choisi partagé par organisation. `AppShell` reçoit `project` : la liste des modules se limite à ceux du projet, et « Réglages du projet » paraît en bas de la barre. `@hgdc/auth/core` : `runCoreRound`, tour de relecture commun aux modules.
+
 ## 0.64.0
 
 ### Minor Changes
