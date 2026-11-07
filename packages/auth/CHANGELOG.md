@@ -1,5 +1,11 @@
 # @hgdc/auth
 
+## 0.37.1
+
+### Patch Changes
+
+- f6ee957: `runCoreRound` ne compte plus une organisation inconnue du cœur comme un échec : `fetchCoreSnapshot` lève `CoreOrganizationNotFound` sur un 404, et le tour la compte dans `missing` sans s'arrêter.
+
 ## 0.37.0
 
 ### Minor Changes
