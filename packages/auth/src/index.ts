@@ -582,6 +582,20 @@ export function viewAuthSites(
 }
 
 /**
+ * Page où better-auth renvoie une erreur d'API (`onAPIError`), à la place de sa page par défaut, en
+ * anglais : la page de connexion du produit, sur l'adresse de cette instance. Elle mène à la console si
+ * la session est ouverte, par exemple quand un retour d'ID arrive deux fois (`state_mismatch`).
+ */
+export function authErrorOptions(
+  site: { baseURL: string | undefined; basePath?: string | undefined },
+  path: string = "/connexion",
+): { errorURL?: string } {
+  if (!site.baseURL) return {}
+  const authUrl = `${site.baseURL}${site.basePath ?? ""}`
+  return { errorURL: `${authUrl.replace(/\/api\/auth$/, "")}${path}` }
+}
+
+/**
  * Durée d'une session d'un produit, sans prolongation (`session: { expiresIn: SESSION_TTL_SECONDS,
  * disableSessionRefresh: true }`) : les organisations sont relues à chaque connexion, donc au
  * moins une fois tous les 7 jours.
