@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from "react"
 
 import type { ProductView } from "./addresses.ts"
-import { saveModuleBar } from "./module-bar-store.ts"
+import { saveModuleBar, storedModuleBar } from "./module-bar-store.ts"
 import { parseModuleBar, type ModuleWord } from "./modules.ts"
 
 /**
@@ -30,6 +30,8 @@ export const ACCOUNT_PREFERENCES_URL = "https://account.hgdc.ch/api/preferences"
 
 const STORAGE_KEY = "hgdc-product-bar"
 const EVENT = "hgdc-product-bar"
+/** Présent tant qu'Account n'a pas confirmé la barre des modules réglée ici : elle ne doit pas être écrasée. */
+const MODULE_BAR_UNSENT_KEY = "hgdc-shell:modules-unsent"
 
 /** Valeur reçue (Account, stockage) : un réglage connu, sinon `auto`. */
 export function parseProductBar(value: unknown): ProductBarPreference {
@@ -84,6 +86,10 @@ export async function syncProductBar(fetchImpl: typeof fetch = fetch): Promise<v
     const body: unknown = await response.json()
     if (typeof body !== "object" || body === null) return
     if ("productBar" in body) rememberProductBar(parseProductBar(body.productBar))
+    if (moduleBarUnsent()) {
+      await pushModuleBar(storedModuleBar(), fetchImpl)
+      return
+    }
     // Absente : la personne n'a encore rien réglé, cette origine garde ce qu'elle a.
     if ("moduleBar" in body) {
       const order = parseModuleBar(body.moduleBar)
@@ -94,20 +100,41 @@ export async function syncProductBar(fetchImpl: typeof fetch = fetch): Promise<v
   }
 }
 
+function moduleBarUnsent(): boolean {
+  try {
+    return window.localStorage.getItem(MODULE_BAR_UNSENT_KEY) !== null
+  } catch {
+    return false
+  }
+}
+
+function markModuleBarUnsent(unsent: boolean): void {
+  try {
+    if (unsent) window.localStorage.setItem(MODULE_BAR_UNSENT_KEY, "1")
+    else window.localStorage.removeItem(MODULE_BAR_UNSENT_KEY)
+  } catch {
+    // Stockage bloqué : la prochaine relecture reprendra la valeur d'Account.
+  }
+}
+
 /**
  * Enregistre la barre des modules chez Account, pour la retrouver sur un autre appareil. Un échec n'est
- * pas signalé : la barre reste réglée dans cette origine, et le prochain réglage repartira.
+ * pas signalé : la barre reste réglée dans cette origine, et repart au prochain chargement.
+ * `keepalive` : un clic sur un autre module recharge la page, l'envoi doit y survivre.
  */
 export async function pushModuleBar(order: ReadonlyArray<ModuleWord>, fetchImpl: typeof fetch = fetch): Promise<void> {
   // Account n'accepte que les consoles de `hgdc.ch` : en local, en test, rien à envoyer.
   if (!window.location.hostname.endsWith(".hgdc.ch")) return
+  markModuleBarUnsent(true)
   try {
-    await fetchImpl(ACCOUNT_PREFERENCES_URL, {
+    const response = await fetchImpl(ACCOUNT_PREFERENCES_URL, {
       method: "PUT",
       credentials: "include",
+      keepalive: true,
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ moduleBar: order }),
     })
+    if (response.ok) markModuleBarUnsent(false)
   } catch {
     // Account injoignable ou hors ligne.
   }

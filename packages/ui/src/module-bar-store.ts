@@ -53,6 +53,11 @@ export function saveModuleBar(order: ReadonlyArray<ModuleWord>): void {
   window.dispatchEvent(new Event(EVENT))
 }
 
+/** L'ordre retenu dans cette origine, lu hors de React. */
+export function storedModuleBar(): ReadonlyArray<ModuleWord> {
+  return read()
+}
+
 /** L'ordre retenu ; celui par défaut au rendu serveur. */
 export function useModuleBar(): ReadonlyArray<ModuleWord> {
   return useSyncExternalStore(subscribe, read, () => DEFAULT_MODULE_BAR)

@@ -67,8 +67,26 @@ describe("réglage « Barre des produits » (ADR 0014)", () => {
     expect(fetchImpl).toHaveBeenCalledWith(ACCOUNT_PREFERENCES_URL, {
       method: "PUT",
       credentials: "include",
+      keepalive: true,
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ moduleBar: ["host"] }),
     })
+  })
+
+  it("un envoi raté n'est pas écrasé par la relecture : il repart au chargement suivant", async () => {
+    vi.stubGlobal("location", { hostname: "app.hgdc.ch" })
+    window.localStorage.setItem("hgdc-shell:modules", JSON.stringify(["mail"]))
+    await pushModuleBar(["mail"], (async () => new Response(null, { status: 500 })) as unknown as typeof fetch)
+    const fetchImpl = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(async (_url, init) =>
+      init?.method === "PUT"
+        ? new Response(null, { status: 204 })
+        : Response.json({ productBar: "auto", moduleBar: ["host"] }),
+    )
+    await syncProductBar(fetchImpl as unknown as typeof fetch)
+    expect(window.localStorage.getItem("hgdc-shell:modules")).toBe(JSON.stringify(["mail"]))
+    expect(fetchImpl.mock.calls[1]?.[1]?.method).toBe("PUT")
+    await syncProductBar(fetchImpl as unknown as typeof fetch)
+    vi.unstubAllGlobals()
+    expect(window.localStorage.getItem("hgdc-shell:modules")).toBe(JSON.stringify(["host"]))
   })
 })
