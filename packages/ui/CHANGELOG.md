@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.66.0
+
+### Minor Changes
+
+- 99af12c: La barre des modules suit la personne : `pushModuleBar` l'enregistre chez Account, `syncProductBar` la relit au chargement.
+
 ## 0.65.0
 
 ### Minor Changes
