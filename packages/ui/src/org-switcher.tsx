@@ -3,7 +3,7 @@ import Tick02Icon from "@hugeicons/core-free-icons/Tick02Icon"
 import UnfoldMoreIcon from "@hugeicons/core-free-icons/UnfoldMoreIcon"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Menu as MenuPrimitive } from "@base-ui/react/menu"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 
 import { Badge } from "./badge.tsx"
 import {
@@ -72,8 +72,17 @@ export function OrgMark({
   org: Pick<Organization, "name" | "logo"> & { id?: string }
   className?: string
 }): React.JSX.Element {
-  if (org.logo)
-    return <img src={org.logo} alt="" className={cn("size-8 shrink-0 rounded-lg object-cover", className)} />
+  // Image retirée ou serveur muet : les initiales, plutôt qu'une image cassée.
+  const [broken, setBroken] = useState<string | null>(null)
+  if (org.logo && org.logo !== broken)
+    return (
+      <img
+        src={org.logo}
+        alt=""
+        onError={() => setBroken(org.logo ?? null)}
+        className={cn("size-8 shrink-0 rounded-lg bg-muted object-contain", className)}
+      />
+    )
   return (
     <span
       aria-hidden
