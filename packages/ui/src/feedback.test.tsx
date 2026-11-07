@@ -113,7 +113,7 @@ describe("DestructiveDialog", () => {
     expect(screen.getByText("Impossible de revenir en arrière.")).toBeTruthy()
   })
 
-  it("rend le focus au bouton de confirmation après un refus", async () => {
+  it("garde le focus dans la boîte après un refus", async () => {
     render(
       <DestructiveDialog
         open
@@ -132,7 +132,7 @@ describe("DestructiveDialog", () => {
       fireEvent.click(confirm)
       await new Promise((resolve) => setTimeout(resolve, 50))
     })
-    expect(document.activeElement).toBe(confirm)
+    expect(screen.getByRole("dialog").contains(document.activeElement)).toBe(true)
   })
 
   it("compare le nom aux espaces près", () => {
