@@ -5,6 +5,7 @@ import {
   ACCOUNT_PREFERENCES_URL,
   parseProductBar,
   productBarShown,
+  pushModuleBar,
   rememberProductBar,
   syncProductBar,
 } from "./product-bar.ts"
@@ -45,5 +46,29 @@ describe("réglage « Barre des produits » (ADR 0014)", () => {
     rememberProductBar("never")
     rememberProductBar("auto")
     expect(window.localStorage.getItem("hgdc-product-bar")).toBeNull()
+  })
+
+  it("reprend la barre des modules d'Account, et garde la sienne si Account n'en a pas", async () => {
+    window.localStorage.setItem("hgdc-shell:modules", JSON.stringify(["mail"]))
+    await syncProductBar((async () => Response.json({ productBar: "auto" })) as unknown as typeof fetch)
+    expect(window.localStorage.getItem("hgdc-shell:modules")).toBe(JSON.stringify(["mail"]))
+    await syncProductBar((async () =>
+      Response.json({ productBar: "auto", moduleBar: ["status", "pirate", "host"] })) as unknown as typeof fetch)
+    expect(window.localStorage.getItem("hgdc-shell:modules")).toBe(JSON.stringify(["status", "host"]))
+  })
+
+  it("n'envoie la barre des modules à Account que depuis une console de hgdc.ch", async () => {
+    const fetchImpl = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(async () => new Response(null))
+    await pushModuleBar(["host"], fetchImpl as unknown as typeof fetch)
+    expect(fetchImpl).not.toHaveBeenCalled()
+    vi.stubGlobal("location", { hostname: "app.hgdc.ch" })
+    await pushModuleBar(["host"], fetchImpl as unknown as typeof fetch)
+    vi.unstubAllGlobals()
+    expect(fetchImpl).toHaveBeenCalledWith(ACCOUNT_PREFERENCES_URL, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ moduleBar: ["host"] }),
+    })
   })
 })

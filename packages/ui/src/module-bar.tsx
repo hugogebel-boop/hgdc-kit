@@ -12,6 +12,7 @@ import { Button } from "./button.tsx"
 import { cn } from "./cn.ts"
 import type { FamilyProduct } from "./family-svg.ts"
 import { saveModuleBar, useModuleBar } from "./module-bar-store.ts"
+import { pushModuleBar } from "./product-bar.ts"
 import { hiddenModules, moduleByWord, moveModule, shownModules, type ModuleWord } from "./modules.ts"
 import { ProductBadge } from "./product-badge.tsx"
 import { PRODUCT_PRERENDER_ATTRIBUTE } from "./product-switch.ts"
@@ -306,6 +307,7 @@ export function ShellNavigation({
           order={order}
           onSave={(next) => {
             saveModuleBar(next)
+            void pushModuleBar(next)
             onLevelChange("modules")
           }}
           onCancel={() => onLevelChange("modules")}

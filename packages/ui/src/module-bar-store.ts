@@ -3,8 +3,8 @@ import { useSyncExternalStore } from "react"
 import { DEFAULT_MODULE_BAR, parseModuleBar, type ModuleWord } from "./modules.ts"
 
 /**
- * L'ordre et le choix des modules de la barre, propres à chaque personne. Sous `app.hgdc.ch`, toutes
- * les consoles partagent la même origine, donc le même réglage.
+ * L'ordre et le choix des modules de la barre, propres à chaque personne : Account les garde
+ * (`product-bar.ts`), et chaque origine en retient la dernière valeur, pour s'afficher sans attendre.
  */
 export const MODULE_BAR_KEY = "hgdc-shell:modules"
 const EVENT = "hgdc-module-bar"

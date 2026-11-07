@@ -1,6 +1,8 @@
 import { useEffect, useSyncExternalStore } from "react"
 
 import type { ProductView } from "./addresses.ts"
+import { saveModuleBar } from "./module-bar-store.ts"
+import { parseModuleBar, type ModuleWord } from "./modules.ts"
 
 /**
  * Réglage « Barre des produits » (ADR 0014 de la famille), choisi dans Account :
@@ -23,7 +25,7 @@ export const PRODUCT_BAR_LABELS: Readonly<Record<ProductBarPreference, string>> 
   never: "Jamais",
 }
 
-/** Lecture du réglage chez Account : `{ productBar }`, rien d'autre. */
+/** Réglages chez Account : `{ productBar, moduleBar }`, rien d'autre. */
 export const ACCOUNT_PREFERENCES_URL = "https://account.hgdc.ch/api/preferences"
 
 const STORAGE_KEY = "hgdc-product-bar"
@@ -80,10 +82,34 @@ export async function syncProductBar(fetchImpl: typeof fetch = fetch): Promise<v
     const response = await fetchImpl(ACCOUNT_PREFERENCES_URL, { credentials: "include", cache: "no-store" })
     if (!response.ok) return
     const body: unknown = await response.json()
-    if (typeof body === "object" && body !== null && "productBar" in body)
-      rememberProductBar(parseProductBar(body.productBar))
+    if (typeof body !== "object" || body === null) return
+    if ("productBar" in body) rememberProductBar(parseProductBar(body.productBar))
+    // Absente : la personne n'a encore rien réglé, cette origine garde ce qu'elle a.
+    if ("moduleBar" in body) {
+      const order = parseModuleBar(body.moduleBar)
+      if (order) saveModuleBar(order)
+    }
   } catch {
     // Account injoignable ou hors ligne : rien ne change.
+  }
+}
+
+/**
+ * Enregistre la barre des modules chez Account, pour la retrouver sur un autre appareil. Un échec n'est
+ * pas signalé : la barre reste réglée dans cette origine, et le prochain réglage repartira.
+ */
+export async function pushModuleBar(order: ReadonlyArray<ModuleWord>, fetchImpl: typeof fetch = fetch): Promise<void> {
+  // Account n'accepte que les consoles de `hgdc.ch` : en local, en test, rien à envoyer.
+  if (!window.location.hostname.endsWith(".hgdc.ch")) return
+  try {
+    await fetchImpl(ACCOUNT_PREFERENCES_URL, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ moduleBar: order }),
+    })
+  } catch {
+    // Account injoignable ou hors ligne.
   }
 }
 
