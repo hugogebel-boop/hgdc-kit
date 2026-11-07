@@ -60,6 +60,28 @@ describe("SettingsSection", () => {
     expect(screen.getByText("Appliqué au prochain déploiement.")).toBeDefined()
   })
 
+  it("rend le focus au titre si le bouton l'a perdu, sans le prendre à un champ", async () => {
+    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
+    render(
+      <SettingsSection title="Build" onSave={async () => {}}>
+        <input aria-label="Nom" />
+      </SettingsSection>,
+    )
+    const form = screen.getByRole("form", { name: "Build" })
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    fireEvent.submit(form)
+    await Promise.resolve()
+    await frame()
+    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Build" }))
+
+    const field = screen.getByLabelText("Nom")
+    field.focus()
+    fireEvent.submit(form)
+    await Promise.resolve()
+    await frame()
+    expect(document.activeElement).toBe(field)
+  })
+
   it("bloque un deuxième envoi pendant l'enregistrement", () => {
     const onSave = vi.fn<() => void>()
     render(<SettingsSection title="Build" onSave={onSave} saving />)

@@ -1,4 +1,4 @@
-import { useId, type FormEvent, type ReactNode } from "react"
+import { useId, useRef, type FormEvent, type ReactNode } from "react"
 
 import { Button } from "./button.tsx"
 import { cn } from "./cn.ts"
@@ -56,13 +56,14 @@ export function SettingsSection({
 }): React.JSX.Element {
   const titleId = useId()
   const descriptionId = useId()
+  const heading = useRef<HTMLHeadingElement>(null)
   const hasFooter = Boolean(footer || footerNote || onSave)
 
   const body = (
     <>
       <div className="grid gap-4 p-5 sm:p-6">
         <div>
-          <h2 id={titleId} className="text-base font-semibold text-balance">
+          <h2 ref={heading} id={titleId} tabIndex={-1} className="text-base font-semibold text-balance outline-none">
             {title}
           </h2>
           {description ? (
@@ -103,7 +104,13 @@ export function SettingsSection({
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!dirty || saving) return
-    void onSave()
+    // Le bouton se désactive pendant l'envoi et le focus part sur `body` : il revient au titre du bloc.
+    // Un focus resté dans un champ (Entrée) n'y est pas déplacé.
+    void Promise.resolve(onSave()).finally(() => {
+      requestAnimationFrame(() => {
+        if (document.activeElement === document.body) heading.current?.focus()
+      })
+    })
   }
   // Un `<form>` nommé par son titre a le rôle « form » : il apparaît dans les repères du lecteur d'écran.
   return (
