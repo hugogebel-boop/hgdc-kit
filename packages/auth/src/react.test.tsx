@@ -1,7 +1,10 @@
+// @vitest-environment happy-dom
 import { readFileSync } from "node:fs"
+import { join } from "node:path"
 
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { renderToStaticMarkup, renderToString } from "react-dom/server"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
   HGDC_MARK_DARK_SVG,
@@ -15,7 +18,7 @@ import {
   type HgdcAuthClient,
 } from "./react.tsx"
 
-function client(result: { error?: unknown } | Error) {
+function client(result: { data?: { url?: string } | null; error?: unknown } | Error) {
   const calls: unknown[] = []
   const authClient: HgdcAuthClient = {
     signIn: {
@@ -28,6 +31,87 @@ function client(result: { error?: unknown } | Error) {
   }
   return { authClient, calls }
 }
+
+const AUTHORIZE = "https://id.example/authorize?client_id=produit&state=abc&scope=openid%20email"
+
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+})
+
+describe("startHgdcSignIn avec chooseAccount", () => {
+  it("demande l'adresse sans redirection et y ajoute le prompt, sans perdre le reste", async () => {
+    const assign = vi.spyOn(window.location, "assign").mockImplementation(() => {})
+    const { authClient, calls } = client({ data: { url: AUTHORIZE } })
+    expect(await startHgdcSignIn(authClient, { callbackURL: "/projets", chooseAccount: true })).toEqual({ ok: true })
+    expect(calls).toEqual([{ providerId: "hgdc", callbackURL: "/projets", disableRedirect: true }])
+    const target = new URL(String(assign.mock.calls[0]?.[0]))
+    expect(target.origin + target.pathname).toBe("https://id.example/authorize")
+    expect(Object.fromEntries(target.searchParams)).toEqual({
+      client_id: "produit",
+      state: "abc",
+      scope: "openid email",
+      prompt: "select_account",
+    })
+  })
+
+  it("une réponse sans adresse échoue sans lever ni partir", async () => {
+    const assign = vi.spyOn(window.location, "assign").mockImplementation(() => {})
+    const result = await startHgdcSignIn(client({ data: {} }).authClient, { chooseAccount: true })
+    expect(result).toMatchObject({ ok: false, error: expect.any(Error) })
+    expect(assign).not.toHaveBeenCalled()
+  })
+
+  it("refuse une adresse qui n'est pas http(s)", async () => {
+    const assign = vi.spyOn(window.location, "assign").mockImplementation(() => {})
+    const result = await startHgdcSignIn(client({ data: { url: "javascript:alert(1)" } }).authClient, {
+      chooseAccount: true,
+    })
+    expect(result).toMatchObject({ ok: false, error: expect.any(Error) })
+    expect(assign).not.toHaveBeenCalled()
+  })
+
+  it("rend l'erreur du client sans partir", async () => {
+    const assign = vi.spyOn(window.location, "assign").mockImplementation(() => {})
+    const result = await startHgdcSignIn(client({ error: { status: 500 } }).authClient, { chooseAccount: true })
+    expect(result).toEqual({ ok: false, error: { status: 500 } })
+    expect(assign).not.toHaveBeenCalled()
+  })
+
+  it("sans l'option, ne passe ni disableRedirect ni par location.assign", async () => {
+    const assign = vi.spyOn(window.location, "assign").mockImplementation(() => {})
+    const { authClient, calls } = client({ data: { url: AUTHORIZE } })
+    expect(await startHgdcSignIn(authClient, { callbackURL: "/projets" })).toEqual({ ok: true })
+    expect(calls).toEqual([{ providerId: "hgdc", callbackURL: "/projets" }])
+    expect(assign).not.toHaveBeenCalled()
+  })
+})
+
+describe("HgdcSignInButton au clic", () => {
+  it("envoie le prompt et garde les autres paramètres de l'adresse", async () => {
+    const assign = vi.spyOn(window.location, "assign").mockImplementation(() => {})
+    const { authClient, calls } = client({ data: { url: AUTHORIZE } })
+    render(<HgdcSignInButton authClient={authClient} callbackURL="/projets" errorCallbackURL="/connexion" />)
+    fireEvent.click(screen.getByRole("button"))
+    await waitFor(() => expect(assign).toHaveBeenCalledOnce())
+    expect(calls).toEqual([
+      { providerId: "hgdc", callbackURL: "/projets", errorCallbackURL: "/connexion", disableRedirect: true },
+    ])
+    const target = new URL(String(assign.mock.calls[0]?.[0]))
+    expect(target.searchParams.get("prompt")).toBe("select_account")
+    expect(target.searchParams.get("state")).toBe("abc")
+    expect(target.searchParams.get("client_id")).toBe("produit")
+  })
+
+  it("réponse sans adresse : signale l'erreur et réactive le bouton", async () => {
+    const onError = vi.fn<(error: unknown) => void>()
+    render(<HgdcSignInButton authClient={client({ data: null }).authClient} onError={onError} />)
+    const button = screen.getByRole<HTMLButtonElement>("button")
+    fireEvent.click(button)
+    await waitFor(() => expect(onError).toHaveBeenCalledOnce())
+    expect(button.disabled).toBe(false)
+  })
+})
 
 describe("startHgdcSignIn", () => {
   it("demande le fournisseur hgdc avec la page de retour", async () => {
@@ -59,7 +143,7 @@ describe("HgdcSignInButton", () => {
   })
 
   it("porte la marque d'ID, copie exacte de @hgdc/ui, et ses couleurs hors couche", () => {
-    const file = readFileSync(new URL("../../ui/family/id-mark.svg", import.meta.url), "utf8")
+    const file = readFileSync(join(import.meta.dirname, "../../ui/family/id-mark.svg"), "utf8")
     expect(ID_MARK_SVG).toBe(file.replace(/\r\n/g, "\n").trim())
     const html = renderToStaticMarkup(<HgdcSignInButton authClient={client({}).authClient} />)
     expect(html).toContain(`src="data:image/svg+xml,${encodeURIComponent(ID_MARK_SVG)}"`)
@@ -100,7 +184,7 @@ describe("HgdcSignInButton", () => {
 describe("HgdcMark", () => {
   it("est le H « Double » de la H Collection, copie exacte des fichiers de @hgdc/ui", () => {
     const file = (name: string) =>
-      readFileSync(new URL(`../../ui/family/${name}.svg`, import.meta.url), "utf8")
+      readFileSync(join(import.meta.dirname, `../../ui/family/${name}.svg`), "utf8")
         .replace(/\r\n/g, "\n")
         .trim()
     expect(HGDC_MARK_SVG).toBe(file("hcollection-icon"))

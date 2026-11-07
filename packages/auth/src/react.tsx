@@ -9,7 +9,8 @@ export type HgdcAuthClient = {
       providerId: string
       callbackURL?: string
       errorCallbackURL?: string
-    }) => Promise<{ error?: unknown } | null | undefined>
+      disableRedirect?: boolean
+    }) => Promise<{ data?: { url?: string } | null; error?: unknown } | null | undefined>
   }
 }
 
@@ -24,7 +25,16 @@ export type HgdcSignInButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>
   label?: string
 }
 
-export type HgdcSignInOptions = { callbackURL?: string; errorCallbackURL?: string }
+export type HgdcSignInOptions = {
+  callbackURL?: string
+  errorCallbackURL?: string
+  /**
+   * Demande à ID d'afficher le choix du compte (`prompt=select_account`) : la session d'ID survit à
+   * la déconnexion d'un produit, et sans ce `prompt` ID reprend seul. Pour le clic d'une personne ;
+   * un parcours silencieux (rafraîchir les organisations) ne le pose pas.
+   */
+  chooseAccount?: boolean
+}
 
 /**
  * Part vers HGDC Account. Renvoie `{ ok: true }` quand la redirection est lancée,
@@ -32,15 +42,28 @@ export type HgdcSignInOptions = { callbackURL?: string; errorCallbackURL?: strin
  */
 export async function startHgdcSignIn(
   authClient: HgdcAuthClient,
-  { callbackURL = "/", errorCallbackURL }: HgdcSignInOptions = {},
+  { callbackURL = "/", errorCallbackURL, chooseAccount = false }: HgdcSignInOptions = {},
 ): Promise<{ ok: true } | { ok: false; error: unknown }> {
   try {
     const result = await authClient.signIn.oauth2({
       providerId: HGDC_PROVIDER_ID,
       callbackURL,
       ...(errorCallbackURL ? { errorCallbackURL } : {}),
+      ...(chooseAccount ? { disableRedirect: true } : {}),
     })
-    return result?.error ? { ok: false, error: result.error } : { ok: true }
+    if (result?.error) return { ok: false, error: result.error }
+    if (!chooseAccount) return { ok: true }
+
+    const authorizationUrl = result?.data?.url
+    if (!authorizationUrl) return { ok: false, error: new Error("ID n'a pas rendu d'adresse de connexion.") }
+    const url = new URL(authorizationUrl)
+    // `disableRedirect` contourne le contrôle du client better-auth : même refus ici.
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      return { ok: false, error: new Error("ID a rendu une adresse de connexion non valide.") }
+    }
+    url.searchParams.set("prompt", "select_account")
+    window.location.assign(url.toString())
+    return { ok: true }
   } catch (error) {
     return { ok: false, error }
   }
@@ -134,7 +157,7 @@ export const ID_SIGN_IN_CSS: string =
 /**
  * Bouton « Se connecter avec ID ». Rouge d'ID, texte blanc, double croix blanche à gauche
  * (`ID_SIGN_IN_CSS`) ; la `className` du produit règle la taille. L'état d'attente est exposé par
- * `aria-busy` et `data-pending`.
+ * `aria-busy` et `data-pending`. Le clic vaut demande de choix : ID affiche la liste des comptes.
  */
 export function HgdcSignInButton({
   authClient,
@@ -152,6 +175,7 @@ export function HgdcSignInButton({
     const result = await startHgdcSignIn(authClient, {
       callbackURL,
       ...(errorCallbackURL ? { errorCallbackURL } : {}),
+      chooseAccount: true,
     })
     // Succès : le navigateur part vers ID, le bouton reste en attente.
     if (!result.ok) {

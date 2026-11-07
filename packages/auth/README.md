@@ -64,6 +64,8 @@ import { HgdcSignInButton } from "@hgdc/auth/react"
 
 Le bouton n'a pas de style propre : le produit le met en forme. L'attente est exposée par `aria-busy` et `data-pending`.
 
+Un clic sur le bouton affiche toujours le choix du compte chez ID (`prompt=select_account`) : la session d'ID survit à la déconnexion d'un produit, et la personne doit pouvoir changer de compte ou en créer un. Les parcours silencieux restent silencieux : `/auth/hgdc`, `useOrganizationRefresh` et `startHgdcSignIn` sans option. Hors du bouton, un clic d'une personne passe `startHgdcSignIn(authClient, { chooseAccount: true })`.
+
 ## Protéger le serveur MCP d'un produit
 
 Account est le serveur d'autorisation (ADR 0009 d'Account). Le client MCP lit le document RFC 9728 du produit, s'enregistre chez Account, la personne choisit une organisation et consent, puis le client présente un JWT d'Account. Le produit le vérifie sans appeler Account :
