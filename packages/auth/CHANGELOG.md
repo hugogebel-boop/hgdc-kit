@@ -1,5 +1,11 @@
 # @hgdc/auth
 
+## 0.38.0
+
+### Minor Changes
+
+- 1d1fef1: `HgdcSignInButton` demande à ID le choix du compte (`prompt=select_account`) : après une déconnexion, la personne voit ses comptes au lieu de revenir connectée d'office. `startHgdcSignIn` reçoit l'option `chooseAccount` ; sans elle, l'appel ne change pas.
+
 ## 0.37.1
 
 ### Patch Changes
