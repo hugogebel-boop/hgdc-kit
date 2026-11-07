@@ -5,6 +5,7 @@ import {
   ACCOUNT_PREFERENCES_URL,
   parseProductBar,
   productBarShown,
+  pushModuleBar,
   rememberProductBar,
   syncProductBar,
 } from "./product-bar.ts"
@@ -45,5 +46,47 @@ describe("réglage « Barre des produits » (ADR 0014)", () => {
     rememberProductBar("never")
     rememberProductBar("auto")
     expect(window.localStorage.getItem("hgdc-product-bar")).toBeNull()
+  })
+
+  it("reprend la barre des modules d'Account, et garde la sienne si Account n'en a pas", async () => {
+    window.localStorage.setItem("hgdc-shell:modules", JSON.stringify(["mail"]))
+    await syncProductBar((async () => Response.json({ productBar: "auto" })) as unknown as typeof fetch)
+    expect(window.localStorage.getItem("hgdc-shell:modules")).toBe(JSON.stringify(["mail"]))
+    await syncProductBar((async () =>
+      Response.json({ productBar: "auto", moduleBar: ["status", "pirate", "host"] })) as unknown as typeof fetch)
+    expect(window.localStorage.getItem("hgdc-shell:modules")).toBe(JSON.stringify(["status", "host"]))
+  })
+
+  it("n'envoie la barre des modules à Account que depuis une console de hgdc.ch", async () => {
+    const fetchImpl = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(async () => new Response(null))
+    await pushModuleBar(["host"], fetchImpl as unknown as typeof fetch)
+    expect(fetchImpl).not.toHaveBeenCalled()
+    vi.stubGlobal("location", { hostname: "app.hgdc.ch" })
+    await pushModuleBar(["host"], fetchImpl as unknown as typeof fetch)
+    vi.unstubAllGlobals()
+    expect(fetchImpl).toHaveBeenCalledWith(ACCOUNT_PREFERENCES_URL, {
+      method: "PUT",
+      credentials: "include",
+      keepalive: true,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ moduleBar: ["host"] }),
+    })
+  })
+
+  it("un envoi raté n'est pas écrasé par la relecture : il repart au chargement suivant", async () => {
+    vi.stubGlobal("location", { hostname: "app.hgdc.ch" })
+    window.localStorage.setItem("hgdc-shell:modules", JSON.stringify(["mail"]))
+    await pushModuleBar(["mail"], (async () => new Response(null, { status: 500 })) as unknown as typeof fetch)
+    const fetchImpl = vi.fn<(input: string, init?: RequestInit) => Promise<Response>>(async (_url, init) =>
+      init?.method === "PUT"
+        ? new Response(null, { status: 204 })
+        : Response.json({ productBar: "auto", moduleBar: ["host"] }),
+    )
+    await syncProductBar(fetchImpl as unknown as typeof fetch)
+    expect(window.localStorage.getItem("hgdc-shell:modules")).toBe(JSON.stringify(["mail"]))
+    expect(fetchImpl.mock.calls[1]?.[1]?.method).toBe("PUT")
+    await syncProductBar(fetchImpl as unknown as typeof fetch)
+    vi.unstubAllGlobals()
+    expect(window.localStorage.getItem("hgdc-shell:modules")).toBe(JSON.stringify(["host"]))
   })
 })

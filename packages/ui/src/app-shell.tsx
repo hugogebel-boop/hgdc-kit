@@ -168,7 +168,7 @@ export function AppShell({
   const [menuOpen, setMenuOpen] = useState(false)
   const preference = useProductBarPreference()
   // Relu chez Account seulement par un produit passé aux deux vues (il donne `view`, ADR 0014).
-  useProductBarSync(productRailOption === undefined && viewOption !== undefined)
+  useProductBarSync(productRailOption !== false)
   const productRail = productRailOption ?? (viewOption === undefined || productBarShown(viewOption, preference))
   const [navLevel, setNavLevel] = useState<ShellNavLevel>("tabs")
   useToggleShortcut()
