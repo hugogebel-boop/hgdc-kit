@@ -1,3 +1,6 @@
+import Settings02Icon from "@hugeicons/core-free-icons/Settings02Icon"
+import type { ModuleWord } from "./modules.ts"
+import { SIDEBAR_ITEM } from "./sidebar-nav.tsx"
 import Menu01Icon from "@hugeicons/core-free-icons/Menu01Icon"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Suspense, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react"
@@ -74,6 +77,7 @@ export function AppShell({
   navigating = false,
   mainClassName,
   statusPage,
+  project,
 }: {
   /** Le produit affiché (`"host"`) : son nom au-dessus de ses onglets, « vous êtes ici » dans la liste des modules. */
   product: FamilyProduct
@@ -155,6 +159,11 @@ export function AppShell({
    * de test), ou `false` pour ne rien lire. L'accès « État du service » y mène.
    */
   statusPage?: string | false | undefined
+  /**
+   * Le projet choisi en haut de page (`useShellProject`) : la liste des modules se limite aux siens, et
+   * « Réglages du projet » paraît en bas de la barre. Absent : tous les projets.
+   */
+  project?: { name: string; modules: ReadonlyArray<ModuleWord>; settingsHref: string } | undefined
 }): React.JSX.Element {
   const [menuOpen, setMenuOpen] = useState(false)
   const preference = useProductBarPreference()
@@ -222,6 +231,19 @@ export function AppShell({
   const footer = (
     <>
       {account !== undefined ? sidebarFooter : null}
+      {productRail && project ? (
+        <div className="px-3 pb-1">
+          <a href={project.settingsHref} className={SIDEBAR_ITEM}>
+            <HugeiconsIcon
+              icon={Settings02Icon}
+              strokeWidth={1.8}
+              aria-hidden
+              className="size-5 shrink-0 lg:size-[1.125rem]"
+            />
+            <span className="truncate lg:rail:sr-only">Réglages du projet</span>
+          </a>
+        </div>
+      ) : null}
       <ShellCommonLinks
         links={
           productRail ? { ...(links?.settings ? { settings: links.settings } : {}), status: false } : (links ?? {})
@@ -246,6 +268,7 @@ export function AppShell({
       accountHref={accountHref}
       level={navLevel}
       onLevelChange={setNavLevel}
+      projectModules={project?.modules}
     />
   ) : (
     nav

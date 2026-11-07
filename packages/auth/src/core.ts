@@ -574,6 +574,53 @@ export async function fetchCoreSnapshot(options: {
 }
 
 /**
+ * Un tour de relecture pour toutes les organisations d'un module, depuis son action de cron. L'échec d'une
+ * organisation laisse sa copie telle quelle. S'arrête après `maxFailuresInARow` échecs de suite (le cœur est
+ * injoignable ou le plafond atteint) ou à `deadline`, pour que le bilan parte toujours : le tour suivant reprend.
+ */
+export async function runCoreRound(options: {
+  product: AccountEventAudience
+  secret: string
+  baseUrl: string
+  nextPage: (cursor: string | null) => Promise<{ organizationIds: Array<string>; cursor: string | null }>
+  write: (organizationId: string, snapshot: CoreSnapshot) => Promise<void>
+  deadline?: number
+  maxFailuresInARow?: number
+  fetcher?: typeof fetch
+}): Promise<{ failures: number; lastFailure: string | null; stopped: boolean }> {
+  const deadline = options.deadline ?? Date.now() + 8 * 60_000
+  const maxFailures = options.maxFailuresInARow ?? 5
+  let failures = 0
+  let inARow = 0
+  let lastFailure: string | null = null
+  let cursor: string | null = null
+  const mustStop = () => inARow >= maxFailures || Date.now() > deadline
+  do {
+    const page: { organizationIds: Array<string>; cursor: string | null } = await options.nextPage(cursor)
+    for (const organizationId of page.organizationIds) {
+      if (mustStop()) break
+      try {
+        const snapshot = await fetchCoreSnapshot({
+          baseUrl: options.baseUrl,
+          product: options.product,
+          secret: options.secret,
+          organizationId,
+          ...(options.fetcher ? { fetcher: options.fetcher } : {}),
+        })
+        await options.write(organizationId, snapshot)
+        inARow = 0
+      } catch (error) {
+        failures += 1
+        inARow += 1
+        lastFailure = error instanceof Error ? error.message : "échec inconnu"
+      }
+    }
+    cursor = page.cursor
+  } while (cursor !== null && !mustStop())
+  return { failures, lastFailure, stopped: mustStop() }
+}
+
+/**
  * Rattrape un événement perdu : la copie locale de l'organisation devient l'état lu. Une ligne plus
  * récente que la lecture (événement arrivé entre-temps, retrait compris) reste telle quelle.
  */
