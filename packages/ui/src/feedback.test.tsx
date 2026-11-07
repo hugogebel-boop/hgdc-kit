@@ -113,6 +113,28 @@ describe("DestructiveDialog", () => {
     expect(screen.getByText("Impossible de revenir en arrière.")).toBeTruthy()
   })
 
+  it("rend le focus au bouton de confirmation après un refus", async () => {
+    render(
+      <DestructiveDialog
+        open
+        onOpenChange={() => {}}
+        title="Supprimer la clé"
+        question="Les envois qui l'utilisent échoueront."
+        onConfirm={() => {
+          // Comme un bouton qui se désactive pendant l'envoi : le focus part sur `body`.
+          ;(document.activeElement as HTMLElement | null)?.blur()
+          return Promise.reject(new Error("Refusé"))
+        }}
+      />,
+    )
+    const confirm = screen.getByRole("button", { name: /Supprimer la clé/ })
+    await act(async () => {
+      fireEvent.click(confirm)
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    })
+    expect(document.activeElement).toBe(confirm)
+  })
+
   it("compare le nom aux espaces près", () => {
     expect(matchesConfirmation(" acme.ch ", "acme.ch")).toBe(true)
     expect(matchesConfirmation("Acme.ch", "acme.ch")).toBe(false)

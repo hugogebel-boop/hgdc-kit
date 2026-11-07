@@ -81,6 +81,7 @@ export function DestructiveDialog({
   const view = shown.current
   const [typed, setTyped] = useState("")
   const [pending, setPending] = useState(false)
+  const confirmButton = useRef<HTMLButtonElement>(null)
   const ready = !pending && (view.name === undefined || matchesConfirmation(typed, view.name))
 
   const [wasOpen, setWasOpen] = useState(open)
@@ -97,6 +98,10 @@ export function DestructiveDialog({
       onOpenChange(false)
     } catch (error) {
       toast.error(formatError(error))
+      // Le bouton se désactive pendant l'envoi et le focus part sur `body`, hors de la boîte restée ouverte.
+      requestAnimationFrame(() => {
+        if (document.activeElement === document.body) confirmButton.current?.focus()
+      })
     } finally {
       setPending(false)
     }
@@ -149,7 +154,13 @@ export function DestructiveDialog({
           </form>
         ) : null}
         <DialogFooter className="sm:justify-start">
-          <Button variant="destructive" isLoading={pending} disabled={!ready} onClick={() => void confirm()}>
+          <Button
+            ref={confirmButton}
+            variant="destructive"
+            isLoading={pending}
+            disabled={!ready}
+            onClick={() => void confirm()}
+          >
             {view.confirmLabel ?? view.title}
             <Kbd aria-hidden className="ml-1 hidden bg-current/10 text-current lg:inline-flex">
               {mod}
