@@ -10,7 +10,7 @@ import { unified } from "unified"
 import type { DocsConfig } from "../core/config.ts"
 import { CORPUS_FORMAT, CORPUS_PATH, MAX_PAGE_CHARS, type Corpus } from "../core/corpus.ts"
 import { llmsFullTxt, llmsTxt, markdownPath, type LlmsPage } from "../core/llms.ts"
-import { allPages, locatePage, pageToPath, withBase, type NavTree } from "../core/navigation.ts"
+import { allPages, locatePage, logoSrc, pageToPath, withBase, type NavTree } from "../core/navigation.ts"
 import { htmlToMarkdown } from "./markdown.ts"
 
 type Input = {
@@ -94,8 +94,7 @@ export async function writeMachineReadable(input: Input): Promise<{ pages: numbe
   return { pages: pages.size }
 }
 
-const withLogoBase = (base: string, logo: string | null) =>
-  logo ? withBase(base, logo.startsWith("/") || logo.includes("://") ? logo : `/${logo}`) : null
+const withLogoBase = (base: string, logo: string | null) => (logo ? logoSrc(base, logo) : null)
 
 async function write(outDir: string, path: string, content: string): Promise<void> {
   const target = join(outDir, path)

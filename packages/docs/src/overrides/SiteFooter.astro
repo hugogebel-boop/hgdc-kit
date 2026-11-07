@@ -3,7 +3,7 @@ import { Icon as StarlightIcon } from "@astrojs/starlight/components"
 import data from "virtual:hgdc-docs/config"
 
 import { socialNetwork } from "../core/config.ts"
-import { withBase } from "../core/navigation.ts"
+import { logoSrc, withBase } from "../core/navigation.ts"
 import Icon from "./Icon.astro"
 import PoweredBy from "./PoweredBy.astro"
 import { appLink } from "./sections.ts"
@@ -15,7 +15,7 @@ import ThemeToggle from "./ThemeToggle.astro"
  * titulaire », « Propulsé par » et le choix du thème. Hors « Propulsé par », tout vient de docs.json.
  */
 const logo = typeof data.config.logo === "string" ? { light: data.config.logo } : data.config.logo
-const src = (path: string) => withBase(data.base, path.startsWith("/") ? path : `/${path}`)
+const src = (path: string) => logoSrc(data.base, path)
 const socials = Object.entries(data.config.footer?.socials ?? {}).flatMap(([key, href]) => {
   const network = socialNetwork(key)
   return network ? [{ ...network, href }] : []
@@ -33,8 +33,24 @@ const year = new Date().getFullYear()
         {
           logo && (
             <span class="hd-brand__mark">
-              <img class="hd-brand__light" src={src(logo.light)} alt="" width="20" height="20" loading="lazy" />
-              <img class="hd-brand__dark" src={src(logo.dark ?? logo.light)} alt="" width="20" height="20" loading="lazy" />
+              <img
+                class="hd-brand__light"
+                src={src(logo.light)}
+                alt=""
+                width="20"
+                height="20"
+                loading="lazy"
+                referrerpolicy="no-referrer"
+              />
+              <img
+                class="hd-brand__dark"
+                src={src(logo.dark ?? logo.light)}
+                alt=""
+                width="20"
+                height="20"
+                loading="lazy"
+                referrerpolicy="no-referrer"
+              />
             </span>
           )
         }

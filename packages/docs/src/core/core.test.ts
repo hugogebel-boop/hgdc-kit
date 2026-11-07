@@ -17,6 +17,7 @@ import {
   siteBase,
   withBase,
   withoutBase,
+  logoSrc,
 } from "./navigation.ts"
 import { contrast, themeFor } from "./theme.ts"
 
@@ -328,5 +329,35 @@ describe("docs.schema.json", () => {
     const { docsJsonSchema } = await import("./json-schema.ts")
     const committed = JSON.parse(readFileSync(new URL("../../docs.schema.json", import.meta.url), "utf8"))
     expect(committed).toEqual(JSON.parse(JSON.stringify(docsJsonSchema())))
+  })
+})
+
+describe("logo de docs.json", () => {
+  const parse = (logo: unknown) => config({ pages: ["index"] }, { logo })
+
+  it("accepte un chemin du site ou une adresse https", () => {
+    expect(parse("/images/logo.svg").ok).toBe(true)
+    expect(parse("images/logo.svg").ok).toBe(true)
+    expect(parse("https://exemple.ch/logo.png").ok).toBe(true)
+    expect(parse({ light: "https://exemple.ch/a.png", dark: "/b.png" }).ok).toBe(true)
+  })
+
+  it("refuse les autres adresses", () => {
+    for (const logo of [
+      "http://exemple.ch/a.png",
+      "javascript:alert(1)",
+      "data:image/png;base64,AA",
+      "//exemple.ch/a.png",
+      "https://a:b@exemple.ch/x.png",
+    ])
+      expect(parse(logo).ok).toBe(false)
+    expect(parse({ light: "/a.png", dark: "http://exemple.ch/b.png" }).ok).toBe(false)
+  })
+
+  it("garde une adresse https et applique la base à un chemin", () => {
+    expect(logoSrc("/docs", "https://exemple.ch/logo.png")).toBe("https://exemple.ch/logo.png")
+    expect(logoSrc("/docs", "/images/logo.svg")).toBe("/docs/images/logo.svg")
+    expect(logoSrc("/docs", "images/logo.svg")).toBe("/docs/images/logo.svg")
+    expect(logoSrc("", "/images/logo.svg")).toBe("/images/logo.svg")
   })
 })

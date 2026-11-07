@@ -51,9 +51,27 @@ const navigation = z.object({
   ...groupsOrPages,
 })
 
+/** Image servie par une adresse https entière, plutôt qu'un fichier du site. */
+export function isRemoteImage(value: string): boolean {
+  try {
+    const url = new URL(value)
+    return url.protocol === "https:" && !url.username && !url.password
+  } catch {
+    return false
+  }
+}
+
+/** Un fichier du site, ou une adresse https : le logo de l'organisation (Manager) en est une. */
+const logoImage = z
+  .string()
+  .refine(
+    (value) => !/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(value) || isRemoteImage(value),
+    "logo attendu : un chemin du site (ex. /images/logo.svg) ou une adresse https://",
+  )
+
 const logo = z.union([
-  z.string(),
-  z.object({ light: z.string(), dark: z.string().optional(), href: z.string().optional() }),
+  logoImage,
+  z.object({ light: logoImage, dark: logoImage.optional(), href: z.string().optional() }),
 ])
 
 /**

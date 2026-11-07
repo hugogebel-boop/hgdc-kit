@@ -13,7 +13,7 @@ import { remarkBaseLinks } from "./build/base-links.ts"
 import { rehypeDocsContent } from "./build/content.ts"
 import { isPublishedAsset, publicFiles } from "./build/public-files.ts"
 import { writeMachineReadable } from "./build/outputs.ts"
-import { parseDocsConfig, socialNetwork, withHostProject, type DocsConfig } from "./core/config.ts"
+import { isRemoteImage, parseDocsConfig, socialNetwork, withHostProject, type DocsConfig } from "./core/config.ts"
 import {
   missingPages,
   normalizeNavigation,
@@ -400,9 +400,11 @@ export function createAstroConfig(options: SiteOptions = readSiteOptions()): Ast
         title: config.name,
         description: config.description,
         locales: { root: { label: "Français", lang: config.language === "fr" ? "fr-CH" : config.language } },
-        logo: logo
-          ? { light: asset(logo.light), dark: asset(logo.dark ?? logo.light), replacesTitle: false }
-          : undefined,
+        // Starlight n'importe que des fichiers ; l'en-tête du kit affiche aussi une adresse https.
+        logo:
+          logo && !isRemoteImage(logo.light) && !isRemoteImage(logo.dark ?? logo.light)
+            ? { light: asset(logo.light), dark: asset(logo.dark ?? logo.light), replacesTitle: false }
+            : undefined,
         favicon: config.favicon ?? "/favicon.svg",
         social,
         sidebar: starlightSidebar(tree, pages),
