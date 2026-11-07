@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.66.1
+
+### Patch Changes
+
+- a814f17: Le lien « Manager » de la barre mène à Manager : l'adresse d'Account passée par les consoles le renvoyait vers ID. « Réglages du projet » s'aligne sur les autres liens.
+
 ## 0.66.0
 
 ### Minor Changes
