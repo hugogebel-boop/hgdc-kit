@@ -2,6 +2,7 @@
 import Search from "virtual:starlight/components/Search"
 import data from "virtual:hgdc-docs/config"
 
+import { logoSrc } from "../core/navigation.ts"
 import { appLink, assistantEnabled, docsSections, sectionHref } from "./sections.ts"
 import Icon from "./Icon.astro"
 import ThemeToggle from "./ThemeToggle.astro"
@@ -17,7 +18,7 @@ import ThemeToggle from "./ThemeToggle.astro"
 const { tabs, current } = docsSections(data.tree, Astro.locals.hgdcSection ?? 0)
 const home = `${data.base}/`
 const logo = typeof data.config.logo === "string" ? { light: data.config.logo } : data.config.logo
-const src = (path: string) => `${data.base}${path.startsWith("/") ? path : `/${path}`}`
+const src = (path: string) => logoSrc(data.base, path)
 const links = data.config.navbar?.links ?? []
 const primary = data.config.navbar?.primary
 const assistant = assistantEnabled(data.config)
@@ -39,8 +40,15 @@ const app = appLink(data.config)
       {
         logo && (
           <span class="hd-brand__mark">
-            <img class="hd-brand__light" src={src(logo.light)} alt="" width="24" height="24" />
-            <img class="hd-brand__dark" src={src(logo.dark ?? logo.light)} alt="" width="24" height="24" />
+            <img class="hd-brand__light" src={src(logo.light)} alt="" width="24" height="24" referrerpolicy="no-referrer" />
+            <img
+              class="hd-brand__dark"
+              src={src(logo.dark ?? logo.light)}
+              alt=""
+              width="24"
+              height="24"
+              referrerpolicy="no-referrer"
+            />
           </span>
         )
       }

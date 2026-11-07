@@ -1,4 +1,4 @@
-import { slugifySegment, type DocsConfig, type NavGroupInput } from "./config.ts"
+import { isRemoteImage, slugifySegment, type DocsConfig, type NavGroupInput } from "./config.ts"
 
 /**
  * Navigation normalisée : toujours versions → onglets → éléments, quelle que soit la forme
@@ -92,6 +92,11 @@ export function siteBase(config: Pick<DocsConfig, "base">): string {
  * `base: "/docs"`. Un chemin qui porte déjà le sous-chemin, ou qui n'est pas absolu
  * (`#ancre`, `https://…`, `//hôte`), reste tel quel.
  */
+/** Adresse d'un logo dans une page : une adresse https reste telle quelle, un chemin suit la base du site. */
+export function logoSrc(base: string, logo: string): string {
+  return isRemoteImage(logo) ? logo : withBase(base, logo.startsWith("/") ? logo : `/${logo}`)
+}
+
 export function withBase(base: string, path: string): string {
   if (!base || !path.startsWith("/") || path.startsWith("//")) return path
   if (path === base || path.startsWith(`${base}/`) || path.startsWith(`${base}#`) || path.startsWith(`${base}?`))
