@@ -135,12 +135,16 @@ function product(
   }
 }
 
-/** HGDC Account : le compte commun (profil, sécurité, organisations), hors du catalogue des produits. */
+/**
+ * Le compte commun (profil, sécurité), hors du catalogue des produits. Adresse et pastille gardent
+ * le mot `account` ; le nom affiché est ID (ADR 0015 du dépôt `hgdc`).
+ */
 const account = product(
   "Account",
   "Ton compte : profil, sécurité et organisations, pour tous les produits de la famille.",
   UserCircleIcon,
   "live",
+  "ID",
 )
 export const HGDC_ACCOUNT: HgdcCatalogProduct = { ...account, entryHref: account.href }
 

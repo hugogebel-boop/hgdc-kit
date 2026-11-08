@@ -30,6 +30,8 @@ const MODULE_NAMES: Record<string, string> = {
   Docs: "Documentation",
   IAssistant: "Assistant IA",
   ID: "Connexion",
+  // Le compte commun garde le mot `account` dans ses adresses, mais s’affiche ID.
+  Account: "ID",
 }
 
 describe("catalogue des produits", () => {
