@@ -29,7 +29,7 @@ async function publishedVersions(name: string): Promise<string[] | null> {
 /**
  * Le registre répond parfois 404 sur le PUT, ou sert une liste de versions en retard juste après un
  * envoi. On réessaie en relisant la liste : une version devenue visible vaut succès. Si l'échec
- * persiste, le script s'arrête (la sortie de npm, déjà affichée, dit pourquoi).
+ * persiste, l'erreur remonte (la sortie de npm, déjà affichée, dit pourquoi).
  */
 async function publishWithRetry(tarball: string, pkg: PackageJson): Promise<void> {
   const attempts = 5
@@ -46,6 +46,9 @@ async function publishWithRetry(tarball: string, pkg: PackageJson): Promise<void
 await rm(".pack", { recursive: true, force: true })
 
 const tags: { name: string; tag: string }[] = []
+// Un paquet refusé par npm ne bloque pas les autres : ils sont publiés et étiquetés, et le script
+// échoue à la fin en nommant ceux qui manquent (incident @hgdc/agents@0.8.0, 2026-11-08).
+const failed: string[] = []
 
 for await (const manifestPath of new Glob("packages/*/package.json").scan()) {
   const pkg: PackageJson = await Bun.file(manifestPath).json()
@@ -69,7 +72,13 @@ for await (const manifestPath of new Glob("packages/*/package.json").scan()) {
   const packed = await $`tar -xOzf ${tarball} package/package.json`.text()
   if (packed.includes("workspace:")) throw new Error(`${id} : le protocole workspace: est resté dans le paquet`)
 
-  await publishWithRetry(tarball, pkg)
+  try {
+    await publishWithRetry(tarball, pkg)
+  } catch (error) {
+    console.log(`::error title=Envoi npm refusé::${error instanceof Error ? error.message : String(error)}`)
+    failed.push(id)
+    continue
+  }
   tags.push({ name: pkg.name, tag: id })
 }
 
@@ -83,3 +92,5 @@ for (const { name, tag } of tags) {
   if (output) await appendFile(output, `${JSON.stringify({ type: "git-tag", tag, packageName: name })}\n`)
   console.log(`New tag: ${tag}`)
 }
+
+if (failed.length > 0) throw new Error(`Non publiés : ${failed.join(", ")}`)
