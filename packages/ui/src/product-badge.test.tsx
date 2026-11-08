@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest"
 
 import { AccountMenu } from "./account-menu.tsx"
 import { FAMILY_MARK_SVG, FAMILY_PRODUCTS, PRODUCT_BADGE_SVG } from "./family-svg.ts"
-import { FamilyMark, PRODUCT_GRADIENT, ProductBadge } from "./product-badge.tsx"
+import { BasalteMark, FamilyMark, PRODUCT_GRADIENT, ProductBadge } from "./product-badge.tsx"
 import { HGDC_ACCOUNT, HGDC_PRODUCTS, productMenuEntries } from "./products.ts"
 
 afterEach(cleanup)
@@ -52,6 +52,13 @@ describe("identité H Collection", () => {
   it("donne une pastille à chaque produit du catalogue et à chaque entrée du menu", () => {
     for (const product of [HGDC_ACCOUNT, ...HGDC_PRODUCTS]) expect(product.badge).toBe(product.word.toLowerCase())
     for (const entry of productMenuEntries()) expect(entry.badge).toBeDefined()
+  })
+
+  it("rend la pierre de Basalte en image décorative", () => {
+    const { container } = render(<BasalteMark />)
+    const img = container.querySelector('[data-slot="basalte-mark"]')
+    expect(img?.getAttribute("src")).toMatch(/^data:image\/webp;base64,/)
+    expect(img?.getAttribute("aria-hidden")).toBe("true")
   })
 
   it("rend une image décorative, ou nommée avec label", () => {
