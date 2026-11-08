@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.69.3
+
+### Patch Changes
+
+- 18e1d00: Pied des e-mails : retrait du numéro IDE, qui ne s'affiche que sur les pages légales.
+
 ## 0.69.2
 
 ### Patch Changes
