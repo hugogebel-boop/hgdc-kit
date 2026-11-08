@@ -40,7 +40,7 @@ import { HGDC_ACCOUNT, HGDC_PRODUCTS, type HgdcCatalogProduct } from "./products
 export { EMAIL_ICON_BASE, emailIconUrl }
 
 const MAIL_HREF = "https://mail.hgdc.ch"
-const LEGAL = "Hugo Gebel Développement Conseil, Lausanne"
+const LEGAL = "Hugo Gebel Développement Conseil, Denens (VD) · IDE CHE-411.324.650"
 // Pas de police web : celle du système, Inter ou Geist quand elles sont installées.
 const FONT = 'Geist, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
 const MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace'
