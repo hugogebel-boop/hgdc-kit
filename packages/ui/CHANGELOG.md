@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.69.2
+
+### Patch Changes
+
+- e146a1a: Numéro IDE de HGDC (CHE-411.324.650) : `taxID` de `HGDC_ORGANIZATION` et pied des e-mails, qui donne aussi le siège à Denens (VD).
+
 ## 0.69.1
 
 ### Patch Changes
