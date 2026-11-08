@@ -33,6 +33,8 @@ export const HGDC_ORGANIZATION = {
   description:
     "Entreprise individuelle suisse : agence web, accompagnement IA, outils en ligne de la H Collection et logiciel Stratta, pour les entreprises en Suisse.",
   email: "contact@hgdc.ch",
+  // Numéro IDE (registre des entreprises de l'OFS). Pas de mention TVA : HGDC n'est pas assujetti.
+  taxID: "CHE-411.324.650",
   contactPoint: {
     "@type": "ContactPoint",
     contactType: "customer service",

@@ -42,7 +42,7 @@ describe("EmailLayout", () => {
     expect(html).toContain("Envoyé avec")
     expect(html).toContain(">Basalte</a>")
     expect(attributes(html, "href")).toContain("https://mail.hgdc.ch")
-    expect(html).toContain("Hugo Gebel Développement Conseil, Lausanne")
+    expect(html).toContain("Hugo Gebel Développement Conseil, Denens (VD) · IDE CHE-411.324.650")
     expect(html).toMatch(/<html[^>]*lang="fr"/)
   })
 
@@ -204,7 +204,7 @@ describe("blocs", () => {
     expect(text).not.toContain("Texte d'aperçu seul")
     expect(text).toContain("Ton domaine est prêt")
     expect(text.startsWith("E-mails")).toBe(true)
-    expect(text.endsWith("Hugo Gebel Développement Conseil, Lausanne")).toBe(true)
+    expect(text.endsWith("Hugo Gebel Développement Conseil, Denens (VD) · IDE CHE-411.324.650")).toBe(true)
   })
 })
 

@@ -11,6 +11,7 @@ test("pages de confiance et fichiers de découverte : toujours sur hgdc.ch", () 
 test("l'entreprise : contact, adresse et profils publics", () => {
   expect(HGDC_ORGANIZATION.contactPoint.email).toBe("contact@hgdc.ch")
   expect(HGDC_ORGANIZATION.address.postalCode).toBe("1135")
+  expect(HGDC_ORGANIZATION.taxID).toBe("CHE-411.324.650")
   expect(HGDC_ORGANIZATION.sameAs.length).toBeGreaterThan(0)
 })
 
