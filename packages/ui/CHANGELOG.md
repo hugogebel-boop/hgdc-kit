@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.70.0
+
+### Minor Changes
+
+- 81a786b: « Propulsé par … | Basalte » : `BasalteMark` (pierre de Basalte) dans `@hgdc/ui/product-badge`, et le pied des sites Docs signe Basalte au lieu de la H Collection.
+
 ## 0.69.3
 
 ### Patch Changes
