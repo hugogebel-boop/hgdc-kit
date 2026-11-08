@@ -826,9 +826,6 @@ hgdc-assistant::before {
 .hd-powered__link:focus-visible {
   box-shadow: 0 0 0 2px color-mix(in oklab, var(--hd-accent) 50%, transparent);
 }
-.hd-powered__link--family {
-  gap: 0.2em;
-}
 .hd-powered__icon {
   display: inline-grid;
 }
@@ -836,11 +833,6 @@ hgdc-assistant::before {
   grid-area: 1 / 1;
   width: 1.25rem;
   height: 1.25rem;
-}
-.hd-powered__icon--mark img {
-  width: 1.1875rem;
-  height: 1.1875rem;
-  translate: 0 -1px;
 }
 .hd-powered__rule {
   width: 1px;

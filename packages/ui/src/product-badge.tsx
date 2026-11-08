@@ -1,3 +1,4 @@
+import { BASALTE_MARK_URI } from "./basalte-mark.ts"
 import { cn } from "./cn.ts"
 import { FAMILY_MARK_SVG, PRODUCT_BADGE_SVG, type FamilyProduct, type ThemedSvg } from "./family-svg.ts"
 
@@ -83,7 +84,23 @@ export function ProductBadge({ product, className, label }: MarkProps & { produc
   )
 }
 
-/** Le H « Double », marque de la H Collection (« Propulsé par », hub). `size-4` par défaut. */
+/** La pierre de Basalte (« Propulsé par … | Basalte »). Même image dans les deux thèmes. `size-4` par défaut. */
+export function BasalteMark({ className, label }: MarkProps): React.JSX.Element {
+  return (
+    <img
+      src={BASALTE_MARK_URI}
+      alt={label ?? ""}
+      aria-hidden={label ? undefined : true}
+      width={16}
+      height={16}
+      draggable={false}
+      data-slot="basalte-mark"
+      className={cn("size-4 shrink-0 select-none", className)}
+    />
+  )
+}
+
+/** Le H « Double », marque de la H Collection (hub). `size-4` par défaut. */
 export function FamilyMark({ className, label }: MarkProps): React.JSX.Element {
   return <ThemedMark svg={FAMILY_MARK_SVG} slot="family-mark" className={className} label={label} />
 }

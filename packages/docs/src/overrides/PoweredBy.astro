@@ -1,14 +1,13 @@
 ---
+import basalte from "../assets/hgdc/basalte.webp?url"
 import docsDark from "../assets/hgdc/docs-dark.svg?url"
 import docsLight from "../assets/hgdc/docs.svg?url"
-import markDark from "../assets/hgdc/hcollection-icon-dark.svg?url"
-import markLight from "../assets/hgdc/hcollection-icon.svg?url"
 
 /**
- * « Propulsé par Docs | Collection », comme le pied des pages publiques de Status. Les logos
- * sont ceux de `@hgdc/ui/family/` (le site ne dépend pas du kit, qui demande React) : les
- * reprendre de là quand ils changent. En `<img>`, pas en SVG en ligne : les deux thèmes
- * partagent les mêmes `id` de dégradé.
+ * « Propulsé par Docs | Basalte », comme le pied des pages publiques de Status. Les logos sont
+ * ceux de `@hgdc/ui` (le site ne dépend pas du kit, qui demande React) : `family/` pour Docs,
+ * `BASALTE_MARK_URI` pour la pierre ; les reprendre de là quand ils changent. En `<img>`, pas en
+ * SVG en ligne : les deux thèmes partagent les mêmes `id` de dégradé.
  */
 ---
 
@@ -23,12 +22,11 @@ import markLight from "../assets/hgdc/hcollection-icon.svg?url"
       <span aria-hidden="true">Docs</span>
     </a>
     <span class="hd-powered__rule" aria-hidden="true"></span>
-    <a class="hd-powered__link hd-powered__link--family" href="https://hgdc.ch" aria-label="H Collection">
-      <span class="hd-powered__icon hd-powered__icon--mark">
-        <img class="hd-brand__light" src={markLight} alt="" width="20" height="20" />
-        <img class="hd-brand__dark" src={markDark} alt="" width="20" height="20" />
+    <a class="hd-powered__link" href="https://hgdc.ch/logiciels" aria-label="Basalte">
+      <span class="hd-powered__icon">
+        <img src={basalte} alt="" width="20" height="20" />
       </span>
-      <span aria-hidden="true">Collection</span>
+      <span aria-hidden="true">Basalte</span>
     </a>
   </span>
 </div>
