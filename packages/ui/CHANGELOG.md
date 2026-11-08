@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.69.1
+
+### Patch Changes
+
+- 264f076: Le compte commun s'affiche « ID » dans la barre, l'en-tête et les e-mails, plus « Account ». L'adresse et la pastille gardent le mot `account`.
+
 ## 0.69.0
 
 ### Minor Changes
