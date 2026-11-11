@@ -10,6 +10,7 @@ import {
   handleCoreEventRequest,
   listCoreProjects,
   planMembershipReconcile,
+  memberRemovalLooksWrong,
   coreSnapshotSchema,
   purgeCoreCopy,
   purgeCoreTombstones,
@@ -550,5 +551,18 @@ describe("planMembershipReconcile", () => {
     expect(coreSnapshotSchema.parse({ ...base, members: [{ userId: "s", role: "root" }] }).members).toBeUndefined()
     const tooMany = Array.from({ length: 1001 }, (_, n) => ({ userId: `s${n}`, role: "member" }))
     expect(coreSnapshotSchema.parse({ ...base, members: tooMany }).members).toBeUndefined()
+  })
+})
+
+describe("memberRemovalLooksWrong", () => {
+  it("laisse partir une minorité, ou une petite organisation entière", () => {
+    expect(memberRemovalLooksWrong(4, 2)).toBe(false)
+    expect(memberRemovalLooksWrong(3, 2)).toBe(false)
+    expect(memberRemovalLooksWrong(10, 5)).toBe(false)
+  })
+
+  it("coupe quand plus de la moitié d'une organisation d'au moins quatre personnes partirait", () => {
+    expect(memberRemovalLooksWrong(4, 3)).toBe(true)
+    expect(memberRemovalLooksWrong(10, 6)).toBe(true)
   })
 })
