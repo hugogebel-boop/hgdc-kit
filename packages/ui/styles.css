@@ -837,14 +837,14 @@
 }
 
 /* Le chargeur du document (`FamilyLoaderRoot`) : une seule lueur par page, en position fixe sur la
-   carte du contenu. Visible quand une page attend (`PagePending`) hors de la coque, ou quand la
+   carte du contenu, au-dessus de la barre du haut (`z-30`) pour en faire tout le tour. Visible quand une page attend (`PagePending`) hors de la coque, ou quand la
    coque part vers un autre module (`data-loading`). Dans la coque, une page qui attend montre son
    squelette, jamais la lueur (ADR 0025). Masqué avec 80 ms de retenue : un `PagePending` qui laisse
    la place à un autre ne fait pas clignoter la lueur. */
 [data-slot="family-loader-root"] {
   position: fixed;
   inset: 0;
-  z-index: 25;
+  z-index: 35;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;

@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react"
  * Réglages de la lueur, choisis par Hugo le 2026-11-11 : épaisseur 47 px, houle 32 %, vitesse
  * 68 %, pulsation 56 % sur 3 s.
  */
-export const EDGE_GLOW = { width: 47, swell: 0.32, speed: 0.68, pulse: 0.56, pulsePeriodMs: 3000 } as const
+export const EDGE_GLOW = { width: 47, swell: 0.32, speed: 0.68, pulse: 0.9, pulsePeriodMs: 3000 } as const
 
 const VERTEX = "attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}"
 
@@ -23,9 +23,9 @@ float k=14.;float d=-k*log(exp(-p.x/k)+exp(-p.y/k)+exp(-(s.x-p.x)/k)+exp(-(s.y-p
 vec2 c=p-s*.5;float a=atan(c.y/s.y,c.x/s.x);
 float w=.55+A*(.22*sin(2.*a+1.1*T)+.16*sin(3.*a-1.7*T+1.3)+.12*sin(5.*a+2.3*T+.4)+.08*sin(8.*a-3.1*T+2.)+.05*sin(13.*a+4.2*T));
 float br=.5-.5*cos(6.2832*Q);br=br*br*(3.-2.*br);
-float th=max(W*w,W*.12)*I*(1.+P*(br*1.2-.4));
+float th=max(W*w,W*.12)*I*(1.+P*(br*1.6-.5));
 float f=pow(1.-smoothstep(0.,th,d),1.5);
-float al=f*.92*min(I*1.5,1.)*(.88+.12*br);
+float al=f*.92*min(I*1.5,1.)*(.7+.3*br);
 gl_FragColor=vec4(pal(a/6.2832+T*.06)*al,al);}`
 
 /** Temps des vagues (s) et phase de la pulsation (0 à 1) sur l'horloge : même image partout au même instant. */
