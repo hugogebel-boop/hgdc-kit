@@ -1,6 +1,6 @@
 ---
 owner: Hugo Gebel
-last_reviewed: 2026-10-15
+last_reviewed: 2026-11-11
 ---
 
 # Adopter le kit dans un produit
@@ -326,6 +326,16 @@ const top = useRef<HTMLDivElement>(null)
 - Statut d'un déploiement, d'un e-mail ou d'un domaine : `<StatusBadge tone="…" label="…" />` plutôt qu'un `Badge` coloré à la main. `pending` anime le point.
 - Un graphique par jour dont la journée n'est pas finie : `lastIncomplete`.
 - Montants : stocker des centimes entiers, saisir par `MoneyField`, afficher par `formatChf`. Adresses : le type `PostalAddress` se stocke tel quel (rue et numéro séparés), prêt pour une facture QR.
+
+### Chargement des pages (0.71, ADR 0025)
+
+La coque s'affiche tout de suite, le contenu se charge à sa place, une seule zone de chargement à la fois.
+
+- `createRouter({ routeTree, ...routerPendingDefaults })` et `<AppShell {...useRouterState({ select: shellNavigation, structuralSharing: true })} />` : une navigation garde l'ancienne page avec une barre de progression ; après 1 s d'attente, le squelette de la page la remplace.
+- La route de mise en page (`/o/$org`) charge dans son `loader` ce que la coque affiche (organisation, liste des organisations) et rend `AppShell` sans attendre. Jamais de `return <FamilyLoader page />` ou de spinner avant la coque pour une donnée qu'un `loader` peut lire.
+- Chaque page charge ses données principales dans son `loader` : `context.queryClient.ensureQueryData(convexQuery(api.x.y, args))`, avec exactement les arguments du composant, qui les lit par `useQuery` ou `useSuspenseQuery` de TanStack Query. Le rendu serveur les porte. Une erreur dans le `loader` ne doit rien bloquer (`.catch(() => null)` ou `Promise.allSettled`) : la page garde ses états d'erreur. Modèle : `src/lib/route-data.ts` de Status.
+- Forme du squelette : `pendingComponent: () => <PagePending variant="dashboard" />` (`list` par défaut, `form` pour les réglages). Un bloc secondaire garde son `Pending` ou son `Skeleton` à sa place.
+- `useQuery` de `convex/react` ne lit pas le cache des `loader` : le garder pour `usePaginatedQuery` et les mutations, pas pour les lectures d'une page.
 
 ### Migrer depuis des copies locales
 
