@@ -66,7 +66,7 @@ Le menu « Produits » et la palette (`badge` d'une commande) montrent la pastil
 
 ### D'un produit à l'autre sous `app.hgdc.ch` (ADR 0020)
 
-Entre deux produits servis sous la même origine, la coque fait comme une seule app : transition de vue entre documents, lien relatif marqué `data-hgdc-prerender` et prérendu au survol (`PRODUCT_SPECULATION_RULES` de `@hgdc/ui/product-switch`). Le H couvre le contenu 100 ms après le clic (`PRODUCT_LEAVE_DELAY_MS`) : jamais pour une page prérendue. Chrome et Edge : tout ; Safari 18.2+ : la transition, sans prérendu ; Firefox : navigation ordinaire.
+Entre deux produits servis sous la même origine, la coque fait comme une seule app : transition de vue entre documents, lien relatif marqué `data-hgdc-prerender` et prérendu au survol (`PRODUCT_SPECULATION_RULES` de `@hgdc/ui/product-switch`). Le H couvre le contenu 100 ms après le clic (`PRODUCT_LEAVE_DELAY_MS`) : jamais pour une page prérendue. Chrome et Edge : tout ; Safari 18.2+ : la transition, sans prérendu ; Firefox : navigation ordinaire. La barre ouvre aussi en arrière-plan la session des autres modules affichés (ADR 0026, `startSessionOpening`) : un cadre caché à la fois, au plus une fois par jour et par module, jamais après une déconnexion ni sans `localStorage`. Le premier clic vers un module trouve sa session.
 
 Pendant le passage (0.39) :
 
