@@ -1,5 +1,11 @@
 # @hgdc/config
 
+## 0.5.52
+
+### Patch Changes
+
+- Stack : versions exactes des paquets `@hgdc/*` de cette release.
+
 ## 0.5.51
 
 ### Patch Changes
