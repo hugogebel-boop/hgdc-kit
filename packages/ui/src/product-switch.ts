@@ -20,6 +20,17 @@ export const BACKGROUND_REFRESH_PATH = "/auth/hgdc?refresh=1&frame=1"
 /** Abandon du cadre s'il ne s'est pas chargé : Account injoignable, réseau coupé. */
 export const BACKGROUND_REFRESH_TIMEOUT_MS = 20_000
 
+/**
+ * Une relecture au plus par produit pendant ce délai. Elle refait une connexion complète chez ID
+ * (environ 3 s côté serveur, pendant le chargement de la page) : la refaire à chaque passage d'un
+ * produit à l'autre ralentissait la navigation (2026-11-11). Les changements d'appartenance arrivent
+ * déjà en direct par les événements d'Account ; la relecture n'est qu'un filet.
+ */
+export const BACKGROUND_REFRESH_INTERVAL_MS = 10 * 60_000
+
+/** Heure de la dernière relecture d'un produit, en `localStorage` : `hgdc-org-sync:<base>` (`/` à la racine). */
+export const ORG_SYNC_LAST_KEY_PREFIX = "hgdc-org-sync:"
+
 /** Marque d'un lien de la barre vers un autre produit servi sous la même origine : prérendu au survol. */
 export const PRODUCT_PRERENDER_ATTRIBUTE = "data-hgdc-prerender"
 
@@ -90,12 +101,32 @@ export function takeOrgSyncCookie(doc: Document = document): boolean {
 }
 
 /**
- * Relit les organisations dans un cadre caché, une fois, si l'entrée l'a demandé. Le cadre n'a
- * ni script ni formulaire (`sandbox`), il suit seulement les redirections d'Account ; la nouvelle
- * session du produit recopie les organisations, et les requêtes Convex abonnées se mettent à jour.
- * Si la session d'Account a expiré, Account refuse d'être affiché dans un cadre : rien ne se passe,
- * la session du produit reste celle d'avant. Une page prérendue au survol attend d'être affichée :
- * un survol sans clic ne relit rien.
+ * Vrai si la relecture de ce produit est due, et note alors l'heure : au plus une toutes les
+ * `BACKGROUND_REFRESH_INTERVAL_MS`. Sans `localStorage` (navigation privée stricte), toujours due.
+ */
+function refreshDue(base: string, win: Window | null, now = Date.now()): boolean {
+  const key = `${ORG_SYNC_LAST_KEY_PREFIX}${base || "/"}`
+  try {
+    const storage = win?.localStorage
+    if (!storage) return true
+    const last = Number(storage.getItem(key))
+    if (Number.isFinite(last) && last > 0 && now - last >= 0 && now - last < BACKGROUND_REFRESH_INTERVAL_MS)
+      return false
+    storage.setItem(key, String(now))
+  } catch {
+    // Stockage refusé : la relecture part, comme avant.
+  }
+  return true
+}
+
+/**
+ * Relit les organisations dans un cadre caché, une fois, si l'entrée l'a demandé et que la dernière
+ * relecture de ce produit date de plus de `BACKGROUND_REFRESH_INTERVAL_MS`. Le cadre n'a ni script ni
+ * formulaire (`sandbox`), il suit seulement les redirections d'Account ; la nouvelle session du
+ * produit recopie les organisations, et les requêtes Convex abonnées se mettent à jour. Si la session
+ * d'Account a expiré, Account refuse d'être affiché dans un cadre : rien ne se passe, la session du
+ * produit reste celle d'avant. Une page prérendue au survol attend d'être affichée : un survol sans
+ * clic ne relit rien.
  */
 export function startBackgroundRefresh(doc: Document = document): HTMLIFrameElement | null {
   if ((doc as Document & { prerendering?: boolean }).prerendering) {
@@ -103,7 +134,7 @@ export function startBackgroundRefresh(doc: Document = document): HTMLIFrameElem
     return null
   }
   const base = takeOrgSync(doc)
-  if (base === null) return null
+  if (base === null || !refreshDue(base, doc.defaultView)) return null
   const frame = doc.createElement("iframe")
   frame.hidden = true
   frame.tabIndex = -1

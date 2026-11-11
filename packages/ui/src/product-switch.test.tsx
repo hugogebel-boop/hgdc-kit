@@ -5,9 +5,11 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { FamilyLoaderRoot } from "./family-loader.tsx"
 
 import {
+  BACKGROUND_REFRESH_INTERVAL_MS,
   BACKGROUND_REFRESH_PATH,
   BACKGROUND_REFRESH_TIMEOUT_MS,
   ORG_SYNC_COOKIE,
+  ORG_SYNC_LAST_KEY_PREFIX,
   PRODUCT_PRERENDER_ATTRIBUTE,
   PRODUCT_SPECULATION_RULES,
   startBackgroundRefresh,
@@ -17,6 +19,7 @@ import {
 
 afterEach(() => {
   cleanup()
+  localStorage.clear()
   document.cookie = `${ORG_SYNC_COOKIE}=; Path=/; Max-Age=0`
   for (const frame of document.querySelectorAll("iframe")) frame.remove()
   vi.useRealTimers()
@@ -52,11 +55,40 @@ describe("relecture des organisations en arrière-plan", () => {
     loaded?.dispatchEvent(new Event("load"))
     expect(loaded?.isConnected).toBe(false)
 
+    localStorage.clear()
     document.cookie = `${ORG_SYNC_COOKIE}=1; Path=/`
     const stuck = startBackgroundRefresh()
     expect(stuck?.isConnected).toBe(true)
     vi.advanceTimersByTime(BACKGROUND_REFRESH_TIMEOUT_MS)
     expect(stuck?.isConnected).toBe(false)
+  })
+})
+
+describe("au plus une relecture par produit toutes les 10 minutes", () => {
+  it("passages répétés : relu une fois, puis de nouveau après le délai ; chaque produit a son délai", () => {
+    vi.useFakeTimers()
+    const visit = (base: string) => {
+      document.cookie = `${ORG_SYNC_COOKIE}=${base || "1"}; Path=/`
+      const frame = startBackgroundRefresh()
+      frame?.remove()
+      return frame !== null
+    }
+    expect(visit("/host")).toBe(true)
+    expect(visit("/host")).toBe(false)
+    expect(visit("/mail")).toBe(true)
+    vi.advanceTimersByTime(BACKGROUND_REFRESH_INTERVAL_MS - 1)
+    expect(visit("/host")).toBe(false)
+    vi.advanceTimersByTime(1)
+    expect(visit("/host")).toBe(true)
+  })
+
+  it("heure enregistrée illisible ou dans le futur : la relecture part", () => {
+    localStorage.setItem(`${ORG_SYNC_LAST_KEY_PREFIX}/`, "abc")
+    document.cookie = `${ORG_SYNC_COOKIE}=1; Path=/`
+    expect(startBackgroundRefresh()).not.toBeNull()
+    localStorage.setItem(`${ORG_SYNC_LAST_KEY_PREFIX}/`, String(Date.now() + 60_000))
+    document.cookie = `${ORG_SYNC_COOKIE}=1; Path=/`
+    expect(startBackgroundRefresh()).not.toBeNull()
   })
 })
 
