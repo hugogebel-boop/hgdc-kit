@@ -63,5 +63,4 @@ Les modules :
 
 ## Journal
 
-- 2026-11-11 : kit (cette ADR). Modules ensuite, un par un.
-- 2026-11-11 : le H du document devient la lueur du bord (`EdgeGlow`), mêmes situations ; `FamilyLoader` en ligne garde le H.
+- 2026-11-11 : kit 0.71.0 (hgdc-kit#333). Surveillance (status#252) : coque et pages principales par `loader`, rendu serveur complet vérifié en production. E-mails (agentmail#240) : `useTeamQuery` sur le cache de TanStack Query, `prefetchTeam` au serveur ; les listes paginées gardent leur squelette (`usePaginatedQuery`). Manager (account#222) : `loader` des pages. Déploiements suivait déjà le modèle.
