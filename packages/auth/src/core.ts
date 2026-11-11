@@ -732,3 +732,16 @@ export async function reconcileCoreCopy(
   for (const project of snapshot.projects) await writeProject(db, organizationId, project, syncedAt)
   await writeBranding(db, organizationId, snapshot.branding, syncedAt)
 }
+
+/** En dessous, un départ massif reste plausible (deux personnes sur trois qui partent). */
+export const MEMBER_BREAKER_MIN = 4
+
+/**
+ * Disjoncteur de la relecture des membres, à appeler avec le plan de `planMembershipReconcile` avant
+ * de retirer qui que ce soit : plus de la moitié des appartenances comparables d'une organisation
+ * d'au moins `MEMBER_BREAKER_MIN` personnes ressemble à une erreur du cœur (restauration, traduction
+ * des identifiants), pas à des départs. `comparable` : appartenances dont le `sub` est connu.
+ */
+export function memberRemovalLooksWrong(comparable: number, removed: number): boolean {
+  return comparable >= MEMBER_BREAKER_MIN && removed * 2 > comparable
+}
