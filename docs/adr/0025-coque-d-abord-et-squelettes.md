@@ -32,7 +32,7 @@ Une règle : **la coque s'affiche tout de suite, le contenu se charge à sa plac
 
 | Situation                                                           | Ce qu'on voit                                                                           |
 | ------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Document sans coque (page d'entrée, rendu serveur hors de la coque) | Le H du document, dans le cadre de la coque (ADR 0015, 0020)                            |
+| Document sans coque (page d'entrée, rendu serveur hors de la coque) | La lueur du document, dans le cadre de la coque (ADR 0015, 0020)                        |
 | Départ vers un autre module                                         | Le H sur la zone de contenu, la coque en place (ADR 0020)                               |
 | Navigation dans le module, moins de 150 ms                          | Rien : la page s'ouvre                                                                  |
 | Navigation dans le module, au-delà de 150 ms                        | L'ancienne page reste ; une barre de 2 px court sous la barre du haut (au moins 300 ms) |
@@ -43,7 +43,7 @@ Une règle : **la coque s'affiche tout de suite, le contenu se charge à sa plac
 Le kit :
 
 - `routerPendingDefaults` : `defaultPendingMs` 1000, `defaultPendingMinMs` 500 (les défauts de TanStack Router).
-- `PagePending` : dans la coque, `PageSkeleton` ; hors de la coque, la place de la page et le H du document. `variant` (`list` par défaut, `dashboard`, `form`) donne sa forme. Une route qui n'est pas une liste la passe : `pendingComponent: () => <PagePending variant="dashboard" />`.
+- `PagePending` : dans la coque, `PageSkeleton` ; hors de la coque, la place de la page et la lueur du document. `variant` (`list` par défaut, `dashboard`, `form`) donne sa forme. Une route qui n'est pas une liste la passe : `pendingComponent: () => <PagePending variant="dashboard" />`.
 - `PageSkeleton` reprend la mise en page de `Page` : en-tête de même hauteur, même colonne.
 - `AppShell` : `navigating` allume la barre de progression (`data-navigating`) au lieu du calque ; le calque et le H (`data-loading`) ne servent plus qu'au départ vers un autre module. La zone de contenu n'est plus `inert` pendant une navigation.
 - Le CSS ne montre plus le H pour une page qui attend dans une coque pas encore hydratée : le squelette est déjà dans le HTML du serveur.
