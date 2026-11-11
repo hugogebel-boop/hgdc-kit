@@ -52,7 +52,15 @@ plugins: [
 ]
 ```
 
-Le profil reçu est validé (`parseHgdcProfile`) avant de créer ou relier un compte ; l'émetteur est vérifié et PKCE est actif. Relier un compte existant par adresse e-mail reste un choix du produit (`account.accountLinking.trustedProviders: ["hgdc"]`).
+Le profil reçu est validé (`parseHgdcProfile`) avant de créer ou relier un compte ; l'émetteur est vérifié et PKCE est actif. Relier un compte existant par adresse e-mail reste un choix du produit (`account.accountLinking.trustedProviders: ["hgdc"]`). Dans ce cas, la garde `guardHgdcAccountLink` (`@hgdc/auth/account-linking`) est obligatoire : une fiche ne se relie qu'à un seul compte ID, sinon une adresse quittée dans ID puis reprise par une autre personne hériterait de la fiche de l'ancienne.
+
+```ts
+import { guardHgdcAccountLink } from "@hgdc/auth/account-linking"
+
+databaseHooks: {
+  account: { create: { before: async (account, context) => { await guardHgdcAccountLink(account, context) } } },
+}
+```
 
 3. Côté client : plugin `genericOAuthClient()` dans `createAuthClient`, puis
 
