@@ -2,9 +2,12 @@
 owner: Hugo Gebel
 last_reviewed: 2026-10-17
 status: accepted
+superseded_in_part_by: 0025
 ---
 
 # 0015. Un seul chargeur H, au même pixel d'une page et d'un produit à l'autre
+
+> Le chargement d'une page dans la coque est remplacé par l'ADR 0025 (barre de progression, squelettes). Le H reste celui du document sans coque et du départ vers un autre module.
 
 ## Contexte
 

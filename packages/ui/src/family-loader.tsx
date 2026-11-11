@@ -70,7 +70,7 @@ function Mark(): React.JSX.Element {
 }
 
 /**
- * Vrai sous `FamilyLoaderRoot` : le document a son chargeur, `PagePending` et la coque s'y
+ * Vrai sous `FamilyLoaderRoot` : le document a son chargeur, `PagePending` (hors de la coque) et la coque s'y
  * signalent au lieu de dessiner leur propre H.
  */
 export const FamilyLoaderRootContext: React.Context<boolean> = createContext<boolean>(false)
@@ -94,7 +94,7 @@ export function FamilyLoader({
   /** `sm` 24 px, `md` 40 px, `lg` 64 px. Par défaut `lg` en page, `md` sinon. */
   size?: keyof typeof SIZES
   label?: string
-  /** Chargement de toute la page : passe par le H du document, comme `PagePending`. */
+  /** Chargement de toute la page : passe par la lueur du document, comme `PagePending`. */
   page?: boolean
   className?: string
 }): React.JSX.Element {
@@ -156,7 +156,7 @@ export function FamilyLoaderHost(): React.JSX.Element {
  * </body>
  * ```
  *
- * Il rend le H dans le HTML du serveur, avant l'hydratation, à la même place et à la même phase
+ * Il rend la lueur dans le HTML du serveur (repli CSS avant l'hydratation), à la même place et à la même phase
  * que dans la coque et que dans le produit qu'on vient de quitter (ADR 0015).
  */
 export function FamilyLoaderRoot({ children }: { children: React.ReactNode }): React.JSX.Element {
@@ -171,7 +171,7 @@ export function FamilyLoaderRoot({ children }: { children: React.ReactNode }): R
 }
 
 /**
- * La place d'une page qui attend, hors de la coque : sa seule présence montre le H du document
+ * La place d'une page qui attend, hors de la coque : sa seule présence montre la lueur du document
  * (CSS `:has`), dès le rendu serveur. Sans `FamilyLoaderRoot`, elle monte son propre H.
  */
 export function PageLoadingPlaceholder({

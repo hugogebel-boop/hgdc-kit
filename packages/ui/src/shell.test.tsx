@@ -769,35 +769,39 @@ describe("Avatars à initiales", () => {
 })
 
 describe("Chargement d'une page", () => {
-  // Le calque et le H suivent `data-loading` sur la coque (styles.css).
-  const loading = () => document.querySelector<HTMLElement>("[data-slot=app-shell]")?.dataset.loading
+  // Le calque et le H du départ suivent `data-loading`, la barre de progression `data-navigating` (styles.css).
+  const shell = () => document.querySelector<HTMLElement>("[data-slot=app-shell]")
+  const loading = () => shell()?.dataset.loading
+  const progress = () => shell()?.dataset.navigating
   const hosts = () => document.querySelectorAll("[data-slot=family-loader-root]").length
 
-  it("routerPendingDefaults : préchargement au survol, chargement après 50 ms, au moins 300 ms", () => {
+  it("routerPendingDefaults : préchargement au survol, squelette après 1 s, au moins 500 ms", () => {
     expect(routerPendingDefaults).toEqual({
       defaultPendingComponent: PagePending,
-      defaultPendingMs: 50,
-      defaultPendingMinMs: 300,
+      defaultPendingMs: 1000,
+      defaultPendingMinMs: 500,
       defaultPreload: "intent",
       defaultPreloadStaleTime: 0,
     })
   })
 
-  it("navigation en cours : la zone de contenu se couvre du H après 50 ms, la coque reste, au moins 300 ms", () => {
+  it("navigation en cours : l'ancienne page reste, la barre de progression après 150 ms, au moins 300 ms", () => {
     vi.useFakeTimers()
     const { rerender } = render(
       <AppShell product="host" nav={<p>Barre</p>} navigating>
         <p>Ancienne page</p>
       </AppShell>,
     )
-    expect(loading()).toBeUndefined()
+    expect(progress()).toBeUndefined()
     act(() => {
-      vi.advanceTimersByTime(50)
+      vi.advanceTimersByTime(150)
     })
-    expect(loading()).toBe("")
-    expect(screen.getByRole("main").inert).toBe(true)
-    // La coque est toujours là.
-    expect(screen.getAllByText("Barre").length).toBeGreaterThan(0)
+    expect(progress()).toBe("")
+    // Ni calque ni H : l'ancienne page reste lisible et utilisable.
+    expect(loading()).toBeUndefined()
+    expect(screen.getByRole("main").inert).toBe(false)
+    expect(screen.getByText("Ancienne page")).toBeDefined()
+    expect(screen.getByRole("status", { name: "" }).textContent).toBe("Chargement de la page…")
     rerender(
       <AppShell product="host" nav={<p>Barre</p>} navigating={false}>
         <p>Nouvelle page</p>
@@ -806,11 +810,11 @@ describe("Chargement d'une page", () => {
     act(() => {
       vi.advanceTimersByTime(200)
     })
-    expect(loading()).toBe("")
+    expect(progress()).toBe("")
     act(() => {
       vi.advanceTimersByTime(100)
     })
-    expect(loading()).toBeUndefined()
+    expect(progress()).toBeUndefined()
     vi.useRealTimers()
   })
 
@@ -822,7 +826,7 @@ describe("Chargement d'une page", () => {
       </AppShell>,
     )
     act(() => {
-      vi.advanceTimersByTime(30)
+      vi.advanceTimersByTime(100)
     })
     rerender(
       <AppShell product="host" nav={null} navigating={false}>
@@ -832,49 +836,30 @@ describe("Chargement d'une page", () => {
     act(() => {
       vi.advanceTimersByTime(500)
     })
+    expect(progress()).toBeUndefined()
     expect(loading()).toBeUndefined()
     vi.useRealTimers()
   })
 
-  it("PagePending dans la coque : la coque se couvre aussitôt, un seul H dans le document", () => {
+  it("PagePending dans la coque : le squelette de la page, ni calque ni H", () => {
     render(
-      <AppShell product="host" nav={null}>
-        <PagePending label="Chargement du projet" />
-      </AppShell>,
+      <FamilyLoaderRoot>
+        <AppShell product="host" nav={null}>
+          <PagePending label="Chargement du projet" variant="dashboard" />
+        </AppShell>
+      </FamilyLoaderRoot>,
     )
-    expect(loading()).toBe("")
+    expect(loading()).toBeUndefined()
     expect(hosts()).toBe(1)
     const main = screen.getByRole("main")
-    expect(within(main).getByRole("status", { name: "Chargement du projet" })).toBeDefined()
-    // La page ne dessine pas de H : seule sa place est marquée.
-    expect(main.querySelector("[data-slot=family-loader]")).toBeNull()
+    const skeleton = within(main).getByRole("status", { name: "Chargement du projet" })
+    expect(skeleton.dataset.slot).toBe("page-skeleton")
+    expect(skeleton.dataset.variant).toBe("dashboard")
+    // Ni H ni place de page : le CSS ne montre pas le H du document.
+    expect(main.querySelector("[data-slot=family-loader], [data-slot=page-pending]")).toBeNull()
   })
 
-  it("une page qui attend reste couverte au moins 300 ms, puis la coque se découvre", () => {
-    vi.useFakeTimers()
-    const { rerender } = render(
-      <AppShell product="host" nav={null}>
-        <PagePending />
-      </AppShell>,
-    )
-    expect(loading()).toBe("")
-    rerender(
-      <AppShell product="host" nav={null}>
-        <p>Page</p>
-      </AppShell>,
-    )
-    act(() => {
-      vi.advanceTimersByTime(250)
-    })
-    expect(loading()).toBe("")
-    act(() => {
-      vi.advanceTimersByTime(60)
-    })
-    expect(loading()).toBeUndefined()
-    vi.useRealTimers()
-  })
-
-  it("hydratée : `data-hydrated` (avant, le CSS seul montre le H d'une page qui attend)", () => {
+  it("hydratée : `data-hydrated`", () => {
     render(
       <AppShell product="host" nav={null}>
         Page
@@ -912,7 +897,7 @@ describe("Chargement d'une page", () => {
     expect(hosts()).toBe(1)
   })
 
-  it("contentKey : la page qui charge ses données montre le H à la place de l'ancienne", async () => {
+  it("contentKey : la page qui charge ses données montre son squelette à la place de l'ancienne", async () => {
     let resolve = () => {}
     const pending = new Promise<void>((r) => {
       resolve = r
@@ -933,7 +918,9 @@ describe("Chargement d'une page", () => {
       </AppShell>,
     )
     expect(screen.queryByText("Ancienne page")).toBeNull()
-    expect(within(screen.getByRole("main")).getByRole("status", { name: "Chargement…" })).toBeDefined()
+    expect(within(screen.getByRole("main")).getByRole("status", { name: "Chargement…" }).dataset.slot).toBe(
+      "page-skeleton",
+    )
     ready = true
     await act(async () => {
       resolve()
