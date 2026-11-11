@@ -21,19 +21,19 @@ export const NAVIGATION_PROGRESS_MIN_MS = 300
 
 /**
  * Calque de la zone de contenu, sous l'en-tête de la coque (56 px), opaque : il cache la page
- * pendant le départ vers un autre module, le H du document par-dessus (ADR 0015, 0020).
+ * pendant le départ vers un autre module, la lueur du document par-dessus (ADR 0015, 0020).
  */
 export const CONTENT_LOADING_LAYER = "absolute inset-x-0 top-14 bottom-0 z-20 bg-background"
 
-/** Vrai dans la zone de contenu d'`AppShell` : une page qui attend y montre son squelette, pas le H. */
+/** Vrai dans la zone de contenu d'`AppShell` : une page qui attend y montre son squelette, pas la lueur. */
 export const ShellContentContext: React.Context<boolean> = createContext<boolean>(false)
 
 /**
  * Le chargement d'une page.
  *
  * - **Dans la coque** (`AppShell`) : le squelette de la page (`PageSkeleton`), la coque restant en
- *   place. Jamais le H : il est réservé au document qui n'a pas encore de coque (ADR 0025).
- * - **Hors de la coque** (page d'entrée, rendu serveur sans coque) : le H du document
+ *   place. Jamais la lueur : elle est réservée au document qui n'a pas encore de coque (ADR 0025).
+ * - **Hors de la coque** (page d'entrée, rendu serveur sans coque) : la lueur du document
  *   (`FamilyLoaderRoot`), au même pixel que dans la coque (ADR 0015).
  *
  * Composant par défaut de `pendingComponent` (`routerPendingDefaults`) et repli de la frontière

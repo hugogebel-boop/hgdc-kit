@@ -558,6 +558,50 @@
   animation: rise 420ms var(--ease-ios) both;
 }
 
+/* L'anneau d'attente (`Spinner`) : la tête de l'arc avance de 1 à 99 % du tour pendant que la
+   queue reste, puis la queue la rattrape (la tête ne recule jamais) ; l'anneau tourne lentement,
+   chaque départ tombe un peu plus loin. */
+@keyframes spinner-arc {
+  0% {
+    stroke-dasharray: 1 150;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 71 150;
+    stroke-dashoffset: -28;
+  }
+  100% {
+    stroke-dasharray: 71 150;
+    stroke-dashoffset: -99;
+  }
+}
+@keyframes spinner-rotor {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes spinner-breathe {
+  50% {
+    opacity: 0.45;
+  }
+}
+.spinner-rotor {
+  transform-origin: 50% 50%;
+  animation: spinner-rotor 1.6s linear infinite;
+}
+.spinner-arc {
+  animation: spinner-arc 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner-rotor {
+    animation: none;
+  }
+  .spinner-arc {
+    stroke-dasharray: 30 150;
+    animation: spinner-breathe 1.6s ease-in-out infinite;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .soft-in,
   .pop-in,
@@ -792,11 +836,11 @@
   }
 }
 
-/* Le chargeur du document (`FamilyLoaderRoot`) : un seul H par page, en position fixe sur la scène.
-   Visible quand une page attend (`PagePending`) hors de la coque, ou quand la coque part vers un
-   autre module (`data-loading`). Dans la coque, une page qui attend montre son squelette, jamais
-   le H (ADR 0025). Masqué avec 80 ms de retenue : un `PagePending` qui laisse la place à un autre ne fait
-   pas clignoter le H. */
+/* Le chargeur du document (`FamilyLoaderRoot`) : une seule lueur par page, en position fixe sur la
+   carte du contenu. Visible quand une page attend (`PagePending`) hors de la coque, ou quand la
+   coque part vers un autre module (`data-loading`). Dans la coque, une page qui attend montre son
+   squelette, jamais la lueur (ADR 0025). Masqué avec 80 ms de retenue : un `PagePending` qui laisse
+   la place à un autre ne fait pas clignoter la lueur. */
 [data-slot="family-loader-root"] {
   position: fixed;
   inset: 0;
@@ -816,14 +860,33 @@
     opacity 150ms var(--ease-out),
     visibility 0s;
 }
-[data-slot="family-loader-root"] > [data-stage] {
+/* La lueur du chargement (`EdgeGlow`) : tout l'écran sur téléphone ; sur ordinateur, la carte du
+   contenu de la coque (marge de 8 px, `rounded-xl`), en-tête compris. */
+[data-slot="family-loader-root"] > [data-glow] {
   position: fixed;
-  top: var(--hgdc-stage-top);
-  right: var(--hgdc-stage-right);
-  bottom: var(--hgdc-stage-bottom);
-  left: var(--hgdc-stage-left);
-  display: grid;
-  place-items: center;
+  inset: 0;
+  overflow: hidden;
+}
+@media (width >= 64rem) {
+  [data-slot="family-loader-root"] > [data-glow] {
+    inset: 0.5rem 0.5rem 0.5rem var(--hgdc-content-left);
+    border-radius: var(--radius-xl);
+  }
+}
+[data-slot="edge-glow"] {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+/* Sans WebGL ou avant l'hydratation : une lueur immobile, mêmes couleurs, dessinée par le CSS. */
+[data-slot="edge-glow"]:not([data-live]) {
+  padding: 1.5rem;
+  background: conic-gradient(#2c78fd, #7343fe, #fe5292, #ff9a46, #fe5292, #7343fe, #2c78fd);
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+  filter: blur(1.25rem);
+  opacity: 0.6;
 }
 /* Hors de la coque, le cadre de la coque : la page qui arrive a déjà sa forme, le H sa place. */
 [data-slot="family-loader-root"] > [data-frame] {
@@ -877,7 +940,7 @@
 }
 
 /* Calque de la zone de contenu (`AppShell`) pendant le départ vers un autre module : opaque,
-   au-dessus de la page, sous le H du document. Même rythme que le H. */
+   au-dessus de la page, sous la lueur du document. Même rythme que la lueur. */
 [data-slot="app-shell-loading"] {
   opacity: 0;
   visibility: hidden;
@@ -970,7 +1033,7 @@
 }
 :root:has([data-slot="page-pending"]):not(:has([data-slot="app-shell"])),
 :root:has([data-slot="app-shell"][data-loading]) {
-  & [data-slot="family-loader-root"] > [data-stage] {
+  & [data-slot="family-loader-root"] > [data-glow] {
     view-transition-name: hgdc-loader;
   }
 }

@@ -64,3 +64,4 @@ Les modules :
 ## Journal
 
 - 2026-11-11 : kit (cette ADR). Modules ensuite, un par un.
+- 2026-11-11 : le H du document devient la lueur du bord (`EdgeGlow`), mêmes situations ; `FamilyLoader` en ligne garde le H.

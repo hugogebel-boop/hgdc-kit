@@ -158,27 +158,26 @@ describe("Phase calée sur l'horloge", () => {
     syncFamilyLoader(null)
   })
 
-  it("rendu serveur : le H du document et son script de calage, en ligne, avant l'hydratation", () => {
+  it("rendu serveur : le cadre de la coque, puis la lueur du document (repli CSS avant l'hydratation)", () => {
     const html = renderToString(<FamilyLoaderHost />)
     expect(html).toMatch(
       /^<div data-slot="family-loader-root" aria-hidden="true"><div data-frame="true"><div data-slot="shell-frame"/,
     )
-    // Le cadre de la coque (ADR 0020), puis la scène du H.
-    expect(html).toMatch(/<\/div><\/div><\/div><div data-stage="true"><span data-slot="family-loader"/)
-    expect(html).toContain('data-slot="family-loader"')
-    expect(html).toMatch(/<\/div><script>\(function\(e\)\{/)
-    expect(html).toContain("previousElementSibling")
-    expect(html).toContain(`var p=${FAMILY_LOADER_PERIOD_MS}`)
-    expect(html).toContain("animationstart")
+    expect(
+      html.endsWith('<div data-glow="true"><canvas data-slot="edge-glow" aria-hidden="true"></canvas></div></div>'),
+    ).toBe(true)
+    expect(html).not.toContain("<script")
+    expect(css).toContain(String.raw`[data-slot="edge-glow"]:not([data-live])`)
   })
 })
 
 describe("Scène du chargement", () => {
-  it("le H du document est en position fixe sur la zone de contenu de la coque", () => {
-    const stage = minified.match(/\[data-slot=family-loader-root\]>\[data-stage\]\{([^}]*)\}/)?.[1] ?? ""
-    expect(stage).toContain("position:fixed")
-    expect(stage).toContain("top:var(--hgdc-stage-top)")
-    expect(stage).toContain("left:var(--hgdc-stage-left)")
+  it("la lueur du document est en position fixe sur la carte du contenu de la coque", () => {
+    const glow = minified.match(/\[data-slot=family-loader-root\]>\[data-glow\]\{([^}]*)\}/)?.[1] ?? ""
+    expect(glow).toContain("position:fixed")
+    expect(glow).toContain("overflow:hidden")
+    expect(css).toContain("inset: 0.5rem 0.5rem 0.5rem var(--hgdc-content-left);")
+    expect(css).toContain("border-radius: var(--radius-xl);")
     // Ordinateur : barre latérale 256 px (64 en rail), en-tête 56 px + marge 8 px.
     expect(css).not.toContain("--hgdc-rail-w")
     expect(css).toContain("--hgdc-sidebar-w: 16rem;")
