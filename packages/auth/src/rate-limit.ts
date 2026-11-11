@@ -20,15 +20,26 @@ export const SERVER_AUTH_PATHS: { readonly [path: string]: false } = {
 }
 
 /**
+ * Lectures de session jamais limitées : rien à deviner (cookie signé, comme `/convex/token`). Limitées,
+ * chacune passait d'abord par une lecture et une écriture de la table `rateLimit` (environ 150 ms sur
+ * edge, une ligne par adresse disputée par les appels parallèles d'une page), avant même de lire la
+ * session : c'était l'essentiel du temps de `get-session` à chaque page de console (2026-11-11).
+ */
+export const SESSION_READ_PATHS: { readonly [path: string]: false } = {
+  "/get-session": false,
+  "/ok": false,
+}
+
+/**
  * Réglage `rateLimit` de better-auth : en base (en mémoire, il ne survit pas d'un appel Convex à
- * l'autre), sans limite sur `SERVER_AUTH_PATHS`. Les règles par défaut restent : 3 essais par 10 s sur
- * `/sign-in/*`, 100 par 10 s ailleurs.
+ * l'autre), sans limite sur `SERVER_AUTH_PATHS` ni `SESSION_READ_PATHS`. Les règles par défaut
+ * restent : 3 essais par 10 s sur `/sign-in/*`, 100 par 10 s ailleurs.
  */
 export const HGDC_RATE_LIMIT: {
   enabled: true
   storage: "database"
   customRules: { [path: string]: false }
-} = { enabled: true, storage: "database", customRules: { ...SERVER_AUTH_PATHS } }
+} = { enabled: true, storage: "database", customRules: { ...SERVER_AUTH_PATHS, ...SESSION_READ_PATHS } }
 
 /** Plus longue fenêtre des règles de better-auth : 60 s. Une ligne d'une heure ne compte plus. */
 export const AUTH_RATE_LIMIT_KEEP_MS: number = 60 * 60 * 1000
