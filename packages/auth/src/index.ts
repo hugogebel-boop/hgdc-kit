@@ -153,7 +153,9 @@ const NEXT_BASE = "https://next.invalid"
 /**
  * Page d'arrivée sûre : un chemin du produit lui-même, jamais une autre origine. Refuse ce qu'un
  * navigateur lirait comme une adresse externe (`//hôte`, `/\hôte`, schéma), les caractères de
- * contrôle, et l'entrée ou `/api/auth` (boucle). Rend `fallback` dans tous ces cas.
+ * contrôle et les blancs, les mêmes une fois décodés (`/%2F%2Fhôte`, `/%5Chôte`, `/%09`), un
+ * chemin qui ne devient `//hôte` qu'une fois normalisé (`/.//hôte`), et l'entrée ou `/api/auth`
+ * (boucle). Rend `fallback` dans tous ces cas.
  *
  * `options.basePath` (produit servi sous `/analytics`) : la valeur reste un chemin du produit, sans
  * la base ; l'entrée et `/api/auth` sont aussi refusés avec la base (`/analytics/auth/hgdc`,
@@ -163,16 +165,29 @@ export function safeNextPath(value: string | null | undefined, fallback = "/", o
   const base = normalizeBasePath(options.basePath)
   if (typeof value !== "string" || value.length === 0 || value.length > NEXT_MAX_LENGTH) return fallback
   if (!value.startsWith("/") || value.startsWith("//")) return fallback
-  // Les navigateurs lisent `\` comme `/` : `/\evil.ch` serait une adresse externe.
+  // Les navigateurs lisent `\` comme `/` : `/\evil.ch` serait une adresse externe. Ils retirent
+  // aussi tabulations et retours à la ligne (`/\t/evil.ch` devient `//evil.ch`) ; un blanc n'a
+  // rien à faire dans un chemin non encodé.
   // oxlint-disable-next-line no-control-regex -- refuser les caractères de contrôle est le but
-  if (/[\\\u0000-\u001f\u007f]/.test(value)) return fallback
+  if (/[\\\s\u0000-\u001f\u007f]/.test(value)) return fallback
+  // Les mêmes, encodés : un serveur ou un routeur qui décode la valeur ne doit rien y trouver.
+  let decoded: string
+  try {
+    decoded = decodeURIComponent(value)
+  } catch {
+    return fallback
+  }
+  // oxlint-disable-next-line no-control-regex -- refuser les caractères de contrôle est le but
+  if (decoded.startsWith("//") || /[\\\u0000-\u001f\u007f]/.test(decoded)) return fallback
   let url: URL
   try {
     url = new URL(value, NEXT_BASE)
   } catch {
     return fallback
   }
-  if (url.origin !== NEXT_BASE) return fallback
+  // `/.//evil.ch` et `/a/..//evil.ch` se normalisent en `//evil.ch` : rendu tel quel, ce serait une
+  // adresse externe.
+  if (url.origin !== NEXT_BASE || url.pathname.startsWith("//")) return fallback
   const path = url.pathname.replace(/\/+$/, "") || "/"
   for (const prefix of base ? ["", base] : [""])
     if (
