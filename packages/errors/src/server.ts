@@ -54,3 +54,61 @@ export function createErrorReporter(options: ErrorReporterOptions): ReportError 
     }
   }
 }
+
+/** Segment gardé tel quel : un mot de route (`reglages`, `api`, `v1`, `oauth2`), jamais un identifiant. */
+const WORD = /^(?:[a-z][a-z-]{0,30}|v\d{1,2}|oauth2)$/
+const SHAPE_MAX_SEGMENTS = 8
+
+/**
+ * Forme d'un chemin, sans identifiant : `/mail/o/acme/emails/js72…` devient `/mail/o/:org/emails/:id`.
+ * Le segment qui suit `/o/` est le nom d'une organisation (convention des consoles) : il part aussi.
+ * Tout segment qui n'est pas un simple mot en minuscules devient `:id`.
+ */
+export function routeShape(pathname: string): string {
+  const segments = pathname.split("/").filter(Boolean).slice(0, SHAPE_MAX_SEGMENTS)
+  const shape = segments.map((segment, index) => {
+    if (index > 0 && segments[index - 1] === "o") return ":org"
+    return WORD.test(segment) ? segment : ":id"
+  })
+  return `/${shape.join("/")}`
+}
+
+/** Un `redirect()` ou un `notFound()` lancé par le routeur, ou une `Response` : un parcours normal, pas une panne. */
+function isControlFlow(error: unknown): boolean {
+  if (error instanceof Response) return true
+  if (typeof error !== "object" || error === null) return false
+  return "isRedirect" in error || "isNotFound" in error || "redirect" in error
+}
+
+/**
+ * Enrobe le traitement d'une requête par un serveur web (middleware de requête d'une console) : une
+ * exception, ou une réponse 5xx, remonte avec la méthode, la forme de la route et le statut. Rien
+ * d'autre ne part : ni adresse complète, ni en-tête, ni corps. Le résultat et l'exception sont rendus
+ * tels quels : la remontée ne change jamais la réponse.
+ */
+export async function reportRequestFailure<Result extends { response: Response }>(
+  report: ReportError,
+  source: string,
+  request: Pick<Request, "method" | "url">,
+  run: () => Promise<Result>,
+): Promise<Result> {
+  const context = (): ErrorContext => {
+    let route = "illisible"
+    try {
+      route = routeShape(new URL(request.url).pathname)
+    } catch {
+      // Adresse illisible : la forme reste « illisible ».
+    }
+    return { method: request.method, route }
+  }
+  let result: Result
+  try {
+    result = await run()
+  } catch (error) {
+    if (!isControlFlow(error)) report(source, error, context())
+    throw error
+  }
+  const { status } = result.response
+  if (status >= 500) report(source, new Error(`Réponse ${status}`), { ...context(), status })
+  return result
+}
