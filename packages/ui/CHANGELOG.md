@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.72.1
+
+### Patch Changes
+
+- e8ed5f5: Lueur du chargement : elle passe au-dessus de la barre du haut et fait tout le tour de la carte ; pulsation plus marquée.
+
 ## 0.72.0
 
 ### Minor Changes
