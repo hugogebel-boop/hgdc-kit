@@ -7,6 +7,7 @@ import SecurityLockIcon from "@hugeicons/core-free-icons/SecurityLockIcon"
 import Tick02Icon from "@hugeicons/core-free-icons/Tick02Icon"
 import UserIcon from "@hugeicons/core-free-icons/UserIcon"
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react"
+import { pauseSessionOpening } from "./product-switch.ts"
 import { Menu as MenuPrimitive } from "@base-ui/react/menu"
 import type { ReactNode } from "react"
 
@@ -211,6 +212,8 @@ export function AccountMenu({
           onClick={() => {
             // La marque de l'organisation retenue pour la coque ne survit pas à la session.
             forgetShellOrganization()
+            // Aucun module ne se rouvre seul après une déconnexion (ADR 0026).
+            pauseSessionOpening()
             onSignOut()
           }}
         >

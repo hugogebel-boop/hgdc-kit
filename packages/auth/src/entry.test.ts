@@ -212,6 +212,39 @@ describe("createHgdcEntry", () => {
     expect(JSON.parse(calls[1]?.body ?? "").callbackURL).toBe("/")
   })
 
+  it("`frame=open` avec une session ouverte : réponse vide, sans connexion ni relecture", async () => {
+    const { calls, proxy } = fakeAuth({ session: () => json({ session: { id: "s" }, user: { id: "u" } }) })
+    const response = await createHgdcEntry({ proxy, errorCallbackURL: "/sign-in?error=1" })(
+      visit(`/auth/hgdc?frame=open&refresh=1&next=${encodeURIComponent("https://evil.ch")}`, { cookie: "s=1" }),
+    )
+    expect(response.status).toBe(200)
+    expect(response.headers.get("location")).toBeNull()
+    expect(response.headers.get("set-cookie") ?? "").not.toContain("hgdc-org-sync")
+    expect(calls.map((c) => new URL(c.url).pathname)).toEqual(["/api/auth/get-session"])
+  })
+
+  it("`frame=open` sans session : connexion HGDC, retour et erreur sur la réponse vide", async () => {
+    const { calls, proxy } = fakeAuth({ signIn: () => json({ url: AUTHORIZE, redirect: true }) })
+    const response = await createHgdcEntry({ proxy, errorCallbackURL: "/sign-in?error=1", appBasePath: "/mail" })(
+      visit(`/auth/hgdc?frame=open&next=${encodeURIComponent("/o/acme")}`, { cookie: "old=1" }),
+    )
+    expect(response.headers.get("location")).toBe(AUTHORIZE)
+    expect(JSON.parse(calls[1]?.body ?? "")).toEqual({
+      providerId: "hgdc",
+      callbackURL: "/mail/auth/hgdc?frame=done",
+      errorCallbackURL: "/mail/auth/hgdc?frame=done",
+    })
+  })
+
+  it("`frame=open` en préchargement : 503, sans connexion", async () => {
+    const { calls, proxy } = fakeAuth({})
+    const response = await createHgdcEntry({ proxy, errorCallbackURL: "/sign-in?error=1" })(
+      visit("/auth/hgdc?frame=open", { "sec-purpose": "prefetch" }),
+    )
+    expect(response.status).toBe(503)
+    expect(calls).toEqual([])
+  })
+
   it("`refresh=1` avec une session ouverte : repart vers Account, retour marqué `synced=1`", async () => {
     const { calls, proxy } = fakeAuth({
       session: () => json({ session: { id: "s" }, user: { id: "u" } }),

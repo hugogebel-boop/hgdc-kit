@@ -31,6 +31,34 @@ export const BACKGROUND_REFRESH_INTERVAL_MS: number = 10 * 60_000
 /** Heure de la dernière relecture d'un produit, en `localStorage` : `hgdc-org-sync:<base>` (`/` à la racine). */
 export const ORG_SYNC_LAST_KEY_PREFIX = "hgdc-org-sync:"
 
+/** Cadre caché qui ouvre la session d'un autre produit, seulement si elle manque (ADR 0026). */
+export const SESSION_OPEN_PATH = "/auth/hgdc?frame=open"
+
+/** Une ouverture au plus par produit pendant ce délai : une session vit 7 jours (`@hgdc/auth`). */
+export const SESSION_OPEN_INTERVAL_MS: number = 24 * 60 * 60_000
+
+/** Attente après l'affichage de la page avant la première ouverture : la page passe d'abord. */
+export const SESSION_OPEN_DELAY_MS = 3000
+
+/** Heure de la dernière ouverture d'un produit, en `localStorage` : `hgdc-session-open:<base>`. */
+export const SESSION_OPEN_KEY_PREFIX = "hgdc-session-open:"
+
+/**
+ * Posée à la déconnexion d'un module (`AccountMenu`), levée à la prochaine connexion par clic
+ * (`HgdcSignInButton` de `@hgdc/auth`) : tant qu'elle est là, rien ne s'ouvre en arrière-plan. Une
+ * déconnexion (changer de compte, poste partagé) n'est jamais défaite sans la personne.
+ */
+export const SESSION_OPEN_PAUSED_KEY = "hgdc-session-open:paused"
+
+/** À la déconnexion d'un module : plus d'ouverture en arrière-plan jusqu'à la prochaine connexion. */
+export function pauseSessionOpening(win: Window | null = typeof window === "undefined" ? null : window): void {
+  try {
+    win?.localStorage.setItem(SESSION_OPEN_PAUSED_KEY, String(Date.now()))
+  } catch {
+    // Stockage refusé : l'ouverture n'a pas lieu non plus sans lui (`startSessionOpening`).
+  }
+}
+
 /** Marque d'un lien de la barre vers un autre produit servi sous la même origine : prérendu au survol. */
 export const PRODUCT_PRERENDER_ATTRIBUTE = "data-hgdc-prerender"
 
@@ -104,17 +132,24 @@ export function takeOrgSyncCookie(doc: Document = document): boolean {
  * Vrai si la relecture de ce produit est due, et note alors l'heure : au plus une toutes les
  * `BACKGROUND_REFRESH_INTERVAL_MS`. Sans `localStorage` (navigation privée stricte), toujours due.
  */
-function refreshDue(base: string, win: Window | null, now = Date.now()): boolean {
-  const key = `${ORG_SYNC_LAST_KEY_PREFIX}${base || "/"}`
+function refreshDue(
+  base: string,
+  win: Window | null,
+  now = Date.now(),
+  prefix = ORG_SYNC_LAST_KEY_PREFIX,
+  interval = BACKGROUND_REFRESH_INTERVAL_MS,
+  withoutStorage = true,
+): boolean {
+  const key = `${prefix}${base || "/"}`
   try {
     const storage = win?.localStorage
-    if (!storage) return true
+    if (!storage) return withoutStorage
     const last = Number(storage.getItem(key))
-    if (Number.isFinite(last) && last > 0 && now - last >= 0 && now - last < BACKGROUND_REFRESH_INTERVAL_MS)
-      return false
+    if (Number.isFinite(last) && last > 0 && now - last >= 0 && now - last < interval) return false
     storage.setItem(key, String(now))
   } catch {
-    // Stockage refusé : la relecture part, comme avant.
+    // Stockage refusé : la relecture part, comme avant ; l'ouverture, elle, ne part pas.
+    return withoutStorage
   }
   return true
 }
@@ -135,23 +170,82 @@ export function startBackgroundRefresh(doc: Document = document): HTMLIFrameElem
   }
   const base = takeOrgSync(doc)
   if (base === null || !refreshDue(base, doc.defaultView)) return null
+  return openHiddenFrame(doc, `${base}${BACKGROUND_REFRESH_PATH}`)
+}
+
+/** Vrai si une déconnexion a suspendu l'ouverture, ou si le stockage manque (rien ne la limiterait). */
+function openingPaused(win: Window | null): boolean {
+  try {
+    return !win?.localStorage || win.localStorage.getItem(SESSION_OPEN_PAUSED_KEY) !== null
+  } catch {
+    return true
+  }
+}
+
+/**
+ * Un cadre caché vers une adresse de l'entrée, retiré à son chargement ou après
+ * `BACKGROUND_REFRESH_TIMEOUT_MS`. Ni script, ni formulaire, ni navigation de la page (`sandbox`) ;
+ * même origine pour les cookies du produit. `onDone` est appelé une fois, quand il est retiré.
+ */
+function openHiddenFrame(doc: Document, src: string, onDone?: () => void): HTMLIFrameElement {
   const frame = doc.createElement("iframe")
   frame.hidden = true
   frame.tabIndex = -1
   frame.title = ""
   frame.setAttribute("aria-hidden", "true")
-  // Même origine pour les cookies du produit ; ni script, ni formulaire, ni navigation de la page.
   frame.setAttribute("sandbox", "allow-same-origin")
   frame.referrerPolicy = "no-referrer"
   const done = () => {
     window.clearTimeout(timer)
     frame.remove()
+    onDone?.()
   }
   const timer = window.setTimeout(done, BACKGROUND_REFRESH_TIMEOUT_MS)
   frame.addEventListener("load", done, { once: true })
-  frame.src = `${base}${BACKGROUND_REFRESH_PATH}`
+  frame.src = src
   doc.body.append(frame)
   return frame
+}
+
+/**
+ * La base d'un produit (`/mail`) depuis le lien relatif de sa barre (`/mail/auth/hgdc?…`), ou
+ * `null` pour un lien absolu (autre origine) ou une base illisible.
+ */
+export function productEntryBase(href: string): string | null {
+  if (!href.startsWith("/")) return null
+  const index = href.indexOf("/auth/hgdc")
+  if (index <= 0) return null
+  const base = href.slice(0, index)
+  return BASE_PATH.test(base) ? base : null
+}
+
+/**
+ * Ouvre en arrière-plan la session des autres modules de la barre (ADR 0026) : un cadre caché à la
+ * fois vers `<base>/auth/hgdc?frame=open`, au plus une fois par jour et par module. Session déjà
+ * ouverte : réponse vide sans appel à ID. Sinon, la connexion HGDC se fait dans le cadre ; si ID
+ * demande quelque chose (session expirée, consentement), il refuse d'être affiché dans un cadre et
+ * rien ne se passe : le clic fera la connexion habituelle. Pas sur une page prérendue, ni quand
+ * l'économie de données est demandée. Rend une fonction qui arrête la file.
+ */
+export function startSessionOpening(bases: ReadonlyArray<string>, doc: Document = document): () => void {
+  const win = doc.defaultView
+  const saveData = (win?.navigator as (Navigator & { connection?: { saveData?: boolean } }) | undefined)?.connection
+    ?.saveData
+  if (saveData || (doc as Document & { prerendering?: boolean }).prerendering || openingPaused(win)) return () => {}
+  // Sans stockage, pas de limite par jour : rien ne part (sinon une connexion par module à chaque page).
+  const queue = bases.filter((base) =>
+    refreshDue(base, win, Date.now(), SESSION_OPEN_KEY_PREFIX, SESSION_OPEN_INTERVAL_MS, false),
+  )
+  let stopped = false
+  const next = () => {
+    const base = queue.shift()
+    if (stopped || base === undefined) return
+    openHiddenFrame(doc, `${base}${SESSION_OPEN_PATH}`, next)
+  }
+  next()
+  return () => {
+    stopped = true
+  }
 }
 
 /**
@@ -187,4 +281,24 @@ export function useProductSwitch(enabled = true): void {
     document.head.append(script)
     return () => script.remove()
   }, [enabled])
+}
+
+/**
+ * Dans la barre de Basalte (`ShellNavigation`) : ouvre la session des modules affichés servis sous
+ * la même origine, `SESSION_OPEN_DELAY_MS` après l'affichage (ADR 0026). `bases` : clé stable
+ * (les bases jointes), pour ne pas relancer la file à chaque rendu.
+ */
+export function useSessionOpening(bases: ReadonlyArray<string>): void {
+  const key = bases.join(" ")
+  useEffect(() => {
+    if (!key) return
+    let stop = () => {}
+    const timer = window.setTimeout(() => {
+      stop = startSessionOpening(key.split(" "))
+    }, SESSION_OPEN_DELAY_MS)
+    return () => {
+      window.clearTimeout(timer)
+      stop()
+    }
+  }, [key])
 }

@@ -12,7 +12,14 @@ import {
   ORG_SYNC_LAST_KEY_PREFIX,
   PRODUCT_PRERENDER_ATTRIBUTE,
   PRODUCT_SPECULATION_RULES,
+  productEntryBase,
+  SESSION_OPEN_INTERVAL_MS,
+  SESSION_OPEN_KEY_PREFIX,
+  SESSION_OPEN_PATH,
+  SESSION_OPEN_PAUSED_KEY,
+  pauseSessionOpening,
   startBackgroundRefresh,
+  startSessionOpening,
   takeOrgSync,
   takeOrgSyncCookie,
 } from "./product-switch.ts"
@@ -23,6 +30,71 @@ afterEach(() => {
   document.cookie = `${ORG_SYNC_COOKIE}=; Path=/; Max-Age=0`
   for (const frame of document.querySelectorAll("iframe")) frame.remove()
   vi.useRealTimers()
+})
+
+describe("ouverture des sessions des autres modules (ADR 0026)", () => {
+  const frames = () => [...document.querySelectorAll("iframe")].map((frame) => frame.getAttribute("src"))
+
+  it("un cadre caché, sans script, à la fois, vers l'entrée `frame=open` de chaque module", () => {
+    startSessionOpening(["/mail", "/status"])
+    expect(frames()).toEqual([`/mail${SESSION_OPEN_PATH}`])
+    const first = document.querySelector("iframe")
+    expect(first?.getAttribute("sandbox")).toBe("allow-same-origin")
+    expect(first?.hidden).toBe(true)
+    first?.dispatchEvent(new Event("load"))
+    expect(frames()).toEqual([`/status${SESSION_OPEN_PATH}`])
+    document.querySelector("iframe")?.dispatchEvent(new Event("load"))
+    expect(frames()).toEqual([])
+  })
+
+  it("au plus une fois par jour et par module", () => {
+    startSessionOpening(["/mail"])
+    document.querySelector("iframe")?.dispatchEvent(new Event("load"))
+    startSessionOpening(["/mail"])
+    expect(frames()).toEqual([])
+    localStorage.setItem(`${SESSION_OPEN_KEY_PREFIX}/mail`, String(Date.now() - SESSION_OPEN_INTERVAL_MS - 1))
+    startSessionOpening(["/mail"])
+    expect(frames()).toEqual([`/mail${SESSION_OPEN_PATH}`])
+  })
+
+  it("arrêtée : le module suivant ne part pas", () => {
+    const stop = startSessionOpening(["/mail", "/status"])
+    stop()
+    document.querySelector("iframe")?.dispatchEvent(new Event("load"))
+    expect(frames()).toEqual([])
+  })
+
+  it("après une déconnexion : rien ne s'ouvre jusqu'à la prochaine connexion", () => {
+    pauseSessionOpening()
+    startSessionOpening(["/mail"])
+    expect(frames()).toEqual([])
+    localStorage.removeItem(SESSION_OPEN_PAUSED_KEY)
+    startSessionOpening(["/mail"])
+    expect(frames()).toEqual([`/mail${SESSION_OPEN_PATH}`])
+  })
+
+  it("stockage refusé : rien ne part (aucune limite par jour sans lui)", () => {
+    const spy = vi.spyOn(window, "localStorage", "get").mockImplementation(() => {
+      throw new Error("refusé")
+    })
+    startSessionOpening(["/mail"])
+    expect(frames()).toEqual([])
+    spy.mockRestore()
+  })
+
+  it("rien sur une page prérendue", () => {
+    Object.defineProperty(document, "prerendering", { value: true, configurable: true })
+    startSessionOpening(["/mail"])
+    expect(frames()).toEqual([])
+    Reflect.deleteProperty(document, "prerendering")
+  })
+
+  it("base d'un lien de la barre : relatif seulement", () => {
+    expect(productEntryBase("/mail/auth/hgdc?refresh=background&next=%2F")).toBe("/mail")
+    expect(productEntryBase("https://status.hgdc.ch/auth/hgdc?refresh=background")).toBeNull()
+    expect(productEntryBase("/auth/hgdc?refresh=background")).toBeNull()
+    expect(productEntryBase("//evil.ch/auth/hgdc")).toBeNull()
+  })
 })
 
 describe("relecture des organisations en arrière-plan", () => {

@@ -1,6 +1,13 @@
 import { useEffect, useState, type ButtonHTMLAttributes, type ReactElement } from "react"
 
-import { HGDC_PROVIDER_ID, hasSyncedMarker, hgdcRefreshPath, normalizeBasePath, type BasePathOptions } from "./index.ts"
+import {
+  HGDC_PROVIDER_ID,
+  HGDC_SESSION_OPEN_PAUSED_KEY,
+  hasSyncedMarker,
+  hgdcRefreshPath,
+  normalizeBasePath,
+  type BasePathOptions,
+} from "./index.ts"
 
 /** Ce que le bouton utilise du client better-auth (plugin `genericOAuthClient`). */
 export type HgdcAuthClient = {
@@ -172,6 +179,12 @@ export function HgdcSignInButton({
 
   async function signIn() {
     setPending(true)
+    // Connexion choisie par la personne : l'ouverture des autres modules reprend (ADR 0026).
+    try {
+      window.localStorage.removeItem(HGDC_SESSION_OPEN_PAUSED_KEY)
+    } catch {
+      // Stockage refusé : rien à lever.
+    }
     const result = await startHgdcSignIn(authClient, {
       callbackURL,
       ...(errorCallbackURL ? { errorCallbackURL } : {}),
