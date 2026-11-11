@@ -42,7 +42,31 @@ describe("safeNextPath", () => {
 
   it("normalise un chemin qui remonte sans sortir de l'origine", () => {
     expect(safeNextPath("/a/../../b")).toBe("/b")
-    expect(safeNextPath("/%2F%2Fevil.ch")).toBe("/%2F%2Fevil.ch")
+    expect(safeNextPath("/a%2F%2Fb?q=a%20b")).toBe("/a%2F%2Fb?q=a%20b")
+  })
+
+  it("refuse un chemin qui ne devient `//hôte` qu'une fois normalisé", () => {
+    for (const value of ["/.//evil.ch", "/a/..//evil.ch", "/%2e//evil.ch", "/a/%2e%2e//evil.ch", "/././/evil.ch/o"])
+      expect(safeNextPath(value), value).toBe("/")
+  })
+
+  it("refuse les mêmes caractères une fois décodés", () => {
+    for (const value of [
+      "/%2F%2Fevil.ch",
+      "/%2f/evil.ch",
+      "/%5Cevil.ch",
+      "/%5cevil.ch",
+      "/%09/evil.ch",
+      "/o%0d%0ax",
+      "/%7F",
+      "/100%",
+    ])
+      expect(safeNextPath(value), value).toBe("/")
+  })
+
+  it("refuse les blancs non encodés", () => {
+    for (const value of ["/a b", "/a\u00a0b", "/\u2028/evil.ch", "/\ufeff/evil.ch", "/a\u3000"])
+      expect(safeNextPath(value), value).toBe("/")
   })
 
   it("refuse l'entrée elle-même et better-auth (boucle)", () => {
