@@ -60,8 +60,10 @@ Les modules :
 - Une navigation courte ne montre plus rien, une navigation moyenne garde l'ancienne page lisible, une longue montre la forme de la nouvelle. Plus de H puis squelette pour la même page.
 - Retrait d'API publiques sans utilisateur dans les produits : `ContentLoadingContext` (remplacé par `ShellContentContext`), `useContentLoading` (remplacé par `useShellCover`), `ContentLoadingStage`.
 - Un module qui garde des `useQuery` sans `loader` fonctionne comme avant, mais ne profite ni du rendu serveur ni du préchargement au survol : chaque module passe au modèle des `loader` (journal ci-dessous).
+- Listes paginées (`usePaginatedQuery` de `convex/react`) : pas de rendu serveur. Convex n'offre de première page servie par le serveur que pour Svelte (`convexLoadPaginated`) ; en React, `usePaginatedQuery` ajoute un identifiant interne aux options de pagination qu'un `loader` ne peut pas reproduire. Pas de contournement : la liste montre son squelette le temps de la première page (environ 100 ms mesurés dans E-mails), le reste de la page est rendu par le serveur. À revoir si Convex publie un équivalent React.
 
 ## Journal
 
 - 2026-11-11 : kit 0.71.0 (hgdc-kit#333). Surveillance (status#252) : coque et pages principales par `loader`, rendu serveur complet vérifié en production. E-mails (agentmail#240) : `useTeamQuery` sur le cache de TanStack Query, `prefetchTeam` au serveur ; les listes paginées gardent leur squelette (`usePaginatedQuery`). Manager (account#222) : `loader` des pages. Déploiements suivait déjà le modèle.
 - 2026-11-11 : Statistiques (hgdc-analytics#182), Documentation (hgdc-docs#201), Assistant IA (hgdc-iassistant#63). Vérifié en production : rendu serveur avec coque et contenu, navigation sans H, barre de progression visible. Restent sans rendu serveur les listes paginées (`usePaginatedQuery`) et les pages d'ID, refaites par ailleurs.
+- 2026-11-11 : ID (account#230) : coque et fiche d'une application par `loader` ; données de better-auth lues au navigateur.
