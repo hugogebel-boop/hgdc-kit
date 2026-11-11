@@ -105,6 +105,12 @@ export const HGDC_FRAME_DONE_PATH: string = `${HGDC_ENTRY_PATH}?${HGDC_ENTRY_FRA
  */
 export const HGDC_ENTRY_FRAME_OPEN = "open"
 
+/**
+ * Marque de `@hgdc/ui` (`SESSION_OPEN_PAUSED_KEY`) posée à la déconnexion d'un module : levée par
+ * une connexion par clic (`HgdcSignInButton`), l'ouverture en arrière-plan reprend (ADR 0026).
+ */
+export const HGDC_SESSION_OPEN_PAUSED_KEY = "hgdc-session-open:paused"
+
 /** Adresse du cadre caché qui ouvre la session d'un produit (`frame=open`). */
 export const HGDC_SESSION_OPEN_PATH: string = `${HGDC_ENTRY_PATH}?${HGDC_ENTRY_FRAME_PARAM}=${HGDC_ENTRY_FRAME_OPEN}`
 

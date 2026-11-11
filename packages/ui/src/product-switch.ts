@@ -43,6 +43,22 @@ export const SESSION_OPEN_DELAY_MS = 3000
 /** Heure de la dernière ouverture d'un produit, en `localStorage` : `hgdc-session-open:<base>`. */
 export const SESSION_OPEN_KEY_PREFIX = "hgdc-session-open:"
 
+/**
+ * Posée à la déconnexion d'un module (`AccountMenu`), levée à la prochaine connexion par clic
+ * (`HgdcSignInButton` de `@hgdc/auth`) : tant qu'elle est là, rien ne s'ouvre en arrière-plan. Une
+ * déconnexion (changer de compte, poste partagé) n'est jamais défaite sans la personne.
+ */
+export const SESSION_OPEN_PAUSED_KEY = "hgdc-session-open:paused"
+
+/** À la déconnexion d'un module : plus d'ouverture en arrière-plan jusqu'à la prochaine connexion. */
+export function pauseSessionOpening(win: Window | null = typeof window === "undefined" ? null : window): void {
+  try {
+    win?.localStorage.setItem(SESSION_OPEN_PAUSED_KEY, String(Date.now()))
+  } catch {
+    // Stockage refusé : l'ouverture n'a pas lieu non plus sans lui (`startSessionOpening`).
+  }
+}
+
 /** Marque d'un lien de la barre vers un autre produit servi sous la même origine : prérendu au survol. */
 export const PRODUCT_PRERENDER_ATTRIBUTE = "data-hgdc-prerender"
 
@@ -122,16 +138,18 @@ function refreshDue(
   now = Date.now(),
   prefix = ORG_SYNC_LAST_KEY_PREFIX,
   interval = BACKGROUND_REFRESH_INTERVAL_MS,
+  withoutStorage = true,
 ): boolean {
   const key = `${prefix}${base || "/"}`
   try {
     const storage = win?.localStorage
-    if (!storage) return true
+    if (!storage) return withoutStorage
     const last = Number(storage.getItem(key))
     if (Number.isFinite(last) && last > 0 && now - last >= 0 && now - last < interval) return false
     storage.setItem(key, String(now))
   } catch {
-    // Stockage refusé : la relecture part, comme avant.
+    // Stockage refusé : la relecture part, comme avant ; l'ouverture, elle, ne part pas.
+    return withoutStorage
   }
   return true
 }
@@ -153,6 +171,15 @@ export function startBackgroundRefresh(doc: Document = document): HTMLIFrameElem
   const base = takeOrgSync(doc)
   if (base === null || !refreshDue(base, doc.defaultView)) return null
   return openHiddenFrame(doc, `${base}${BACKGROUND_REFRESH_PATH}`)
+}
+
+/** Vrai si une déconnexion a suspendu l'ouverture, ou si le stockage manque (rien ne la limiterait). */
+function openingPaused(win: Window | null): boolean {
+  try {
+    return !win?.localStorage || win.localStorage.getItem(SESSION_OPEN_PAUSED_KEY) !== null
+  } catch {
+    return true
+  }
 }
 
 /**
@@ -204,9 +231,10 @@ export function startSessionOpening(bases: ReadonlyArray<string>, doc: Document 
   const win = doc.defaultView
   const saveData = (win?.navigator as (Navigator & { connection?: { saveData?: boolean } }) | undefined)?.connection
     ?.saveData
-  if (saveData || (doc as Document & { prerendering?: boolean }).prerendering) return () => {}
+  if (saveData || (doc as Document & { prerendering?: boolean }).prerendering || openingPaused(win)) return () => {}
+  // Sans stockage, pas de limite par jour : rien ne part (sinon une connexion par module à chaque page).
   const queue = bases.filter((base) =>
-    refreshDue(base, win, Date.now(), SESSION_OPEN_KEY_PREFIX, SESSION_OPEN_INTERVAL_MS),
+    refreshDue(base, win, Date.now(), SESSION_OPEN_KEY_PREFIX, SESSION_OPEN_INTERVAL_MS, false),
   )
   let stopped = false
   const next = () => {

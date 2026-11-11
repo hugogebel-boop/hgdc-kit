@@ -7,6 +7,7 @@ import {
   HGDC_ENTRY_REFRESH_BACKGROUND,
   HGDC_ORG_SYNC_COOKIE,
   HGDC_SESSION_OPEN_PATH,
+  HGDC_SESSION_OPEN_PAUSED_KEY,
 } from "./index.ts"
 
 // `@hgdc/ui` ne dépend pas de `@hgdc/auth` : la coque recopie ces noms (`product-switch.ts`).
@@ -18,6 +19,7 @@ describe("relecture en arrière-plan : mêmes noms que la coque de @hgdc/ui", ()
     expect(ui).toContain(`export const ORG_SYNC_COOKIE = "${HGDC_ORG_SYNC_COOKIE}"`)
     expect(ui).toContain(`export const BACKGROUND_REFRESH_PATH = "${HGDC_BACKGROUND_REFRESH_PATH}"`)
     expect(ui).toContain(`export const SESSION_OPEN_PATH = "${HGDC_SESSION_OPEN_PATH}"`)
+    expect(ui).toContain(`export const SESSION_OPEN_PAUSED_KEY = "${HGDC_SESSION_OPEN_PAUSED_KEY}"`)
     expect(ui).toContain(`hgdc?refresh=${HGDC_ENTRY_REFRESH_BACKGROUND}*`)
     expect(products).toContain(`PRODUCT_ENTRY_REFRESH_QUERY = "refresh=${HGDC_ENTRY_REFRESH_BACKGROUND}&next=/"`)
   })

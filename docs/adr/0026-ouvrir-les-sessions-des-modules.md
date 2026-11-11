@@ -24,6 +24,8 @@ La barre de Basalte (`ShellNavigation`) ouvre en arrière-plan la session des au
 - **Entrée** `/<module>/auth/hgdc?frame=open` (`@hgdc/auth`, `HGDC_SESSION_OPEN_PATH`) : session du module ouverte, réponse vide aussitôt, sans appel à ID ; sinon, la connexion HGDC, retour et erreur sur la réponse vide (`frame=done`). Jamais de relecture des organisations, de `next` ni de cookie de relecture. En préchargement (`Sec-Purpose`), 503.
 - **Cadre** caché, `sandbox="allow-same-origin"` (ni script, ni formulaire, ni navigation de la page), sans référent, retiré au chargement ou après 20 s.
 - **Un module à la fois**, au plus une fois par jour et par module (`localStorage`, `hgdc-session-open:<base>`), jamais sur une page prérendue ni en mode économie de données.
+- **Déconnexion** : se déconnecter d'un module (`AccountMenu`) suspend l'ouverture (`hgdc-session-open:paused`) jusqu'à la prochaine connexion par clic (`HgdcSignInButton`, qui demande le choix du compte). Sans cela, la barre rouvrirait le module avec le compte d'ID en cours : un changement de compte ou une déconnexion sur un poste partagé serait défait sans la personne (revue adversariale du 2026-11-11).
+- **Sans `localStorage`** (navigation privée stricte, données de site bloquées) : rien ne s'ouvre, faute de limite par jour.
 - Si ID demande quelque chose (session d'ID expirée, consentement à donner), il refuse d'être affiché dans un cadre : rien ne se passe, le clic fera la connexion habituelle.
 
 ## Conséquences

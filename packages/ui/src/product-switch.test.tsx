@@ -16,6 +16,8 @@ import {
   SESSION_OPEN_INTERVAL_MS,
   SESSION_OPEN_KEY_PREFIX,
   SESSION_OPEN_PATH,
+  SESSION_OPEN_PAUSED_KEY,
+  pauseSessionOpening,
   startBackgroundRefresh,
   startSessionOpening,
   takeOrgSync,
@@ -60,6 +62,24 @@ describe("ouverture des sessions des autres modules (ADR 0026)", () => {
     stop()
     document.querySelector("iframe")?.dispatchEvent(new Event("load"))
     expect(frames()).toEqual([])
+  })
+
+  it("après une déconnexion : rien ne s'ouvre jusqu'à la prochaine connexion", () => {
+    pauseSessionOpening()
+    startSessionOpening(["/mail"])
+    expect(frames()).toEqual([])
+    localStorage.removeItem(SESSION_OPEN_PAUSED_KEY)
+    startSessionOpening(["/mail"])
+    expect(frames()).toEqual([`/mail${SESSION_OPEN_PATH}`])
+  })
+
+  it("stockage refusé : rien ne part (aucune limite par jour sans lui)", () => {
+    const spy = vi.spyOn(window, "localStorage", "get").mockImplementation(() => {
+      throw new Error("refusé")
+    })
+    startSessionOpening(["/mail"])
+    expect(frames()).toEqual([])
+    spy.mockRestore()
   })
 
   it("rien sur une page prérendue", () => {
