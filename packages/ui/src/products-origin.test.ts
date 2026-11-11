@@ -68,6 +68,21 @@ describe("barre des produits sous une origine partagée (ADR 0020)", () => {
     })
   })
 
+  it("dernière organisation connue : l'entrée mène droit à /o/<organisation>, Manager garde l'accueil", () => {
+    const { products, account } = shellProductEntries({ current: "analytics", pageOrigin: APP, organization: "hgdc" })
+    const by = Object.fromEntries(products.map((entry) => [entry.badge, entry]))
+    expect(by.mail).toMatchObject({ href: "/mail/auth/hgdc?refresh=background&next=%2Fo%2Fhgdc", sameOrigin: true })
+    expect(by.host?.href).toBe("/host/auth/hgdc?refresh=background&next=%2Fo%2Fhgdc")
+    expect(by.analytics).toMatchObject({ href: "/analytics/", current: true })
+    expect(account.href).toBe("/manager/auth/hgdc?refresh=background&next=/")
+  })
+
+  it("slug d'organisation inattendu : rien ne part dans next", () => {
+    for (const organization of ["~demo", "../x", "a/b", "", "A", "x".repeat(64), null])
+      expect(productEntryHref("mail", PRODUCT_ORIGINS, organization)).toBe(productEntryHref("mail"))
+    expect(productEntryHref("manager", PRODUCT_ORIGINS, "hgdc")).toBe(productEntryHref("manager"))
+  })
+
   it("au rendu serveur ou sur une autre origine (développement) : comme avant", () => {
     for (const pageOrigin of [undefined, "http://localhost:3300"]) {
       const { products } = shellProductEntries({ current: "mail", pageOrigin })

@@ -93,13 +93,18 @@ export function productOrigin(
   return Object.hasOwn(origins, key) ? origins[key]! : { origin: `https://${key}.hgdc.ch`, basePath: "" }
 }
 
-/** Entrée dans l'app d'un produit avec la session HGDC : `https://app.hgdc.ch/analytics/auth/hgdc?refresh=background&next=/`. */
+/**
+ * Entrée dans l'app d'un produit avec la session HGDC : `https://app.hgdc.ch/analytics/auth/hgdc?refresh=background&next=/`.
+ * Avec `organization` (slug de la dernière organisation ouverte), l'entrée mène droit à
+ * `/o/<organisation>` : sans les redirections de l'accueil (`/`, puis `/dashboard` ou `/o/…`).
+ */
 export function productEntryHref(
   word: string,
   origins: Readonly<Record<string, ProductOrigin>> = PRODUCT_ORIGINS,
+  organization?: string | null,
 ): string {
   const app = productOrigin(word, origins)
-  return `${app.origin}${app.basePath}${PRODUCT_ENTRY_PATH}?${PRODUCT_ENTRY_REFRESH_QUERY}`
+  return `${app.origin}${app.basePath}${PRODUCT_ENTRY_PATH}?${productEntryQuery(word, organization)}`
 }
 
 /**
@@ -107,6 +112,21 @@ export function productEntryHref(
  * arrière-plan (`refresh=background`, ADR 0016).
  */
 export const PRODUCT_ENTRY_REFRESH_QUERY = "refresh=background&next=/"
+
+/** Slug d'organisation tel que les produits l'écrivent dans `/o/<slug>` : rien d'autre ne part dans `next`. */
+const ORGANIZATION_SLUG = /^[a-z0-9][a-z0-9-]{0,62}$/
+
+/** Produits dont `/o/<slug>` est la page d'une organisation. Manager les désigne par leur identifiant. */
+function opensOrganizationBySlug(word: string): boolean {
+  return word.toLowerCase() !== "manager"
+}
+
+/** Requête de l'entrée : `refresh=background` toujours en tête (règles de prérendu), `next` vers l'organisation si connue. */
+export function productEntryQuery(word: string, organization?: string | null): string {
+  if (!organization || !ORGANIZATION_SLUG.test(organization) || !opensOrganizationBySlug(word))
+    return PRODUCT_ENTRY_REFRESH_QUERY
+  return `refresh=background&next=${encodeURIComponent(`/o/${organization}`)}`
+}
 
 function product(
   word: string,
@@ -286,10 +306,12 @@ export function shellProductEntries(
     accountHref?: string | undefined
     catalog?: ReadonlyArray<HgdcCatalogProduct> | undefined
     pageOrigin?: string | undefined
+    /** Dernière organisation ouverte (`lastOrganization()`, absente au rendu serveur) : l'entrée y mène droit. */
+    organization?: string | null | undefined
   } = {},
 ): { products: Array<ShellProductEntry>; account: ShellProductEntry } {
   const current = options.current?.toLowerCase()
-  const { pageOrigin } = options
+  const { pageOrigin, organization } = options
   const entry = (item: HgdcCatalogProduct, href: string, product: boolean): ShellProductEntry => {
     const base = {
       name: item.name,
@@ -307,7 +329,11 @@ export function shellProductEntries(
   const head = manager ?? HGDC_MANAGER
   const local = localManagerHref(options.accountHref)
   return {
-    products: others.filter(isProductOpen).map((item) => entry(item, item.entryHref, true)),
+    products: others
+      .filter(isProductOpen)
+      .map((item) =>
+        entry(item, organization ? productEntryHref(item.badge, PRODUCT_ORIGINS, organization) : item.entryHref, true),
+      ),
     account: entry(head, local ?? head.entryHref, local === undefined),
   }
 }

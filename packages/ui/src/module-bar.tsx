@@ -18,6 +18,7 @@ import { ProductBadge } from "./product-badge.tsx"
 import { PRODUCT_PRERENDER_ATTRIBUTE } from "./product-switch.ts"
 import { shellProductEntries, type ShellProductEntry } from "./products.ts"
 import { familyProductName } from "./product-name.ts"
+import { lastOrganization } from "./shell-memory.ts"
 import { useLeaveOnClick } from "./shell-placement.ts"
 import { SIDEBAR_ITEM, SidebarNavBack } from "./sidebar-nav.tsx"
 import { useSidebarRail } from "./sidebar-rail.ts"
@@ -32,6 +33,11 @@ function usePageOrigin(): string | undefined {
     () => window.location.origin,
     () => undefined,
   )
+}
+
+/** Dernière organisation ouverte après l'hydratation, `null` au rendu serveur (lien vers l'accueil d'abord). */
+function useLastOrganization(): string | null {
+  return useSyncExternalStore(noSubscription, lastOrganization, () => null)
 }
 
 /** Ce que montre le milieu de la barre : les onglets du module ouvert, la liste des modules, ou son réglage. */
@@ -283,8 +289,9 @@ export function ShellNavigation({
   projectModules?: ReadonlyArray<ModuleWord> | undefined
 }): React.JSX.Element {
   const pageOrigin = usePageOrigin()
+  const organization = useLastOrganization()
   const order = useModuleBar()
-  const { products, account } = shellProductEntries({ current: product, accountHref, pageOrigin })
+  const { products, account } = shellProductEntries({ current: product, accountHref, pageOrigin, organization })
   return (
     <div data-slot="shell-navigation" className="flex min-h-0 flex-1 flex-col">
       <div data-slot="shell-manager" className="shrink-0 px-3 pt-1">
