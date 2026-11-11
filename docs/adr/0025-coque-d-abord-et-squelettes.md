@@ -64,3 +64,4 @@ Les modules :
 ## Journal
 
 - 2026-11-11 : kit 0.71.0 (hgdc-kit#333). Surveillance (status#252) : coque et pages principales par `loader`, rendu serveur complet vérifié en production. E-mails (agentmail#240) : `useTeamQuery` sur le cache de TanStack Query, `prefetchTeam` au serveur ; les listes paginées gardent leur squelette (`usePaginatedQuery`). Manager (account#222) : `loader` des pages. Déploiements suivait déjà le modèle.
+- 2026-11-11 : Statistiques (hgdc-analytics#182), Documentation (hgdc-docs#201), Assistant IA (hgdc-iassistant#63). Vérifié en production : rendu serveur avec coque et contenu, navigation sans H, barre de progression visible. Restent sans rendu serveur les listes paginées (`usePaginatedQuery`) et les pages d'ID, refaites par ailleurs.
