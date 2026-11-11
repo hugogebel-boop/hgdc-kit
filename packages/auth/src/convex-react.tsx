@@ -12,6 +12,16 @@ export type HgdcProviderAuthClient = {
   convex: { token: (options: { fetchOptions: { throw: false } }) => Promise<{ data: { token: string } | null }> }
 }
 
+/**
+ * Options du client Convex de chaque console, à étaler dans `new ConvexQueryClient(url, { ...HGDC_CONVEX_CLIENT_OPTIONS, expectAuth })`.
+ *
+ * `initialAuthTokenReuse` : le jeton du rendu serveur (`initialToken`) est gardé jusqu'à peu avant son
+ * expiration. Sans lui, Convex redemande un jeton aussitôt le premier validé (`/convex/token` deux fois
+ * par page) et réexécute toutes les requêtes authentifiées (2026-11-11). Option marquée expérimentale
+ * par Convex 1.46 : un jeton refusé déclenche toujours une nouvelle demande.
+ */
+export const HGDC_CONVEX_CLIENT_OPTIONS: { readonly initialAuthTokenReuse: true } = { initialAuthTokenReuse: true }
+
 export type HgdcConvexAuthProviderProps = Omit<ComponentProps<typeof ConvexBetterAuthProvider>, "authClient"> & {
   /** Le client de `createAuthClient` de better-auth, avec `convexClient()` dans ses plugins. */
   authClient: HgdcProviderAuthClient
