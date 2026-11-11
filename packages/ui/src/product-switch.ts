@@ -26,7 +26,7 @@ export const BACKGROUND_REFRESH_TIMEOUT_MS = 20_000
  * produit à l'autre ralentissait la navigation (2026-11-11). Les changements d'appartenance arrivent
  * déjà en direct par les événements d'Account ; la relecture n'est qu'un filet.
  */
-export const BACKGROUND_REFRESH_INTERVAL_MS = 10 * 60_000
+export const BACKGROUND_REFRESH_INTERVAL_MS: number = 10 * 60_000
 
 /** Heure de la dernière relecture d'un produit, en `localStorage` : `hgdc-org-sync:<base>` (`/` à la racine). */
 export const ORG_SYNC_LAST_KEY_PREFIX = "hgdc-org-sync:"
