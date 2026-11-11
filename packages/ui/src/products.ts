@@ -340,11 +340,18 @@ export function shellProductEntries(
 
 /** Manager du catalogue, s'il y est, sorti des autres produits : il prend la place d'Account en tête. */
 /**
- * L'adresse reçue, seulement pour un Manager local : les consoles passent aussi l'adresse d'Account en
- * production, et `account.hgdc.ch` redirige vers ID, pas vers Manager.
+ * L'adresse reçue, seulement pour un Manager local : en production, les consoles passent l'adresse
+ * d'ID (`id.hgdc.ch`, avant `account.hgdc.ch`), qui n'est pas Manager. Toute adresse `https` sous
+ * `hgdc.ch` garde donc le Manager du catalogue.
  */
 function localManagerHref(accountHref: string | undefined): string | undefined {
-  return accountHref?.startsWith("https://account.hgdc.ch") ? undefined : accountHref
+  if (!accountHref) return undefined
+  try {
+    const { protocol, hostname } = new URL(accountHref)
+    return protocol === "https:" && (hostname === "hgdc.ch" || hostname.endsWith(".hgdc.ch")) ? undefined : accountHref
+  } catch {
+    return undefined
+  }
 }
 
 function managerFirst(catalog: ReadonlyArray<HgdcCatalogProduct>): {
