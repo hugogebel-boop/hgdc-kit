@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.72.2
+
+### Patch Changes
+
+- 2a93fb3: Barre et menu des produits : « Manager » mène à Manager quand la console passe l'adresse d'ID (`https://id.hgdc.ch`) ; seule une adresse hors de `hgdc.ch` (un Manager local) remplace celle du catalogue.
+
 ## 0.72.1
 
 ### Patch Changes
