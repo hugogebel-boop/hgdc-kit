@@ -97,6 +97,17 @@ export const HGDC_ENTRY_FRAME_PARAM = "frame"
 /** Fin de la relecture en arrière-plan : réponse vide de l'entrée, sans appel à better-auth. */
 export const HGDC_FRAME_DONE_PATH: string = `${HGDC_ENTRY_PATH}?${HGDC_ENTRY_FRAME_PARAM}=done`
 
+/**
+ * `frame=open` : ouvre la session du produit dans un cadre caché, sans rien relire (ADR 0026).
+ * Session déjà ouverte : réponse vide aussitôt, sans appel à ID. Sinon : la connexion HGDC, retour
+ * sur `HGDC_FRAME_DONE_PATH`. La coque d'un autre module l'ouvre pour que le premier clic vers
+ * ce produit trouve sa session.
+ */
+export const HGDC_ENTRY_FRAME_OPEN = "open"
+
+/** Adresse du cadre caché qui ouvre la session d'un produit (`frame=open`). */
+export const HGDC_SESSION_OPEN_PATH: string = `${HGDC_ENTRY_PATH}?${HGDC_ENTRY_FRAME_PARAM}=${HGDC_ENTRY_FRAME_OPEN}`
+
 /** Adresse du cadre caché qui relit les organisations (`frame=1`). */
 export const HGDC_BACKGROUND_REFRESH_PATH: string = `${HGDC_ENTRY_PATH}?${HGDC_ENTRY_REFRESH_PARAM}=1&${HGDC_ENTRY_FRAME_PARAM}=1`
 

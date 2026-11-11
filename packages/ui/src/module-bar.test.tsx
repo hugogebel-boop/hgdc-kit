@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { AccountMenu } from "./account-menu.tsx"
 import { AppShell, SidebarNav, SidebarNavItem } from "./app-shell.tsx"
 import { MODULE_BAR_KEY } from "./module-bar-store.ts"
+import { sessionBases } from "./module-bar.tsx"
+import type { ShellProductEntry } from "./products.ts"
 import type { FamilyProduct } from "./family-svg.ts"
 
 beforeEach(() => {
@@ -267,5 +269,28 @@ describe("barre de Basalte, tiroir sur téléphone", () => {
     const drawer = await openDrawer()
     fireEvent.click(drawer.getByRole("link", { name: "Domaines" }))
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Menu" })).toBeNull())
+  })
+})
+
+describe("sessions ouvertes en arrière-plan (ADR 0026)", () => {
+  const entry = (badge: FamilyProduct, href: string, sameOrigin = true): ShellProductEntry => ({
+    name: badge,
+    badge,
+    href,
+    ...(sameOrigin ? { sameOrigin } : {}),
+  })
+  const entries = [
+    entry("host", "/host/"),
+    entry("mail", "/mail/auth/hgdc?refresh=background&next=%2Fo%2Facme"),
+    entry("status", "/status/auth/hgdc?refresh=background&next=%2F"),
+    entry("analytics", "https://analytics.hgdc.ch/auth/hgdc?refresh=background", false),
+  ]
+
+  it("les modules affichés de la même origine, sans le module ouvert", () => {
+    expect(sessionBases(entries, ["host", "mail", "status", "analytics"], "host")).toEqual(["/mail", "/status"])
+  })
+
+  it("un module masqué ou absent du projet n'ouvre rien", () => {
+    expect(sessionBases(entries, ["host", "status"], "host")).toEqual(["/status"])
   })
 })

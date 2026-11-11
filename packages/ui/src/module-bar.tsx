@@ -15,7 +15,7 @@ import { saveModuleBar, useModuleBar } from "./module-bar-store.ts"
 import { pushModuleBar } from "./product-bar.ts"
 import { hiddenModules, moduleByWord, moveModule, shownModules, type ModuleWord } from "./modules.ts"
 import { ProductBadge } from "./product-badge.tsx"
-import { PRODUCT_PRERENDER_ATTRIBUTE } from "./product-switch.ts"
+import { PRODUCT_PRERENDER_ATTRIBUTE, productEntryBase, useSessionOpening } from "./product-switch.ts"
 import { shellProductEntries, type ShellProductEntry } from "./products.ts"
 import { familyProductName } from "./product-name.ts"
 import { lastOrganization } from "./shell-memory.ts"
@@ -93,6 +93,23 @@ function ShellEntryLink({
       </Tooltip>
     </li>
   )
+}
+
+/**
+ * Bases des modules affichés (`shown`), autres que le module ouvert et servis sous la même origine :
+ * ceux dont la session s'ouvre en arrière-plan (ADR 0026). Manager n'en fait pas partie.
+ */
+export function sessionBases(
+  entries: ReadonlyArray<ShellProductEntry>,
+  shown: ReadonlyArray<ModuleWord>,
+  current: FamilyProduct,
+): Array<string> {
+  return shown.flatMap((word) => {
+    const entry = entries.find((item) => item.badge === word)
+    if (!entry || entry.badge === current || !entry.sameOrigin) return []
+    const base = productEntryBase(entry.href)
+    return base ? [base] : []
+  })
 }
 
 function ModuleList({
@@ -292,6 +309,12 @@ export function ShellNavigation({
   const organization = useLastOrganization()
   const order = useModuleBar()
   const { products, account } = shellProductEntries({ current: product, accountHref, pageOrigin, organization })
+  const shown = shownModules(order, product).filter(
+    (word) => !projectModules || word === product || projectModules.includes(word),
+  )
+  // Sessions des autres modules affichés, ouvertes en arrière-plan : le premier clic n'attend pas
+  // la connexion chez ID (ADR 0026).
+  useSessionOpening(sessionBases(products, shown, product))
   return (
     <div data-slot="shell-navigation" className="flex min-h-0 flex-1 flex-col">
       <div data-slot="shell-manager" className="shrink-0 px-3 pt-1">
@@ -303,9 +326,7 @@ export function ShellNavigation({
       {level === "modules" ? (
         <ModuleList
           entries={products}
-          order={shownModules(order, product).filter(
-            (word) => !projectModules || word === product || projectModules.includes(word),
-          )}
+          order={shown}
           onOpenCurrent={() => onLevelChange("tabs")}
           onCustomize={() => onLevelChange("edit")}
         />

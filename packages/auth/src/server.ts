@@ -1,6 +1,7 @@
 import type { GenericOAuthConfig } from "better-auth/plugins/generic-oauth"
 
 import {
+  HGDC_ENTRY_FRAME_OPEN,
   HGDC_ENTRY_FRAME_PARAM,
   HGDC_ENTRY_NEXT_PARAM,
   HGDC_ENTRY_REFRESH_BACKGROUND,
@@ -264,6 +265,8 @@ function authorizationUrl(body: unknown): string | null {
  *   `next` avec le cookie `HGDC_ORG_SYNC_COOKIE` ; la page d'arrivée relit les organisations dans
  *   un cadre caché (`frame=1`, retour sur `HGDC_FRAME_DONE_PATH`). Sans session, comme sans
  *   paramètre.
+ * - `frame=open` (ADR 0026) : session du produit ouverte, réponse vide sans appel à ID ; sinon la
+ *   connexion HGDC, retour sur la réponse vide. Ni relecture, ni `next`, ni cookie de relecture.
  * - Préchargement (`Sec-Purpose: prefetch`) : seule la redirection d'une session ouverte est
  *   rendue ; tout ce qui démarrerait une connexion répond 503, que le navigateur jette.
  *
@@ -298,13 +301,15 @@ export function createHgdcEntry(options: HgdcEntryOptions): (request: Request) =
     const frame = url.searchParams.get(HGDC_ENTRY_FRAME_PARAM)
     // Fin d'une relecture dans le cadre caché : rien à lire, rien à appeler.
     if (frame === "done") return frameDone()
-    const inFrame = frame === "1"
+    // `frame=open` : ouvrir la session seulement si elle manque, retour sur la réponse vide (ADR 0026).
+    const opening = frame === HGDC_ENTRY_FRAME_OPEN
+    const inFrame = frame === "1" || opening
     const speculative = isSpeculative(request)
     const next = safeNextPath(url.searchParams.get(HGDC_ENTRY_NEXT_PARAM), "/", appPath)
     const refreshParam = url.searchParams.get(HGDC_ENTRY_REFRESH_PARAM)
     // Un `next` déjà marqué revient d'une resynchronisation : on n'en relance pas une autre.
-    const refresh = inFrame || (refreshParam === "1" && !hasSyncedMarker(next))
-    const background = !refresh && refreshParam === HGDC_ENTRY_REFRESH_BACKGROUND
+    const refresh = frame === "1" || (!opening && refreshParam === "1" && !hasSyncedMarker(next))
+    const background = !refresh && !opening && refreshParam === HGDC_ENTRY_REFRESH_BACKGROUND
     // Le cadre revient toujours sur la réponse vide, jamais sur une page reçue en paramètre.
     const callbackURL = `${appBase}${inFrame ? HGDC_FRAME_DONE_PATH : refresh ? withSyncedMarker(next) : next}`
     const errorURL = inFrame ? `${appBase}${HGDC_FRAME_DONE_PATH}` : errorCallbackURL
@@ -319,8 +324,11 @@ export function createHgdcEntry(options: HgdcEntryOptions): (request: Request) =
           new Request(`${url.origin}${basePath}/get-session`, { headers: internalHeaders(request, origin) }),
         )
         cookies.push(...setCookies(session))
-        if (session.ok && hasSessionBody(await readJson(session)))
+        if (session.ok && hasSessionBody(await readJson(session))) {
+          // Session déjà ouverte : rien à faire dans le cadre.
+          if (opening) return frameDone(cookies)
           return redirectTo(`${appBase}${next}`, background ? [...cookies, orgSyncCookie(url, appBase, view)] : cookies)
+        }
       }
       if (speculative) return notForSpeculation()
 
@@ -353,15 +361,14 @@ function notForSpeculation(): Response {
   return new Response(null, { status: 503, headers: { "cache-control": "no-store", "retry-after": "0" } })
 }
 
-function frameDone(): Response {
-  return new Response(null, {
-    status: 200,
-    headers: {
-      "content-type": "text/plain; charset=utf-8",
-      "cache-control": "no-store",
-      "referrer-policy": "no-referrer",
-    },
+function frameDone(cookies: ReadonlyArray<string> = []): Response {
+  const headers = new Headers({
+    "content-type": "text/plain; charset=utf-8",
+    "cache-control": "no-store",
+    "referrer-policy": "no-referrer",
   })
+  for (const cookie of cookies) headers.append("set-cookie", cookie)
+  return new Response(null, { status: 200, headers })
 }
 
 /**
