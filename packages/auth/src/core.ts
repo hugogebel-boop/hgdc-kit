@@ -498,40 +498,60 @@ export const coreSnapshotSchema: z.ZodType<CoreSnapshot> = z.object({
   readAt: z.number().int().positive(),
   projects: z.array(coreProjectSchema).max(500),
   branding: coreBrandingSchema,
+  // Une liste illisible (rôle inconnu, plafond dépassé) vaut « pas de liste » : les projets et la
+  // personnalisation se relisent quand même, et aucun membre n'est retiré.
   members: z
     .array(z.object({ userId: id, role: z.enum(ORG_ROLES) }))
     .max(CORE_SNAPSHOT_MEMBERS_MAX)
-    .optional(),
+    .optional()
+    .catch(undefined),
 })
 
 /**
  * Rattrape un retrait ou un changement de rôle dont l'événement s'est perdu : compare les
  * appartenances locales d'une organisation à celles du cœur.
  *
- * `rows` : les appartenances locales de l'organisation. `current` : le rôle de chaque personne encore
- * membre, par identifiant LOCAL (le module traduit d'abord chaque `sub` de l'instantané ; un `sub`
- * inconnu de lui est simplement absent). Une appartenance confirmée après `readAt` (connexion ou
- * événement plus récent que la lecture) reste telle quelle.
+ * `rows` : les appartenances locales de l'organisation, chacune avec l'identifiant du compte chez ID
+ * (`sub`) que le module lui connaît, `null` s'il n'en connaît pas. La comparaison se fait sur ce
+ * `sub` : une appartenance sans `sub` n'est jamais retirée (compte ancien ou importé : ne pas savoir
+ * n'est pas une preuve de départ). Une appartenance confirmée après `readAt` (connexion ou événement
+ * plus récent que la lecture) reste telle quelle.
  *
- * Rend `null`, et le module ne fait rien, quand l'instantané ne porte pas de membres ou en porte zéro :
- * une organisation a toujours au moins une propriétaire, une liste vide est une lecture ratée, jamais
- * une raison de retirer tout le monde.
+ * Rend `null`, et le module ne fait rien, dans trois cas :
+ * - l'instantané ne porte pas de membres ;
+ * - il en porte zéro : une organisation a toujours une propriétaire, une liste vide est une lecture ratée ;
+ * - aucune appartenance locale comparable n'y figure : tout le monde partirait d'un coup, ce qui
+ *   ressemble à une erreur de traduction ou à un cœur restauré, pas à un départ collectif.
+ *
+ * À l'écriture, le module pose `syncedAt = max(syncedAt, readAt)` sur `kept`, jamais son heure à lui :
+ * un événement plus récent que la lecture doit encore pouvoir s'appliquer.
  */
-export function planMembershipReconcile<Row extends { userId: string; role: string; syncedAt?: number | null }>(
-  rows: ReadonlyArray<Row>,
+export function planMembershipReconcile<Row extends { syncedAt?: number | null }>(
+  rows: ReadonlyArray<{ row: Row; sub: string | null }>,
   snapshot: Pick<CoreSnapshot, "readAt" | "members">,
-  current: ReadonlyMap<string, OrgRole>,
 ): { removed: Array<Row>; kept: Array<{ row: Row; role: OrgRole }> } | null {
   if (!snapshot.members || snapshot.members.length === 0) return null
+  const roles = new Map(snapshot.members.map((member) => [member.userId, member.role]))
   const removed: Array<Row> = []
   const kept: Array<{ row: Row; role: OrgRole }> = []
-  for (const row of rows) {
-    if (typeof row.syncedAt === "number" && row.syncedAt > snapshot.readAt) continue
-    const role = current.get(row.userId)
+  let comparable = 0
+  for (const { row, sub } of rows) {
+    if (sub === null) continue
+    comparable += 1
+    const role = roles.get(sub)
+    if (typeof row.syncedAt === "number" && row.syncedAt > snapshot.readAt) {
+      // Trop récente pour être jugée, mais elle compte comme une correspondance si elle figure dans la liste.
+      if (role !== undefined) kept.push({ row, role })
+      continue
+    }
     if (role === undefined) removed.push(row)
     else kept.push({ row, role })
   }
-  return { removed, kept }
+  if (comparable > 0 && kept.length === 0) return null
+  return {
+    removed,
+    kept: kept.filter(({ row }) => !(typeof row.syncedAt === "number" && row.syncedAt > snapshot.readAt)),
+  }
 }
 
 /**
