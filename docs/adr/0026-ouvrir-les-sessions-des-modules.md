@@ -34,3 +34,7 @@ La barre de Basalte (`ShellNavigation`) ouvre en arrière-plan la session des au
 - Coût : une lecture de session par module et par jour quand elle est ouverte ; une connexion complète chez ID, en arrière-plan, quand elle manque. Une à la fois, pour ne pas déclencher les limites de connexion d'ID.
 - Une personne connectée à ID se trouve aussi connectée aux modules affichés de son projet, sans les avoir ouverts. C'est déjà le cas au premier clic (ID ne redemande rien) ; la session d'un module ne donne que les droits de ses organisations.
 - La relecture des organisations (`frame=1`, ADR 0016) ne change pas.
+
+## Journal
+
+- 2026-11-11 : `@hgdc/ui` 0.73.0 propagé aux consoles. Mesure en production : premier passage de Déploiements vers Statistiques, jamais ouvert, session ouverte en arrière-plan, 1,4 s au premier octet et page complète dès le serveur (4,2 s avant).
