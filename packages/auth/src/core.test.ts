@@ -9,6 +9,8 @@ import {
   fetchCoreSnapshot,
   handleCoreEventRequest,
   listCoreProjects,
+  planMembershipReconcile,
+  coreSnapshotSchema,
   purgeCoreCopy,
   purgeCoreTombstones,
   reconcileCoreCopy,
@@ -483,5 +485,38 @@ describe("runCoreRound", () => {
     })
     expect(written).toEqual(["vivante"])
     expect(result).toEqual({ failures: 0, missing: 3, lastFailure: null, stopped: false })
+  })
+})
+
+describe("planMembershipReconcile", () => {
+  const rows = [
+    { userId: "u1", role: "admin", syncedAt: NOW - 10 },
+    { userId: "u2", role: "member", syncedAt: NOW - 10 },
+    { userId: "u3", role: "member", syncedAt: NOW + 10 },
+    { userId: "u4", role: "member" },
+  ]
+  const members = [{ userId: "sub-1", role: "member" as const }]
+
+  it("retire qui n’est plus membre, rend le rôle du cœur à qui l’est encore", () => {
+    const plan = planMembershipReconcile(rows, { readAt: NOW, members }, new Map([["u1", "member"]]))
+    expect(plan?.removed.map((row) => row.userId)).toEqual(["u2", "u4"])
+    expect(plan?.kept).toEqual([{ row: rows[0], role: "member" }])
+  })
+
+  it("laisse une appartenance confirmée après la lecture", () => {
+    const plan = planMembershipReconcile(rows, { readAt: NOW, members }, new Map())
+    expect(plan?.removed.some((row) => row.userId === "u3")).toBe(false)
+  })
+
+  it("ne fait rien sans liste de membres, ni avec une liste vide", () => {
+    expect(planMembershipReconcile(rows, { readAt: NOW }, new Map())).toBeNull()
+    expect(planMembershipReconcile(rows, { readAt: NOW, members: [] }, new Map())).toBeNull()
+  })
+
+  it("le schéma accepte un instantané sans membres et refuse un rôle inconnu", () => {
+    const base = { readAt: NOW, projects: [], branding: {} }
+    expect(coreSnapshotSchema.parse(base).members).toBeUndefined()
+    expect(coreSnapshotSchema.parse({ ...base, members }).members).toEqual(members)
+    expect(() => coreSnapshotSchema.parse({ ...base, members: [{ userId: "s", role: "root" }] })).toThrow()
   })
 })

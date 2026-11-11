@@ -8,6 +8,8 @@ import {
 import { v, type Validator, type VFloat64, type VObject, type VString } from "convex/values"
 import { z } from "zod"
 
+import { ORG_ROLES, type OrgRole } from "./index.ts"
+
 import {
   ACCOUNT_EVENT_FUTURE_TOLERANCE_MS,
   ACCOUNT_EVENT_HEADERS,
@@ -473,14 +475,64 @@ export const coreProjectsPath = (organizationId: string): string =>
 export const coreProjectDomainsPath = (organizationId: string, projectId: string): string =>
   `/hgdc/v1/organizations/${encodeURIComponent(organizationId)}/projects/${encodeURIComponent(projectId)}/domains`
 
-export type CoreSnapshot = { readAt: number; projects: Array<CoreProject>; branding: CoreBranding }
+/** Plafond des membres d'un instantané. Au-delà, le cœur ne rend pas la liste : un module ne retire rien. */
+export const CORE_SNAPSHOT_MEMBERS_MAX = 1000
 
-/** Ce que le cœur rend à un module : ses seuls projets activés, et la personnalisation de l'organisation. */
+/** Une appartenance lue dans le cœur : l'identifiant du compte chez ID (`sub`) et son rôle. */
+export type CoreMember = { userId: string; role: OrgRole }
+
+/**
+ * `members` : toutes les appartenances de l'organisation à `readAt`. Absent quand le cœur ne les
+ * rend pas (version antérieure, ou organisation au-delà du plafond) : le module ne touche alors à
+ * aucune appartenance.
+ */
+export type CoreSnapshot = {
+  readAt: number
+  projects: Array<CoreProject>
+  branding: CoreBranding
+  members?: Array<CoreMember> | undefined
+}
+
+/** Ce que le cœur rend à un module : ses seuls projets activés, la personnalisation et les membres de l'organisation. */
 export const coreSnapshotSchema: z.ZodType<CoreSnapshot> = z.object({
   readAt: z.number().int().positive(),
   projects: z.array(coreProjectSchema).max(500),
   branding: coreBrandingSchema,
+  members: z
+    .array(z.object({ userId: id, role: z.enum(ORG_ROLES) }))
+    .max(CORE_SNAPSHOT_MEMBERS_MAX)
+    .optional(),
 })
+
+/**
+ * Rattrape un retrait ou un changement de rôle dont l'événement s'est perdu : compare les
+ * appartenances locales d'une organisation à celles du cœur.
+ *
+ * `rows` : les appartenances locales de l'organisation. `current` : le rôle de chaque personne encore
+ * membre, par identifiant LOCAL (le module traduit d'abord chaque `sub` de l'instantané ; un `sub`
+ * inconnu de lui est simplement absent). Une appartenance confirmée après `readAt` (connexion ou
+ * événement plus récent que la lecture) reste telle quelle.
+ *
+ * Rend `null`, et le module ne fait rien, quand l'instantané ne porte pas de membres ou en porte zéro :
+ * une organisation a toujours au moins une propriétaire, une liste vide est une lecture ratée, jamais
+ * une raison de retirer tout le monde.
+ */
+export function planMembershipReconcile<Row extends { userId: string; role: string; syncedAt?: number | null }>(
+  rows: ReadonlyArray<Row>,
+  snapshot: Pick<CoreSnapshot, "readAt" | "members">,
+  current: ReadonlyMap<string, OrgRole>,
+): { removed: Array<Row>; kept: Array<{ row: Row; role: OrgRole }> } | null {
+  if (!snapshot.members || snapshot.members.length === 0) return null
+  const removed: Array<Row> = []
+  const kept: Array<{ row: Row; role: OrgRole }> = []
+  for (const row of rows) {
+    if (typeof row.syncedAt === "number" && row.syncedAt > snapshot.readAt) continue
+    const role = current.get(row.userId)
+    if (role === undefined) removed.push(row)
+    else kept.push({ row, role })
+  }
+  return { removed, kept }
+}
 
 /**
  * En-têtes d'un appel signé vers l'API des produits d'ID (signature `v2`, ADR 0012 d'Account). `secret` :
