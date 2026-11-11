@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef } from "react"
 
 import { cn } from "./cn.ts"
+import { EdgeGlow } from "./edge-glow.tsx"
 import { useBackgroundOrganizationRefresh } from "./product-switch.ts"
 import { ShellFrame } from "./shell-frame.tsx"
 
@@ -38,13 +39,6 @@ export function syncFamilyLoader(root: Element | null): void {
     if (animation.startTime !== start) animation.startTime = start
   }
 }
-
-/**
- * Même calage, en ligne dans le HTML rendu par le serveur, juste après l'élément : il s'exécute
- * avant l'hydratation, une fois la feuille de style chargée (un script attend les feuilles de
- * style qui le précèdent). Une animation recréée (mouvement réduit basculé) se recale aussi.
- */
-const SYNC_SCRIPT = `(function(e){if(!e||!e.getAnimations)return;var p=${FAMILY_LOADER_PERIOD_MS};function s(){var t=-(((performance.timeOrigin%p)+p)%p);e.getAnimations({subtree:true}).forEach(function(a){if(String(a.animationName).indexOf("family-loader")===0&&a.startTime!==t)a.startTime=t})}s();e.addEventListener("animationstart",s)})(document.currentScript&&document.currentScript.previousElementSibling)`
 
 const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect
 
@@ -87,8 +81,8 @@ export const FamilyLoaderRootContext: React.Context<boolean> = createContext<boo
  * H complet, fondu), calée sur l'horloge. CSS seul (`styles.css`), `transform` et `opacity`
  * seulement. Mouvement réduit : le H plein, immobile.
  *
- * Un chargement de page ne dessine pas ce H lui-même : c'est `PagePending`, qui passe par le H du
- * document (`FamilyLoaderRoot`), au même pixel dans tous les états. Ce composant sert au H en
+ * Un chargement de page ne montre pas ce H : c'est `PagePending`, qui passe par la lueur du
+ * document (`FamilyLoaderRoot`, `EdgeGlow`). Ce composant sert au H en
  * ligne (une carte, un panneau) ; dans un bouton ou une ligne, `Spinner` reste la règle.
  */
 export function FamilyLoader({
@@ -134,31 +128,21 @@ function FamilyMark({
 }
 
 /**
- * Le H du document : un seul élément, en position fixe sur la scène (la zone de contenu de la
- * coque), toujours monté, que le CSS montre quand une page attend ou que la coque charge. Monté par
- * `FamilyLoaderRoot`, ou, à défaut, par la coque ou par `PagePending` eux-mêmes.
+ * Le chargeur du document : la lueur du bord (`EdgeGlow`), en position fixe sur la carte du contenu
+ * de la coque (tout l'écran sur téléphone), toujours montée, que le CSS montre quand une page attend
+ * ou que la coque charge. Monté par `FamilyLoaderRoot`, ou, à défaut, par la coque ou par
+ * `PagePending` eux-mêmes.
  */
 export function FamilyLoaderHost(): React.JSX.Element {
-  const ref = useRef<HTMLDivElement>(null)
-  useClockSync(ref)
   return (
-    <>
-      <div ref={ref} data-slot="family-loader-root" aria-hidden>
-        <div data-frame>
-          <ShellFrame />
-        </div>
-        <div data-stage>
-          <span
-            data-slot="family-loader"
-            className="family-loader"
-            style={{ ["--family-loader-size" as string]: "64px" }}
-          >
-            <Mark />
-          </span>
-        </div>
+    <div data-slot="family-loader-root" aria-hidden>
+      <div data-frame>
+        <ShellFrame />
       </div>
-      <script dangerouslySetInnerHTML={{ __html: SYNC_SCRIPT }} />
-    </>
+      <div data-glow>
+        <EdgeGlow />
+      </div>
+    </div>
   )
 }
 

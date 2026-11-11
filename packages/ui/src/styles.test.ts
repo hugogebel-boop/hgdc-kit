@@ -128,9 +128,9 @@ describe("transitions de vue entre documents (ADR 0020)", () => {
     expect(css.match(/@view-transition/g)).toHaveLength(1)
   })
 
-  it("un nom stable pour la barre latérale, la barre du haut et le H", () => {
+  it("un nom stable pour la barre latérale, la barre du haut et la lueur", () => {
     const names = [
-      ...css.matchAll(/\[data-slot="([\w-]+)"\](?: > \[data-stage\])? \{\s*view-transition-name: ([\w-]+);/g),
+      ...css.matchAll(/\[data-slot="([\w-]+)"\](?: > \[data-glow\])? \{\s*view-transition-name: ([\w-]+);/g),
     ].map((m) => [m[1], m[2]])
     expect(names).toEqual([
       ["app-shell-sidebar", "hgdc-sidebar"],
