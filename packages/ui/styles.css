@@ -793,9 +793,9 @@
 }
 
 /* Le chargeur du document (`FamilyLoaderRoot`) : un seul H par page, en position fixe sur la scène.
-   Visible quand une page attend (`PagePending`) hors de la coque, quand la coque charge
-   (`data-loading`), ou dès le rendu serveur quand une page attend dans une coque pas encore
-   hydratée. Masqué avec 80 ms de retenue : un `PagePending` qui laisse la place à un autre ne fait
+   Visible quand une page attend (`PagePending`) hors de la coque, ou quand la coque part vers un
+   autre module (`data-loading`). Dans la coque, une page qui attend montre son squelette, jamais
+   le H (ADR 0025). Masqué avec 80 ms de retenue : un `PagePending` qui laisse la place à un autre ne fait
    pas clignoter le H. */
 [data-slot="family-loader-root"] {
   position: fixed;
@@ -809,8 +809,7 @@
     visibility 0s linear 200ms;
 }
 :root:has([data-slot="page-pending"]):not(:has([data-slot="app-shell"])) [data-slot="family-loader-root"],
-:root:has([data-slot="app-shell"][data-loading]) [data-slot="family-loader-root"],
-:root:has([data-slot="app-shell"]:not([data-hydrated]) [data-slot="page-pending"]) [data-slot="family-loader-root"] {
+:root:has([data-slot="app-shell"][data-loading]) [data-slot="family-loader-root"] {
   opacity: 1;
   visibility: visible;
   transition:
@@ -877,8 +876,8 @@
   content: var(--hgdc-org-initials, "");
 }
 
-/* Calque de la zone de contenu (`AppShell`) : opaque, au-dessus de l'ancienne page, sous le H du
-   document. Mêmes conditions et même rythme que le H : ils apparaissent et s'effacent ensemble. */
+/* Calque de la zone de contenu (`AppShell`) pendant le départ vers un autre module : opaque,
+   au-dessus de la page, sous le H du document. Même rythme que le H. */
 [data-slot="app-shell-loading"] {
   opacity: 0;
   visibility: hidden;
@@ -886,13 +885,58 @@
     opacity 120ms var(--ease-out) 80ms,
     visibility 0s linear 200ms;
 }
-[data-slot="app-shell"][data-loading] [data-slot="app-shell-loading"],
-[data-slot="app-shell"]:not([data-hydrated]):has([data-slot="page-pending"]) [data-slot="app-shell-loading"] {
+[data-slot="app-shell"][data-loading] [data-slot="app-shell-loading"] {
   opacity: 1;
   visibility: visible;
   transition:
     opacity 150ms var(--ease-out),
     visibility 0s;
+}
+
+/* Barre de progression d'une navigation dans le module (ADR 0025) : 2 px sous la barre du haut,
+   l'ancienne page reste lisible. Un segment qui court de gauche à droite, `transform` seul.
+   Mouvement réduit : la barre entière, immobile, en demi-teinte. */
+[data-slot="app-shell-progress"] {
+  position: absolute;
+  inset-inline: 0;
+  bottom: -1px;
+  height: 2px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms var(--ease-out);
+}
+[data-slot="app-shell-progress"]::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 40%;
+  background: var(--primary);
+  transform: translateX(-100%);
+}
+[data-slot="app-shell"][data-navigating] [data-slot="app-shell-progress"] {
+  opacity: 1;
+  transition-duration: 100ms;
+}
+[data-slot="app-shell"][data-navigating] [data-slot="app-shell-progress"]::before {
+  animation: hgdc-progress 1.1s var(--ease-in-out) infinite;
+}
+@keyframes hgdc-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="app-shell"][data-navigating] [data-slot="app-shell-progress"]::before {
+    animation: none;
+    width: 100%;
+    transform: none;
+    opacity: 0.5;
+  }
 }
 
 /* Passage d'un produit à l'autre sous la même origine (`app.hgdc.ch/<produit>`, ADR 0020) : une
@@ -925,8 +969,7 @@
   }
 }
 :root:has([data-slot="page-pending"]):not(:has([data-slot="app-shell"])),
-:root:has([data-slot="app-shell"][data-loading]),
-:root:has([data-slot="app-shell"]:not([data-hydrated]) [data-slot="page-pending"]) {
+:root:has([data-slot="app-shell"][data-loading]) {
   & [data-slot="family-loader-root"] > [data-stage] {
     view-transition-name: hgdc-loader;
   }

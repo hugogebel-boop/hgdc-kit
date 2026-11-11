@@ -76,7 +76,7 @@ function Mark(): React.JSX.Element {
 }
 
 /**
- * Vrai sous `FamilyLoaderRoot` : le document a son chargeur, `PagePending` et la coque s'y
+ * Vrai sous `FamilyLoaderRoot` : le document a son chargeur, `PagePending` (hors de la coque) et la coque s'y
  * signalent au lieu de dessiner leur propre H.
  */
 export const FamilyLoaderRootContext: React.Context<boolean> = createContext<boolean>(false)

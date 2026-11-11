@@ -188,13 +188,14 @@ describe("Scène du chargement", () => {
     expect(css).toContain("--hgdc-stage-top: calc(env(safe-area-inset-top, 0px) + 3.5rem);")
   })
 
-  it("montré par une page qui attend, par la coque qui charge, ou avant l'hydratation", () => {
+  it("montré par une page qui attend hors de la coque, ou par la coque qui part vers un autre module", () => {
     for (const condition of [
       String.raw`:root:has([data-slot="page-pending"]):not(:has([data-slot="app-shell"])) [data-slot="family-loader-root"]`,
       String.raw`:root:has([data-slot="app-shell"][data-loading]) [data-slot="family-loader-root"]`,
-      String.raw`:root:has([data-slot="app-shell"]:not([data-hydrated]) [data-slot="page-pending"]) [data-slot="family-loader-root"]`,
     ])
       expect(css).toContain(condition)
+    // Dans la coque, une page qui attend montre son squelette (ADR 0025).
+    expect(css).not.toContain(`:not([data-hydrated]) [data-slot="page-pending"]`)
   })
 
   it("masqué avec une retenue de 80 ms : une page qui en remplace une autre ne fait pas clignoter le H", () => {
