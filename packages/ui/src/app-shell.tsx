@@ -3,14 +3,21 @@ import type { ModuleWord } from "./modules.ts"
 import { SIDEBAR_ITEM } from "./sidebar-nav.tsx"
 import Menu01Icon from "@hugeicons/core-free-icons/Menu01Icon"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Suspense, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react"
+import { Suspense, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react"
 
 import type { ProductView } from "./addresses.ts"
 import { CommandMenuButton } from "./command-menu.tsx"
 import { Drawer, DrawerContent, DrawerTitle } from "./drawer.tsx"
 import { FamilyLoaderHost, FamilyLoaderRootContext } from "./family-loader.tsx"
 import type { FamilyProduct } from "./family-svg.ts"
-import { CONTENT_LOADING_LAYER, ContentLoadingContext, PagePending } from "./page-pending.tsx"
+import {
+  CONTENT_LOADING_LAYER,
+  NAVIGATION_PROGRESS_MIN_MS,
+  NAVIGATION_PROGRESS_MS,
+  PagePending,
+  ShellContentContext,
+  useDelayedFlag,
+} from "./page-pending.tsx"
 import { ProductBadge } from "./product-badge.tsx"
 import { productBarShown, useProductBarPreference, useProductBarSync } from "./product-bar.ts"
 import { ShellNavigation, type ShellNavLevel } from "./module-bar.tsx"
@@ -36,7 +43,7 @@ import {
 } from "./shell-placement.ts"
 import { ShellOrganizationHead, SidebarHead } from "./sidebar-head.tsx"
 import { useToggleShortcut } from "./sidebar-rail.ts"
-import { useContentLoading, useHydrated, useIsomorphicLayoutEffect } from "./use-content-loading.ts"
+import { useHydrated, useIsomorphicLayoutEffect, useShellCover } from "./use-content-loading.ts"
 import { useProductLeave } from "./use-product-leave.ts"
 import { useMediaQuery } from "./use-media-query.ts"
 
@@ -136,16 +143,17 @@ export function AppShell({
   children: ReactNode
   /**
    * Clé de la page affichée (le chemin, `location.pathname`) : la zone de contenu devient une
-   * frontière `Suspense` neuve à chaque page, qui montre `PagePending` pendant qu'une page charge
-   * ses données dans ses composants (`useSuspenseQuery`), au lieu de garder l'ancienne page figée
-   * pendant la transition de la navigation. Sans clé, pas de frontière.
+   * frontière `Suspense` neuve à chaque page, qui montre le squelette de la page (`PagePending`)
+   * pendant qu'une page charge ses données dans ses composants (`useSuspenseQuery`). Sans clé, pas
+   * de frontière.
    */
   contentKey?: string | undefined
   /**
    * Une navigation vers une autre page est en cours (TanStack Router :
    * `useRouterState({ select: (s) => s.isLoading && s.location.pathname !== s.resolvedLocation?.pathname })`).
-   * Au-delà de 50 ms, la zone de contenu se couvre du H centré, la coque restant en place : jamais
-   * l'ancienne page figée, quel que soit ce qui attend (session, loaders, code de la page).
+   * Au-delà de 150 ms, une fine barre de progression court sous la barre du haut ; l'ancienne page
+   * reste affichée jusqu'à ce que la nouvelle soit prête, ou que son squelette la remplace après 1 s
+   * (`routerPendingDefaults`, ADR 0025).
    */
   navigating?: boolean
   /**
@@ -175,20 +183,12 @@ export function AppShell({
   // Relecture des organisations après un passage depuis la barre, préchargement des autres produits (ADR 0016).
   useProductSwitch(productRail)
 
-  // Chargement de la zone de contenu (ADR 0015) : une navigation en cours (après 50 ms), une page
-  // qui attend (`PagePending`, aussitôt : le routeur a déjà attendu), ou le départ vers un autre
-  // produit (aussitôt). Une fois montré, au moins 300 ms. Le H est celui du document, en position
-  // fixe : il ne bouge pas d'un état à l'autre et n'est jamais démonté.
-  const [pagePending, setPagePending] = useState(0)
-  const registerPagePending = useCallback(() => {
-    setPagePending((count) => count + 1)
-    return () => setPagePending((count) => count - 1)
-  }, [])
+  // Chargement (ADR 0025) : une navigation dans le module montre la barre de progression, l'ancienne
+  // page restant à l'écran ; seul le départ vers un autre module couvre la zone de contenu du H.
   const { leaving, leave } = useProductLeave()
+  const progress = useDelayedFlag(navigating, NAVIGATION_PROGRESS_MS, NAVIGATION_PROGRESS_MIN_MS)
   const statusPageUrl = statusPage === false ? null : (statusPage ?? statusPageUrlFor(product))
-  const loading = useContentLoading({ navigating, pending: pagePending > 0 || leaving })
-  // Avant l'hydratation, le CSS montre le calque et le H dès qu'une page attend (`:has`) ; ensuite
-  // `data-loading` prend le relais dans la même image.
+  const loading = useShellCover(leaving)
   const hydrated = useHydrated()
   const hasRoot = useContext(FamilyLoaderRootContext)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -284,6 +284,7 @@ export function AppShell({
                 data-slot="app-shell"
                 data-module-bar={productRail ? "" : undefined}
                 data-loading={loading ? "" : undefined}
+                data-navigating={progress ? "" : undefined}
                 data-hydrated={hydrated ? "" : undefined}
                 data-assistant={assistantOpen ? "" : undefined}
                 className="min-h-dvh lg:grid lg:h-dvh lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:bg-shell"
@@ -328,6 +329,8 @@ export function AppShell({
                       data-slot="app-shell-header"
                       className="sticky top-[env(safe-area-inset-top,0px)] z-30 flex min-h-14 shrink-0 flex-wrap items-center gap-x-1 gap-y-1 border-b border-foreground/5 bg-background px-2 py-1.5 sm:px-4 lg:top-0"
                     >
+                      {/* Barre de progression d'une navigation (ADR 0025), en position absolue sous la barre. */}
+                      <div data-slot="app-shell-progress" aria-hidden />
                       <button
                         type="button"
                         onClick={() => setMenuOpen(true)}
@@ -362,6 +365,11 @@ export function AppShell({
                         />
                       ) : null}
                     </header>
+                    {progress ? (
+                      <span role="status" className="sr-only">
+                        Chargement de la page…
+                      </span>
+                    ) : null}
                     <div data-slot="app-shell-loading" aria-hidden={!loading} className={CONTENT_LOADING_LAYER}>
                       {loading ? (
                         <span role="status" className="sr-only">
@@ -380,7 +388,7 @@ export function AppShell({
                       )}
                     >
                       <ServiceStatus pageUrl={statusPageUrl} className="mb-6" />
-                      <ContentLoadingContext value={registerPagePending}>
+                      <ShellContentContext value={true}>
                         {contentKey === undefined ? (
                           children
                         ) : (
@@ -388,7 +396,7 @@ export function AppShell({
                             {children}
                           </Suspense>
                         )}
-                      </ContentLoadingContext>
+                      </ShellContentContext>
                     </main>
                   </div>
                 </div>

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 
-import { PAGE_PENDING_MIN_MS, PAGE_PENDING_MS } from "./page-pending.tsx"
+/** Durée minimale du calque de départ une fois montré : le H ne clignote pas. */
+const COVER_MIN_MS = 300
 
 export const useIsomorphicLayoutEffect: typeof useLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect
@@ -13,21 +14,11 @@ export function useHydrated(): boolean {
 }
 
 /**
- * Le chargement de la zone de contenu : `navigating` après 50 ms, `pending` aussitôt, puis au
- * moins 300 ms. Effets de mise en page : une page qui passe en attente est couverte avant d'être
- * peinte, jamais une image vide entre les deux.
+ * Le calque du H sur la zone de contenu, pendant le départ vers un autre module : aussitôt, puis
+ * au moins 300 ms. Effet de mise en page : la page est couverte avant d'être peinte, jamais une
+ * image vide entre les deux. Une navigation dans le module ne le montre plus (ADR 0025).
  */
-export function useContentLoading({ navigating, pending }: { navigating: boolean; pending: boolean }): boolean {
-  const [navigatingLong, setNavigatingLong] = useState(false)
-  useEffect(() => {
-    if (!navigating) return undefined
-    const timer = window.setTimeout(() => setNavigatingLong(true), PAGE_PENDING_MS)
-    return () => {
-      window.clearTimeout(timer)
-      setNavigatingLong(false)
-    }
-  }, [navigating])
-  const active = pending || (navigating && navigatingLong)
+export function useShellCover(active: boolean): boolean {
   const [visible, setVisible] = useState(false)
   const shownAt = useRef(0)
   useIsomorphicLayoutEffect(() => {
@@ -39,7 +30,7 @@ export function useContentLoading({ navigating, pending }: { navigating: boolean
     if (!active && visible) {
       const timer = window.setTimeout(
         () => setVisible(false),
-        Math.max(0, shownAt.current + PAGE_PENDING_MIN_MS - performance.now()),
+        Math.max(0, shownAt.current + COVER_MIN_MS - performance.now()),
       )
       return () => window.clearTimeout(timer)
     }
