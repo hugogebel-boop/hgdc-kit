@@ -187,7 +187,7 @@ better-auth limite chaque adresse (3 essais par 10 s sur `/sign-in/*`, 100 par 1
 
 1. **Adresse signée** : le proxy signe l'adresse du visiteur (`createAuthProxy(url, fetch, { addressSecret })`), Convex la vérifie (`restoreClientAddress`). Même secret des deux côtés, un par produit.
 2. **Jamais le `x-forwarded-for` du client** : sans signature valable, `restoreClientAddress` retient l'adresse du reverse proxy seulement si `trustForwardedFor: true` (un proxy qu'on contrôle écrase cet en-tête avant Convex). Sinon, par exemple sur Convex Cloud où le client l'écrit lui-même, l'adresse devient la clé neutre `NEUTRAL_CLIENT_ADDRESS` (`0.0.0.0`) : une limite commune à ces appels, jamais une adresse choisie par le client.
-3. **Chemins serveur exclus, table purgée** (`@hgdc/auth/rate-limit`) : `/convex/token`, `/convex/jwks` et `/convex/.well-known/openid-configuration` arrivent du serveur du front, sans signature ; `HGDC_RATE_LIMIT` ne les limite jamais. better-auth ne vide jamais sa table `rateLimit` : `purgeAuthRateLimitBatch` le fait chaque heure.
+3. **Chemins serveur exclus, table purgée** (`@hgdc/auth/rate-limit`) : `/convex/token`, `/convex/jwks` et `/convex/.well-known/openid-configuration` arrivent du serveur du front, sans signature ; `HGDC_RATE_LIMIT` ne les limite jamais, ni les lectures de session `/get-session` et `/ok` (`SESSION_READ_PATHS` : rien à deviner, et la limite en base doublait leur temps). better-auth ne vide jamais sa table `rateLimit` : `purgeAuthRateLimitBatch` le fait chaque heure.
 
 ```ts
 // convex/auth.ts

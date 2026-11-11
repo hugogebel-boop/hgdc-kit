@@ -8,6 +8,7 @@ import {
   HGDC_RATE_LIMIT,
   purgeAuthRateLimitBatch,
   SERVER_AUTH_PATHS,
+  SESSION_READ_PATHS,
 } from "./rate-limit.ts"
 
 const BASE = "https://actions.exemple.ch/api/auth"
@@ -82,9 +83,25 @@ describe("SERVER_AUTH_PATHS", () => {
       "/convex/jwks",
       "/convex/token",
     ])
-    expect(Object.values(HGDC_RATE_LIMIT.customRules)).toEqual([false, false, false])
+    expect(Object.keys(SESSION_READ_PATHS).sort()).toEqual(["/get-session", "/ok"])
+    expect(Object.keys(HGDC_RATE_LIMIT.customRules).sort()).toEqual(
+      [...Object.keys(SERVER_AUTH_PATHS), ...Object.keys(SESSION_READ_PATHS)].sort(),
+    )
+    expect(Object.values(HGDC_RATE_LIMIT.customRules).every((rule) => rule === false)).toBe(true)
     expect(HGDC_RATE_LIMIT.customRules["/sign-in/email"]).toBeUndefined()
     expect(HGDC_RATE_LIMIT).toMatchObject({ enabled: true, storage: "database" })
+  })
+
+  it("une rafale de lectures de session n'est jamais refusée, une rafale de connexions si", async () => {
+    const instance = auth()
+    const headers = { "x-forwarded-for": "203.0.113.7" }
+    const reads: number[] = []
+    for (let i = 0; i < 120; i++)
+      reads.push((await instance.handler(new Request(`${BASE}/get-session`, { headers }))).status)
+    expect(reads.filter((status) => status === 429)).toHaveLength(0)
+    const signIns: number[] = []
+    for (let i = 0; i < 4; i++) signIns.push(await signIn(instance, headers, { trustForwardedFor: true }))
+    expect(signIns.at(-1)).toBe(429)
   })
 })
 
