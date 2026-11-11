@@ -1,6 +1,6 @@
 ---
 owner: Hugo Gebel
-last_reviewed: 2026-10-17
+last_reviewed: 2026-11-11
 status: accepted
 ---
 
@@ -52,3 +52,10 @@ Les pages « aucune organisation » des produits doivent suivre leur requête ab
 - La relecture coûte toujours un aller-retour vers Account et une session de plus dans le produit, mais en arrière-plan. Une organisation rejointe apparaît quelques secondes après l'arrivée.
 - Session d'Account expirée et session du produit ouverte : le passage ne demande plus de se reconnecter à Account (ADR 0013, conséquence levée) ; la relecture attend la prochaine connexion ou la page d'une organisation inconnue.
 - `hgdc-org-sync` est lisible en JavaScript et ne porte que `1` : le forger ne fait que lancer une relecture par Account.
+
+## Révision du 2026-11-11
+
+Mesuré sur `app.hgdc.ch` : chaque passage relançait la relecture, donc une session de plus et un aller-retour vers Account à chaque clic dans la barre. Le cadre bloqué au retour (`frame-ancestors 'none'` de certains produits) donnait aussi des erreurs de chargement visibles dans la console.
+
+- La relecture d'un produit part au plus une fois toutes les 10 minutes (`BACKGROUND_REFRESH_INTERVAL_MS` de `@hgdc/ui/product-switch`, horodatage `hgdc-org-sync:<base>` en `localStorage`, toujours due sans stockage). Une organisation rejointe apparaît donc au plus 10 minutes plus tard en passant par la barre ; la page d'une organisation inconnue relit toujours aussitôt (`hgdcRefreshPath`).
+- La barre ouvre le produit sur la dernière organisation affichée (`next=/o/<slug>`, slug vérifié), plutôt que sur l'accueil qui redirige ensuite : une redirection de moins.
