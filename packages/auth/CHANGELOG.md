@@ -1,5 +1,11 @@
 # @hgdc/auth
 
+## 0.44.0
+
+### Minor Changes
+
+- 5f6db7e: `@hgdc/auth/core` : `memberRemovalLooksWrong` et `MEMBER_BREAKER_MIN`, le disjoncteur de la relecture des membres, pour que chaque module applique le même seuil.
+
 ## 0.43.0
 
 ### Minor Changes
