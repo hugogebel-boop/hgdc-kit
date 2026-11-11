@@ -1,7 +1,8 @@
+import { isAPIError } from "better-auth/api"
 import { describe, expect, it } from "vitest"
 
 import { HGDC_PROVIDER_ID } from "./index.ts"
-import { assertSingleHgdcAccount, guardHgdcAccountLink, HgdcAccountLinkError } from "./server.ts"
+import { assertSingleHgdcAccount, guardHgdcAccountLink, HgdcAccountLinkError } from "./account-linking.ts"
 
 const hgdc = (accountId: string) => ({ providerId: HGDC_PROVIDER_ID, accountId })
 
@@ -63,5 +64,13 @@ describe("guardHgdcAccountLink", () => {
     await expect(
       guardHgdcAccountLink({ userId: "u1", providerId: "credential", accountId: "u1" }, null),
     ).resolves.toBeUndefined()
+  })
+})
+
+describe("HgdcAccountLinkError", () => {
+  it("est une APIError 403 de better-auth", () => {
+    const error = new HgdcAccountLinkError()
+    expect(isAPIError(error)).toBe(true)
+    expect(error.statusCode).toBe(403)
   })
 })

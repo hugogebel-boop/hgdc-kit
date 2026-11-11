@@ -35,13 +35,6 @@ export {
 
 export { convexPath, createMcpProxy, MAX_MCP_BODY_BYTES, type McpProxyOptions } from "./mcp-proxy.ts"
 
-export {
-  assertSingleHgdcAccount,
-  guardHgdcAccountLink,
-  HgdcAccountLinkError,
-  type AccountLinkHookContext,
-} from "./account-linking.ts"
-
 /**
  * Vue demandée (ADR 0014 de la famille), posée et écrasée par la passerelle sur chaque relais :
  * `seul` pour `<mot>.hgdc.ch`, `app` pour `app.hgdc.ch/<mot>`. Elle choisit entre deux origines

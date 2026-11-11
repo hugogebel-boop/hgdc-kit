@@ -1,12 +1,16 @@
+import { APIError } from "better-auth/api"
+
 import { HGDC_PROVIDER_ID } from "./index.ts"
 
 type LinkedAccount = { providerId: string; accountId: string }
 
-/** Liaison refusée : la fiche locale est déjà reliée à un autre compte ID. */
-export class HgdcAccountLinkError extends Error {
+/**
+ * Liaison refusée : la fiche locale est déjà reliée à un autre compte ID. `APIError` 403 : un appel
+ * direct (`/oauth2/link`) reçoit un refus net, le retour OAuth renvoie vers la page d'erreur.
+ */
+export class HgdcAccountLinkError extends APIError {
   constructor() {
-    super("Ce compte est déjà relié à un autre compte ID.")
-    this.name = "HgdcAccountLinkError"
+    super("FORBIDDEN", { message: "Ce compte est déjà relié à un autre compte ID." })
   }
 }
 
@@ -38,6 +42,7 @@ export type AccountLinkHookContext =
  * ID créé hors d'une requête (sans contexte, la fiche ne peut pas être lue).
  *
  * ```ts
+ * import { guardHgdcAccountLink } from "@hgdc/auth/account-linking"
  * databaseHooks: { account: { create: { before: (account, ctx) => guardHgdcAccountLink(account, ctx) } } }
  * ```
  */
