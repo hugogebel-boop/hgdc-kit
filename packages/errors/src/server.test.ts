@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 import type { sendErrorReport } from "./index.ts"
-import { createErrorReporter } from "./server.ts"
+import { createErrorReporter, reportRequestFailure, routeShape } from "./server.ts"
 
 const DSN = "http://cle@127.0.0.1:9102/6"
 const IP = "203.0.113.42"
@@ -92,5 +92,59 @@ describe("createErrorReporter", () => {
     expect(body).toContain("[ip]")
     expect(body).toContain('"route":"/e"')
     expect(body).toContain('"platform":"node"')
+  })
+})
+
+describe("routeShape", () => {
+  it("retire identifiants et nom d'organisation, garde les mots de route", () => {
+    expect(routeShape("/mail/o/acme-sa/emails/js721qy89mva52twm8rcfjnt9h8j14ap")).toBe("/mail/o/:org/emails/:id")
+    expect(routeShape("/status/api/v1/monitors/42")).toBe("/status/api/v1/monitors/:id")
+    expect(routeShape("/o/~demo")).toBe("/o/:org")
+    expect(routeShape("/")).toBe("/")
+    expect(routeShape("/a/b/c/d/e/f/g/h/i/j")).toBe("/a/b/c/d/e/f/g/h")
+    expect(routeShape("/x/Jean.Dupont@exemple.ch")).toBe("/x/:id")
+  })
+})
+
+describe("reportRequestFailure", () => {
+  const request = { method: "GET", url: "https://app.exemple.ch/mail/o/acme/emails/abc123def456" }
+  const calls = () => {
+    const seen: Array<[string, unknown, unknown]> = []
+    const report = (source: string, error: unknown, context?: unknown) => void seen.push([source, error, context])
+    return { seen, report }
+  }
+
+  it("remonte une exception avec la forme de la route, puis la relance telle quelle", async () => {
+    const { seen, report } = calls()
+    const failure = new Error("base injoignable")
+    await expect(
+      reportRequestFailure(report, "front", request, async () => {
+        throw failure
+      }),
+    ).rejects.toBe(failure)
+    expect(seen).toEqual([["front", failure, { method: "GET", route: "/mail/o/:org/emails/:id" }]])
+  })
+
+  it("remonte une réponse 5xx avec son statut, rend la réponse intacte", async () => {
+    const { seen, report } = calls()
+    const response = new Response("oups", { status: 502 })
+    const result = await reportRequestFailure(report, "front", request, async () => ({ response }))
+    expect(result.response).toBe(response)
+    expect(seen).toHaveLength(1)
+    expect(seen[0]?.[2]).toEqual({ method: "GET", route: "/mail/o/:org/emails/:id", status: 502 })
+  })
+
+  it("ne remonte ni une réponse 2xx à 4xx, ni une redirection ou une page introuvable lancée", async () => {
+    const { seen, report } = calls()
+    await reportRequestFailure(report, "front", request, async () => ({
+      response: new Response(null, { status: 404 }),
+    }))
+    for (const thrown of [new Response(null, { status: 302 }), { isRedirect: true }, { isNotFound: true }])
+      await expect(
+        reportRequestFailure(report, "front", request, async () => {
+          throw thrown
+        }),
+      ).rejects.toBe(thrown)
+    expect(seen).toEqual([])
   })
 })
