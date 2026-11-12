@@ -13,6 +13,7 @@ import {
   PRODUCT_PRERENDER_ATTRIBUTE,
   PRODUCT_SPECULATION_RULES,
   productEntryBase,
+  SESSION_CHECK_PATH,
   SESSION_OPEN_INTERVAL_MS,
   SESSION_OPEN_KEY_PREFIX,
   SESSION_OPEN_PATH,
@@ -115,6 +116,49 @@ describe("ouverture des sessions des autres modules (ADR 0026)", () => {
     startSessionOpening(["/mail"])
     expect(frames()).toEqual([])
     Reflect.deleteProperty(document, "prerendering")
+  })
+
+  describe("selon la session du module ouvert", () => {
+    const sessionReply = (body: unknown, status = 200) =>
+      vi.spyOn(window, "fetch").mockResolvedValue(new Response(JSON.stringify(body), { status }))
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
+    afterEach(() => vi.restoreAllMocks())
+
+    it("session ouverte : la file part, après avoir lu la session du module ouvert", async () => {
+      const fetch = sessionReply({ session: { id: "s" }, user: { id: "u" } })
+      startSessionOpening(["/mail"], document, "/iassistant")
+      expect(frames()).toEqual([])
+      await settle()
+      expect(fetch).toHaveBeenCalledWith(`/iassistant${SESSION_CHECK_PATH}`, expect.anything())
+      expect(frames()).toEqual([`/mail${SESSION_OPEN_PATH}`])
+    })
+
+    it("démo sans session : rien ne part, et la limite par jour n'est pas consommée", async () => {
+      sessionReply(null)
+      startSessionOpening(["/mail", "/status"], document, "/iassistant")
+      await settle()
+      expect(frames()).toEqual([])
+      expect(localStorage.getItem(`${SESSION_OPEN_KEY_PREFIX}/mail`)).toBeNull()
+    })
+
+    it("lecture en échec : rien ne part", async () => {
+      sessionReply({ session: { id: "s" } }, 500)
+      startSessionOpening(["/mail"], document, "/iassistant")
+      await settle()
+      expect(frames()).toEqual([])
+      vi.spyOn(window, "fetch").mockRejectedValue(new Error("réseau"))
+      startSessionOpening(["/mail"], document, "/iassistant")
+      await settle()
+      expect(frames()).toEqual([])
+    })
+
+    it("arrêtée pendant la lecture : rien ne part", async () => {
+      sessionReply({ session: { id: "s" } })
+      const stop = startSessionOpening(["/mail"], document, "/iassistant")
+      stop()
+      await settle()
+      expect(frames()).toEqual([])
+    })
   })
 
   it("base d'un lien de la barre : relatif seulement", () => {

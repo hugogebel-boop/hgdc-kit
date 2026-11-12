@@ -112,6 +112,15 @@ export function sessionBases(
   })
 }
 
+/**
+ * Base du module ouvert (`/mail`) si sa page est servie sous sa base, sinon `null` (rendu serveur,
+ * autre origine) : sa session décide de l'ouverture des autres (ADR 0026).
+ */
+export function currentSessionBase(entries: ReadonlyArray<ShellProductEntry>): string | null {
+  const href = entries.find((entry) => entry.current)?.href.replace(/\/$/, "")
+  return href && href.startsWith("/") ? href : null
+}
+
 function ModuleList({
   entries,
   order,
@@ -313,8 +322,8 @@ export function ShellNavigation({
     (word) => !projectModules || word === product || projectModules.includes(word),
   )
   // Sessions des autres modules affichés, ouvertes en arrière-plan : le premier clic n'attend pas
-  // la connexion chez ID (ADR 0026).
-  useSessionOpening(sessionBases(products, shown, product))
+  // la connexion chez ID (ADR 0026). Seulement si le module ouvert a sa session : pas dans la démo sans compte.
+  useSessionOpening(sessionBases(products, shown, product), currentSessionBase(products))
   return (
     <div data-slot="shell-navigation" className="flex min-h-0 flex-1 flex-col">
       <div data-slot="shell-manager" className="shrink-0 px-3 pt-1">
