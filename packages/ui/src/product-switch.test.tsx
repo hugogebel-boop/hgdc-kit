@@ -73,6 +73,34 @@ describe("ouverture des sessions des autres modules (ADR 0026)", () => {
     expect(frames()).toEqual([`/mail${SESSION_OPEN_PATH}`])
   })
 
+  it("déconnexion pendant la file : le cadre en vol est retiré et le module suivant ne part pas", () => {
+    startSessionOpening(["/mail", "/status", "/docs"])
+    const inFlight = document.querySelector("iframe")
+    expect(frames()).toEqual([`/mail${SESSION_OPEN_PATH}`])
+    pauseSessionOpening()
+    expect(frames()).toEqual([])
+    expect(inFlight?.isConnected).toBe(false)
+    // Son chargement (ou son délai) ne relance pas la file.
+    inFlight?.dispatchEvent(new Event("load"))
+    expect(frames()).toEqual([])
+  })
+
+  it("déconnexion venue d'un autre onglet entre deux cadres : la file s'arrête", () => {
+    startSessionOpening(["/mail", "/status"])
+    localStorage.setItem(SESSION_OPEN_PAUSED_KEY, String(Date.now()))
+    document.querySelector("iframe")?.dispatchEvent(new Event("load"))
+    expect(frames()).toEqual([])
+  })
+
+  it("la déconnexion ne retire que les cadres d'ouverture", () => {
+    const other = document.createElement("iframe")
+    document.body.append(other)
+    startSessionOpening(["/mail"])
+    pauseSessionOpening()
+    expect(other.isConnected).toBe(true)
+    expect(frames()).toEqual([null])
+  })
+
   it("stockage refusé : rien ne part (aucune limite par jour sans lui)", () => {
     const spy = vi.spyOn(window, "localStorage", "get").mockImplementation(() => {
       throw new Error("refusé")

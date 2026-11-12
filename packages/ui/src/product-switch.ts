@@ -50,13 +50,21 @@ export const SESSION_OPEN_KEY_PREFIX = "hgdc-session-open:"
  */
 export const SESSION_OPEN_PAUSED_KEY = "hgdc-session-open:paused"
 
-/** À la déconnexion d'un module : plus d'ouverture en arrière-plan jusqu'à la prochaine connexion. */
+/** Marque des cadres d'ouverture (`startSessionOpening`), retirés par `pauseSessionOpening`. */
+const SESSION_OPEN_FRAME_ATTRIBUTE = "data-hgdc-session-open"
+
+/**
+ * À la déconnexion d'un module : plus d'ouverture en arrière-plan jusqu'à la prochaine connexion, et
+ * les cadres d'ouverture en cours sont retirés (un cadre en vol reposerait la session d'un module
+ * juste après la déconnexion).
+ */
 export function pauseSessionOpening(win: Window | null = typeof window === "undefined" ? null : window): void {
   try {
     win?.localStorage.setItem(SESSION_OPEN_PAUSED_KEY, String(Date.now()))
   } catch {
     // Stockage refusé : l'ouverture n'a pas lieu non plus sans lui (`startSessionOpening`).
   }
+  for (const frame of win?.document.querySelectorAll(`iframe[${SESSION_OPEN_FRAME_ATTRIBUTE}]`) ?? []) frame.remove()
 }
 
 /** Marque d'un lien de la barre vers un autre produit servi sous la même origine : prérendu au survol. */
@@ -239,8 +247,9 @@ export function startSessionOpening(bases: ReadonlyArray<string>, doc: Document 
   let stopped = false
   const next = () => {
     const base = queue.shift()
-    if (stopped || base === undefined) return
-    openHiddenFrame(doc, `${base}${SESSION_OPEN_PATH}`, next)
+    // Relu avant chaque cadre : une déconnexion pendant la file l'arrête.
+    if (stopped || base === undefined || openingPaused(win)) return
+    openHiddenFrame(doc, `${base}${SESSION_OPEN_PATH}`, next).setAttribute(SESSION_OPEN_FRAME_ATTRIBUTE, "")
   }
   next()
   return () => {
