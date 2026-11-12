@@ -95,7 +95,7 @@
     "@anthropic-ai/sdk": "0.134.0",
     "@edge-runtime/vm": "5.0.0",
     "convex": "1.46.0",
-    "convex-test": "0.0.61",
+    "convex-test": "0.0.62",
     "@anthropic-ai/bedrock-sdk": "0.34.4"
   }
 }
