@@ -18,11 +18,15 @@ import {
   type HgdcAuthClient,
 } from "./react.tsx"
 
-function client(result: { data?: { url?: string } | null; error?: unknown } | Error) {
+type Reply = { data?: { url?: string } | null; error?: unknown } | Error
+
+/** Client dont les réponses se suivent ; la dernière se répète. */
+function client(...replies: [Reply, ...Reply[]]) {
   const calls: unknown[] = []
   const authClient: HgdcAuthClient = {
     signIn: {
       oauth2: async (args) => {
+        const result = replies[Math.min(calls.length, replies.length - 1)] ?? replies[0]
         calls.push(args)
         if (result instanceof Error) throw result
         return result
@@ -73,8 +77,8 @@ describe("startHgdcSignIn avec chooseAccount", () => {
 
   it("rend l'erreur du client sans partir", async () => {
     const assign = vi.spyOn(window.location, "assign").mockImplementation(() => {})
-    const result = await startHgdcSignIn(client({ error: { status: 500 } }).authClient, { chooseAccount: true })
-    expect(result).toEqual({ ok: false, error: { status: 500 } })
+    const result = await startHgdcSignIn(client({ error: { status: 400 } }).authClient, { chooseAccount: true })
+    expect(result).toEqual({ ok: false, error: { status: 400 } })
     expect(assign).not.toHaveBeenCalled()
   })
 
@@ -121,14 +125,88 @@ describe("startHgdcSignIn", () => {
   })
 
   it("rend l'erreur du client sans lever", async () => {
-    const { authClient } = client({ error: { status: 500 } })
-    expect(await startHgdcSignIn(authClient)).toEqual({ ok: false, error: { status: 500 } })
+    const { authClient } = client({ error: { status: 400 } })
+    expect(await startHgdcSignIn(authClient)).toEqual({ ok: false, error: { status: 400 } })
+  })
+})
+
+describe("startHgdcSignIn, second essai", () => {
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
-  it("rend une erreur réseau sans lever", async () => {
+  /** Lance la connexion et fait passer l'attente du second essai. */
+  async function run(authClient: HgdcAuthClient, options?: Parameters<typeof startHgdcSignIn>[1]) {
+    vi.useFakeTimers()
+    const pending = startHgdcSignIn(authClient, options)
+    await vi.advanceTimersByTimeAsync(1000)
+    return pending
+  }
+
+  it("200 : un seul appel", async () => {
+    const { authClient, calls } = client({})
+    expect(await run(authClient)).toEqual({ ok: true })
+    expect(calls).toHaveLength(1)
+  })
+
+  it("500 puis 200 : réessaie une fois et lance la redirection", async () => {
+    const assign = vi.spyOn(window.location, "assign").mockImplementation(() => {})
+    const { authClient, calls } = client(
+      { error: { status: 500, statusText: "Internal Server Error" } },
+      {
+        data: { url: AUTHORIZE },
+      },
+    )
+    expect(await run(authClient, { chooseAccount: true })).toEqual({ ok: true })
+    expect(calls).toHaveLength(2)
+    expect(assign).toHaveBeenCalledOnce()
+  })
+
+  it("500 puis 500 : rend l'erreur après exactement deux appels", async () => {
+    const { authClient, calls } = client({ error: { status: 503 } }, { error: { status: 500 } })
+    expect(await run(authClient)).toEqual({ ok: false, error: { status: 500 } })
+    expect(calls).toHaveLength(2)
+  })
+
+  it("attend 600 à 900 ms avant le second essai", async () => {
+    vi.useFakeTimers()
+    const { authClient, calls } = client({ error: { status: 500 } }, {})
+    const pending = startHgdcSignIn(authClient)
+    await vi.advanceTimersByTimeAsync(599)
+    expect(calls).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(301)
+    expect(calls).toHaveLength(2)
+    expect(await pending).toEqual({ ok: true })
+  })
+
+  it("429 : aucun nouvel essai", async () => {
+    const { authClient, calls } = client({ error: { status: 429 } }, {})
+    expect(await run(authClient)).toEqual({ ok: false, error: { status: 429 } })
+    expect(calls).toHaveLength(1)
+  })
+
+  it("erreur réseau : réessaie une fois, puis la rend sans lever", async () => {
     const failure = new Error("hors ligne")
-    const { authClient } = client(failure)
-    expect(await startHgdcSignIn(authClient)).toEqual({ ok: false, error: failure })
+    const { authClient, calls } = client(failure)
+    expect(await run(authClient)).toEqual({ ok: false, error: failure })
+    expect(calls).toHaveLength(2)
+  })
+
+  it("le bouton reste en attente pendant le second essai, puis signale l'échec", async () => {
+    vi.useFakeTimers()
+    const onError = vi.fn<(error: unknown) => void>()
+    const { authClient, calls } = client({ error: { status: 500 } })
+    render(<HgdcSignInButton authClient={authClient} onError={onError} />)
+    const button = screen.getByRole<HTMLButtonElement>("button")
+    fireEvent.click(button)
+    await vi.advanceTimersByTimeAsync(100)
+    expect(button.disabled).toBe(true)
+    fireEvent.click(button)
+    await vi.advanceTimersByTimeAsync(900)
+    expect(calls).toHaveLength(2)
+    expect(onError).toHaveBeenCalledOnce()
+    vi.useRealTimers()
+    await waitFor(() => expect(button.disabled).toBe(false))
   })
 })
 

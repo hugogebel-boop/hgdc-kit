@@ -43,21 +43,61 @@ export type HgdcSignInOptions = {
   chooseAccount?: boolean
 }
 
+type OAuth2Result = Awaited<ReturnType<HgdcAuthClient["signIn"]["oauth2"]>>
+type Attempt = { threw: false; result: OAuth2Result } | { threw: true; error: unknown }
+
+/** Attente avant le second essai : 600 à 900 ms, l'aléa évite que des clics simultanés repartent ensemble. */
+const RETRY_BASE_MS = 600
+const RETRY_JITTER_MS = 300
+
+/** Statut HTTP de l'erreur rendue par le client better-auth (`{ status, statusText, ... }`). */
+function errorStatus(error: unknown): number | undefined {
+  if (typeof error !== "object" || error === null || !("status" in error)) return undefined
+  return typeof error.status === "number" ? error.status : undefined
+}
+
+/**
+ * Échec passager : erreur serveur (5xx) ou requête qui n'a pas abouti (le client lève). Jamais un
+ * 4xx : un 429 doit rester une limite de débit respectée.
+ */
+function isTransient(attempt: Attempt): boolean {
+  if (attempt.threw) return true
+  const status = errorStatus(attempt.result?.error)
+  return status !== undefined && status >= 500 && status <= 599
+}
+
 /**
  * Part vers HGDC Account. Renvoie `{ ok: true }` quand la redirection est lancée,
- * sinon l'erreur du client ou du réseau, sans lever.
+ * sinon l'erreur du client ou du réseau, sans lever. Un échec passager (5xx, réseau) est
+ * réessayé une fois, après une courte attente : le serveur peut être occupé un instant.
  */
 export async function startHgdcSignIn(
   authClient: HgdcAuthClient,
   { callbackURL = "/", errorCallbackURL, chooseAccount = false }: HgdcSignInOptions = {},
 ): Promise<{ ok: true } | { ok: false; error: unknown }> {
+  const request = async (): Promise<Attempt> => {
+    try {
+      const result = await authClient.signIn.oauth2({
+        providerId: HGDC_PROVIDER_ID,
+        callbackURL,
+        ...(errorCallbackURL ? { errorCallbackURL } : {}),
+        ...(chooseAccount ? { disableRedirect: true } : {}),
+      })
+      return { threw: false, result }
+    } catch (error) {
+      return { threw: true, error }
+    }
+  }
+
+  let attempt = await request()
+  if (isTransient(attempt)) {
+    await new Promise((resolve) => setTimeout(resolve, RETRY_BASE_MS + Math.random() * RETRY_JITTER_MS))
+    attempt = await request()
+  }
+  if (attempt.threw) return { ok: false, error: attempt.error }
+
   try {
-    const result = await authClient.signIn.oauth2({
-      providerId: HGDC_PROVIDER_ID,
-      callbackURL,
-      ...(errorCallbackURL ? { errorCallbackURL } : {}),
-      ...(chooseAccount ? { disableRedirect: true } : {}),
-    })
+    const result = attempt.result
     if (result?.error) return { ok: false, error: result.error }
     if (!chooseAccount) return { ok: true }
 
@@ -190,6 +230,7 @@ export function HgdcSignInButton({
       ...(errorCallbackURL ? { errorCallbackURL } : {}),
       chooseAccount: true,
     })
+    // Le bouton reste en attente pendant l'éventuel second essai : pas de double clic.
     // Succès : le navigateur part vers ID, le bouton reste en attente.
     if (!result.ok) {
       setPending(false)
