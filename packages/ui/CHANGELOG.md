@@ -1,5 +1,11 @@
 # @hgdc/ui
 
+## 0.74.1
+
+### Patch Changes
+
+- e8a916b: `pauseSessionOpening` retire les cadres d'ouverture de session en cours, et `startSessionOpening` vérifie la pause avant chaque cadre : une déconnexion pendant la file ne laisse plus un module rouvrir sa session juste après.
+
 ## 0.74.0
 
 ### Minor Changes
