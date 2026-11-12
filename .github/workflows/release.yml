@@ -8,6 +8,8 @@ name: Release
 on:
   push:
     branches: [main]
+  # Relance après une publication échouée : sans risque, les versions déjà publiées sont sautées.
+  workflow_dispatch:
 
 concurrency: release
 
@@ -50,6 +52,9 @@ jobs:
     if: github.repository == 'hugogebel-boop/hgdc-kit'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Environnement réservé à main, et déclaré dans le trusted publisher de chaque paquet sur
+    # npmjs.com : une autre branche qui lancerait ce fichier ne peut pas publier.
+    environment: npm
     permissions:
       contents: write
       id-token: write
@@ -76,8 +81,9 @@ jobs:
         uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
           publish-script: bun run release
-          # v2 lit le jeton dans l'entrée `github-token`, et refuse un GITHUB_TOKEN différent dans l'environnement.
-          github-token: ${{ secrets.HGDC_BOT_TOKEN }}
+          # Jeton de l'action, plus celui du bot : sans PR à ouvrir, il suffit pour les tags et les
+          # releases, et la règle des tags ne laisse passer que l'app GitHub Actions et la clé de la copie.
+          github-token: ${{ github.token }}
       - id: versions
         if: steps.changesets.outputs.published == 'true'
         env:
