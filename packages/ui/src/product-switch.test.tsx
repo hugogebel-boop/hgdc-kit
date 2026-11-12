@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { cleanup, render } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { FamilyLoaderRoot } from "./family-loader.tsx"
 
@@ -35,47 +35,113 @@ afterEach(() => {
 
 describe("ouverture des sessions des autres modules (ADR 0026)", () => {
   const frames = () => [...document.querySelectorAll("iframe")].map((frame) => frame.getAttribute("src"))
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
+  const loadFrame = async () => {
+    document.querySelector("iframe")?.dispatchEvent(new Event("load"))
+    await settle()
+  }
+  /** Réponse de `get-session` par base ; une base absente répond `null` (pas de session). */
+  const sessions = (replies: Record<string, Response | Error> = {}) =>
+    vi.spyOn(window, "fetch").mockImplementation(async (input) => {
+      const url = input instanceof Request ? input.url : input.toString()
+      const reply = replies[url.slice(0, url.indexOf(SESSION_CHECK_PATH))]
+      if (reply instanceof Error) throw reply
+      return reply ?? Response.json(null)
+    })
+  const open = () => Response.json({ session: { id: "s" }, user: { id: "u" } })
 
-  it("un cadre caché, sans script, à la fois, vers l'entrée `frame=open` de chaque module", () => {
+  beforeEach(() => {
+    sessions()
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it("un cadre caché, sans script, à la fois, vers l'entrée `frame=open` de chaque module sans session", async () => {
     startSessionOpening(["/mail", "/status"])
+    await settle()
     expect(frames()).toEqual([`/mail${SESSION_OPEN_PATH}`])
     const first = document.querySelector("iframe")
     expect(first?.getAttribute("sandbox")).toBe("allow-same-origin")
     expect(first?.hidden).toBe(true)
-    first?.dispatchEvent(new Event("load"))
+    await loadFrame()
     expect(frames()).toEqual([`/status${SESSION_OPEN_PATH}`])
-    document.querySelector("iframe")?.dispatchEvent(new Event("load"))
+    await loadFrame()
     expect(frames()).toEqual([])
   })
 
-  it("au plus une fois par jour et par module", () => {
-    startSessionOpening(["/mail"])
-    document.querySelector("iframe")?.dispatchEvent(new Event("load"))
-    startSessionOpening(["/mail"])
+  it("session déjà ouverte : aucun cadre, la limite du jour est marquée, le module suivant part", async () => {
+    const fetch = sessions({ "/mail": open() })
+    startSessionOpening(["/mail", "/status"])
+    await settle()
+    expect(fetch).toHaveBeenCalledWith(
+      `/mail${SESSION_CHECK_PATH}`,
+      expect.objectContaining({ credentials: "include" }),
+    )
+    expect(frames()).toEqual([`/status${SESSION_OPEN_PATH}`])
+    expect(localStorage.getItem(`${SESSION_OPEN_KEY_PREFIX}/mail`)).not.toBeNull()
+  })
+
+  it("lecture en échec : aucun cadre, la limite n'est pas consommée", async () => {
+    sessions({ "/mail": new Response(null, { status: 500 }), "/status": new Error("réseau") })
+    startSessionOpening(["/mail", "/status"])
+    await settle()
     expect(frames()).toEqual([])
+    expect(localStorage.getItem(`${SESSION_OPEN_KEY_PREFIX}/mail`)).toBeNull()
+    expect(localStorage.getItem(`${SESSION_OPEN_KEY_PREFIX}/status`)).toBeNull()
+  })
+
+  it("au plus une fois par jour et par module, sans relire la session", async () => {
+    startSessionOpening(["/mail"])
+    await settle()
+    await loadFrame()
+    const fetch = sessions()
+    fetch.mockClear()
+    startSessionOpening(["/mail"])
+    await settle()
+    expect(frames()).toEqual([])
+    expect(fetch).not.toHaveBeenCalled()
     localStorage.setItem(`${SESSION_OPEN_KEY_PREFIX}/mail`, String(Date.now() - SESSION_OPEN_INTERVAL_MS - 1))
     startSessionOpening(["/mail"])
+    await settle()
     expect(frames()).toEqual([`/mail${SESSION_OPEN_PATH}`])
   })
 
-  it("arrêtée : le module suivant ne part pas", () => {
+  it("arrêtée : le module suivant ne part pas", async () => {
     const stop = startSessionOpening(["/mail", "/status"])
+    await settle()
     stop()
-    document.querySelector("iframe")?.dispatchEvent(new Event("load"))
+    await loadFrame()
     expect(frames()).toEqual([])
   })
 
-  it("après une déconnexion : rien ne s'ouvre jusqu'à la prochaine connexion", () => {
+  it("arrêtée pendant une lecture : rien ne part", async () => {
+    const stop = startSessionOpening(["/mail"])
+    stop()
+    await settle()
+    expect(frames()).toEqual([])
+  })
+
+  it("après une déconnexion : rien ne s'ouvre jusqu'à la prochaine connexion", async () => {
     pauseSessionOpening()
     startSessionOpening(["/mail"])
+    await settle()
     expect(frames()).toEqual([])
     localStorage.removeItem(SESSION_OPEN_PAUSED_KEY)
     startSessionOpening(["/mail"])
+    await settle()
     expect(frames()).toEqual([`/mail${SESSION_OPEN_PATH}`])
   })
 
-  it("déconnexion pendant la file : le cadre en vol est retiré et le module suivant ne part pas", () => {
+  it("déconnexion pendant une lecture : aucun cadre, la limite n'est pas consommée", async () => {
+    startSessionOpening(["/mail"])
+    pauseSessionOpening()
+    await settle()
+    expect(frames()).toEqual([])
+    expect(localStorage.getItem(`${SESSION_OPEN_KEY_PREFIX}/mail`)).toBeNull()
+  })
+
+  it("déconnexion pendant la file : le cadre en vol est retiré et le module suivant ne part pas", async () => {
     startSessionOpening(["/mail", "/status", "/docs"])
+    await settle()
     const inFlight = document.querySelector("iframe")
     expect(frames()).toEqual([`/mail${SESSION_OPEN_PATH}`])
     pauseSessionOpening()
@@ -83,58 +149,56 @@ describe("ouverture des sessions des autres modules (ADR 0026)", () => {
     expect(inFlight?.isConnected).toBe(false)
     // Son chargement (ou son délai) ne relance pas la file.
     inFlight?.dispatchEvent(new Event("load"))
+    await settle()
     expect(frames()).toEqual([])
   })
 
-  it("déconnexion venue d'un autre onglet entre deux cadres : la file s'arrête", () => {
+  it("déconnexion venue d'un autre onglet entre deux cadres : la file s'arrête", async () => {
     startSessionOpening(["/mail", "/status"])
+    await settle()
     localStorage.setItem(SESSION_OPEN_PAUSED_KEY, String(Date.now()))
-    document.querySelector("iframe")?.dispatchEvent(new Event("load"))
+    await loadFrame()
     expect(frames()).toEqual([])
   })
 
-  it("la déconnexion ne retire que les cadres d'ouverture", () => {
+  it("la déconnexion ne retire que les cadres d'ouverture", async () => {
     const other = document.createElement("iframe")
     document.body.append(other)
     startSessionOpening(["/mail"])
+    await settle()
     pauseSessionOpening()
     expect(other.isConnected).toBe(true)
     expect(frames()).toEqual([null])
   })
 
-  it("stockage refusé : rien ne part (aucune limite par jour sans lui)", () => {
+  it("stockage refusé : rien ne part (aucune limite par jour sans lui)", async () => {
     const spy = vi.spyOn(window, "localStorage", "get").mockImplementation(() => {
       throw new Error("refusé")
     })
     startSessionOpening(["/mail"])
+    await settle()
     expect(frames()).toEqual([])
     spy.mockRestore()
   })
 
-  it("rien sur une page prérendue", () => {
+  it("rien sur une page prérendue", async () => {
     Object.defineProperty(document, "prerendering", { value: true, configurable: true })
     startSessionOpening(["/mail"])
+    await settle()
     expect(frames()).toEqual([])
     Reflect.deleteProperty(document, "prerendering")
   })
 
   describe("selon la session du module ouvert", () => {
-    const sessionReply = (body: unknown, status = 200) =>
-      vi.spyOn(window, "fetch").mockResolvedValue(new Response(JSON.stringify(body), { status }))
-    const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
-    afterEach(() => vi.restoreAllMocks())
-
     it("session ouverte : la file part, après avoir lu la session du module ouvert", async () => {
-      const fetch = sessionReply({ session: { id: "s" }, user: { id: "u" } })
+      const fetch = sessions({ "/iassistant": open() })
       startSessionOpening(["/mail"], document, "/iassistant")
-      expect(frames()).toEqual([])
       await settle()
       expect(fetch).toHaveBeenCalledWith(`/iassistant${SESSION_CHECK_PATH}`, expect.anything())
       expect(frames()).toEqual([`/mail${SESSION_OPEN_PATH}`])
     })
 
     it("démo sans session : rien ne part, et la limite par jour n'est pas consommée", async () => {
-      sessionReply(null)
       startSessionOpening(["/mail", "/status"], document, "/iassistant")
       await settle()
       expect(frames()).toEqual([])
@@ -142,20 +206,12 @@ describe("ouverture des sessions des autres modules (ADR 0026)", () => {
     })
 
     it("lecture en échec : rien ne part", async () => {
-      sessionReply({ session: { id: "s" } }, 500)
+      sessions({ "/iassistant": new Response(null, { status: 500 }) })
       startSessionOpening(["/mail"], document, "/iassistant")
       await settle()
       expect(frames()).toEqual([])
-      vi.spyOn(window, "fetch").mockRejectedValue(new Error("réseau"))
+      sessions({ "/iassistant": new Error("réseau") })
       startSessionOpening(["/mail"], document, "/iassistant")
-      await settle()
-      expect(frames()).toEqual([])
-    })
-
-    it("arrêtée pendant la lecture : rien ne part", async () => {
-      sessionReply({ session: { id: "s" } })
-      const stop = startSessionOpening(["/mail"], document, "/iassistant")
-      stop()
       await settle()
       expect(frames()).toEqual([])
     })
