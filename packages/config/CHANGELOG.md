@@ -1,5 +1,11 @@
 # @hgdc/config
 
+## 0.7.0
+
+### Minor Changes
+
+- 18606d8: `hgdc-stack check --workspace` (et `sync --workspace`) : dans le dépôt du kit, chaque paquet `@hgdc/*` doit être pris en `workspace:*`. Sans l'option, rien ne change.
+
 ## 0.6.0
 
 ### Minor Changes

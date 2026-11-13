@@ -1,5 +1,16 @@
 # @hgdc/api
 
+## 0.3.0
+
+### Minor Changes
+
+- cbc5f64: Versions, dépréciation et en-têtes de limite.
+  
+  - `@hgdc/api/deprecation` (nouveau) : `API_LIFECYCLE_POLICY`, la règle de versions et de dépréciation des API (changements sans casse dans une version, nouvelle version pour un changement qui casse, route dépréciée servie au moins `MIN_SUNSET_NOTICE_DAYS` = 180 jours) ; `deprecationHeaders` et `withDeprecation` posent `Deprecation` (RFC 9745), `Sunset` (RFC 8594) et `Link` (`rel="deprecation"`, `rel="sunset"`) sur la réponse d'une route dépréciée.
+  - `@hgdc/api/ratelimit` : `rateLimitedHeaders` (en-têtes d'un 429 au corps propre, `Retry-After` compris) et `tokenBucketHeaders` (en-têtes d'après la valeur d'un seau lue par `getValue`).
+  - `@hgdc/api/openapi` : `info.description` se termine par la règle (et `x-api-lifecycle`) ; composants `headers` ; chaque réponse de succès déclare `RateLimit-Policy` et `RateLimit`, le 429 déclare `Retry-After` ; option `deprecated` d'`operation()`.
+- 8ecd2b8: `openApiDocument` publie les scopes nommés de l'API : option `scopes` (scope → description), posée en `x-scopes` du schéma `bearer`, et option `resourceMetadata`, l'adresse du document RFC 9728 de l'API (`scopes_supported`), posée en `x-resource-metadata`. Un scope exigé par une opération mais absent de `scopes` fait lever `openApiDocument` : une API qui exige des scopes doit désormais les déclarer.
+
 ## 0.2.1
 
 ### Patch Changes

@@ -30,7 +30,7 @@
     },
     "packages/api": {
       "name": "@hgdc/api",
-      "version": "0.2.1",
+      "version": "0.3.0",
       "dependencies": {
         "zod": "^4.6.7",
       },
@@ -89,7 +89,7 @@
     },
     "packages/config": {
       "name": "@hgdc/config",
-      "version": "0.6.0",
+      "version": "0.7.0",
       "bin": {
         "hgdc-stack": "./dist/cli.js",
       },
