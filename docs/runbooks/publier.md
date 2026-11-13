@@ -21,7 +21,7 @@ Voir ce que la copie enverrait, depuis `basalte` : `npx -y bun@1.3.10 scripts/ki
 
 ## Bascule vers la copie
 
-Une fois, dans cet ordre. Avant le dernier geste, rien ne tourne : `kit-mirror.yml` et `kit-version.yml` attendent `KIT_MIRROR=on`.
+**Faite le 2026-11-13** (première publication par la copie : `@hgdc/config` 0.7.0 et `@hgdc/api` 0.3.0, avec provenance). La suite reste comme mode d'emploi d'un retour arrière ou d'une nouvelle bascule. Une fois, dans cet ordre. Avant le dernier geste, rien ne tourne : `kit-mirror.yml` et `kit-version.yml` attendent `KIT_MIRROR=on`.
 
 **Gestes d'activation** (**[Hugo]** : lui seul peut le faire ; les autres se lancent depuis le poste, avec `gh`) :
 
