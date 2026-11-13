@@ -63,6 +63,7 @@ describe("OpenAPI 3.1 depuis Zod 4", () => {
         },
       },
       schemas: { Domain: jsonSchema(Domain) },
+      scopes: { "mail:read": "Lire", "mail:write": "Écrire" },
     })
     expect(doc.openapi).toBe("3.1.1")
     const components = doc.components as Record<string, Record<string, Record<string, unknown>>>
@@ -78,6 +79,50 @@ describe("OpenAPI 3.1 depuis Zod 4", () => {
       content: { "application/problem+json": { schema: { $ref: "#/components/schemas/Problem" } } },
     })
     expect(Object.keys(components.schemas!)).toEqual(["Problem", "Domain"])
-    expect(components.securitySchemes!.bearer).toMatchObject({ type: "http", scheme: "bearer" })
+    expect(components.securitySchemes!.bearer).toMatchObject({
+      type: "http",
+      scheme: "bearer",
+      "x-scopes": { "mail:read": "Lire", "mail:write": "Écrire" },
+    })
+    expect(components.securitySchemes!.bearer).not.toHaveProperty("x-resource-metadata")
+  })
+
+  const listDomains = (scopes: string[]) => ({
+    "/domains": { get: operation({ operationId: "listDomains", summary: "Lister", scopes, response: Domain }) },
+  })
+
+  it("scopes nommés : lien vers le document RFC 9728, aucun flux OAuth annoncé", () => {
+    const doc = openApiDocument({
+      title: "Mail",
+      version: "1.0.0",
+      servers: [{ url: "https://api.mail.hgdc.ch" }],
+      paths: listDomains(["mail:read"]),
+      scopes: { "mail:read": "Lire" },
+      resourceMetadata: "https://app.hgdc.ch/.well-known/oauth-protected-resource/mail/api",
+    })
+    const schemes = (doc.components as Record<string, Record<string, Record<string, unknown>>>).securitySchemes!
+    expect(Object.keys(schemes)).toEqual(["bearer"])
+    expect(schemes.bearer!["x-resource-metadata"]).toBe(
+      "https://app.hgdc.ch/.well-known/oauth-protected-resource/mail/api",
+    )
+  })
+
+  it("refuse un scope exigé par une opération mais non déclaré", () => {
+    const base = { title: "Mail", version: "1.0.0", servers: [{ url: "https://api.mail.hgdc.ch" }] }
+    expect(() => openApiDocument({ ...base, paths: listDomains(["mail:read"]) })).toThrow("mail:read")
+    expect(() =>
+      openApiDocument({ ...base, paths: listDomains(["mail:write"]), scopes: { "mail:read": "Lire" } }),
+    ).toThrow("mail:write")
+  })
+
+  it("une API sans scope n'a pas à en déclarer", () => {
+    const doc = openApiDocument({
+      title: "Public",
+      version: "1.0.0",
+      servers: [{ url: "https://example.ch" }],
+      paths: { "/ping": { get: operation({ operationId: "ping", summary: "Ping" }) } },
+    })
+    const schemes = (doc.components as Record<string, Record<string, Record<string, unknown>>>).securitySchemes!
+    expect(schemes.bearer).not.toHaveProperty("x-scopes")
   })
 })

@@ -156,6 +156,26 @@ export type DocumentOptions = {
   schemas?: Record<string, Schema>
   /** Adresse de la doc des scopes ou du serveur d'autorisation, reprise dans le schéma Bearer. */
   bearerDescription?: string
+  /**
+   * Scopes nommés de l'API (`mail:read` → ce qu'il permet), publiés en `x-scopes` du schéma Bearer.
+   * Obligatoire dès qu'une opération exige un scope, et chaque scope exigé doit y figurer.
+   */
+  scopes?: Record<string, string>
+  /** Document de ressource protégée (RFC 9728) de l'API, avec ses `scopes_supported` : `x-resource-metadata`. */
+  resourceMetadata?: string
+}
+
+/** Les scopes exigés par les opérations, tous schémas de sécurité confondus. */
+function requiredScopes(paths: DocumentOptions["paths"]): Set<string> {
+  const scopes = new Set<string>()
+  for (const methods of Object.values(paths)) {
+    for (const op of Object.values(methods)) {
+      for (const requirement of (op.security ?? []) as Record<string, string[]>[]) {
+        for (const list of Object.values(requirement)) for (const scope of list) scopes.add(scope)
+      }
+    }
+  }
+  return scopes
 }
 
 /**
@@ -163,6 +183,8 @@ export type DocumentOptions = {
  * réponse `ProblemNNN` en problem+json.
  */
 export function openApiDocument(options: DocumentOptions): Schema {
+  const undeclared = [...requiredScopes(options.paths)].filter((scope) => !Object.hasOwn(options.scopes ?? {}, scope))
+  if (undeclared.length > 0) throw new Error(`Scopes exigés mais absents de \`scopes\` : ${undeclared.join(", ")}`)
   const statuses = new Set<number>()
   for (const methods of Object.values(options.paths)) {
     for (const op of Object.values(methods)) {
@@ -201,6 +223,8 @@ export function openApiDocument(options: DocumentOptions): Schema {
           scheme: "bearer",
           description:
             options.bearerDescription ?? "Clé d'API `hgdc_<produit>_…` ou jeton OAuth, en `Authorization: Bearer`.",
+          ...(options.scopes && { "x-scopes": options.scopes }),
+          ...(options.resourceMetadata && { "x-resource-metadata": options.resourceMetadata }),
         },
       },
     },

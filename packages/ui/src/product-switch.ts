@@ -34,6 +34,9 @@ export const ORG_SYNC_LAST_KEY_PREFIX = "hgdc-org-sync:"
 /** Cadre caché qui ouvre la session d'un autre produit, seulement si elle manque (ADR 0026). */
 export const SESSION_OPEN_PATH = "/auth/hgdc?frame=open"
 
+/** Session du module ouvert, lue avant toute ouverture : la route better-auth sous sa base. */
+export const SESSION_CHECK_PATH = "/api/auth/get-session"
+
 /** Une ouverture au plus par produit pendant ce délai : une session vit 7 jours (`@hgdc/auth`). */
 export const SESSION_OPEN_INTERVAL_MS: number = 24 * 60 * 60_000
 
@@ -50,13 +53,21 @@ export const SESSION_OPEN_KEY_PREFIX = "hgdc-session-open:"
  */
 export const SESSION_OPEN_PAUSED_KEY = "hgdc-session-open:paused"
 
-/** À la déconnexion d'un module : plus d'ouverture en arrière-plan jusqu'à la prochaine connexion. */
+/** Marque des cadres d'ouverture (`startSessionOpening`), retirés par `pauseSessionOpening`. */
+const SESSION_OPEN_FRAME_ATTRIBUTE = "data-hgdc-session-open"
+
+/**
+ * À la déconnexion d'un module : plus d'ouverture en arrière-plan jusqu'à la prochaine connexion, et
+ * les cadres d'ouverture en cours sont retirés (un cadre en vol reposerait la session d'un module
+ * juste après la déconnexion).
+ */
 export function pauseSessionOpening(win: Window | null = typeof window === "undefined" ? null : window): void {
   try {
     win?.localStorage.setItem(SESSION_OPEN_PAUSED_KEY, String(Date.now()))
   } catch {
     // Stockage refusé : l'ouverture n'a pas lieu non plus sans lui (`startSessionOpening`).
   }
+  for (const frame of win?.document.querySelectorAll(`iframe[${SESSION_OPEN_FRAME_ATTRIBUTE}]`) ?? []) frame.remove()
 }
 
 /** Marque d'un lien de la barre vers un autre produit servi sous la même origine : prérendu au survol. */
@@ -221,30 +232,76 @@ export function productEntryBase(href: string): string | null {
 
 /**
  * Ouvre en arrière-plan la session des autres modules de la barre (ADR 0026) : un cadre caché à la
- * fois vers `<base>/auth/hgdc?frame=open`, au plus une fois par jour et par module. Session déjà
- * ouverte : réponse vide sans appel à ID. Sinon, la connexion HGDC se fait dans le cadre ; si ID
- * demande quelque chose (session expirée, consentement), il refuse d'être affiché dans un cadre et
- * rien ne se passe : le clic fera la connexion habituelle. Pas sur une page prérendue, ni quand
- * l'économie de données est demandée. Rend une fonction qui arrête la file.
+ * fois vers `<base>/auth/hgdc?frame=open`, au plus une fois par jour et par module, et seulement pour
+ * un module sans session : sa session est lue d'abord (`SESSION_CHECK_PATH`, même origine). Déjà
+ * ouverte : pas de cadre, la limite du jour est marquée. Lecture en échec : pas de cadre, la limite
+ * n'est pas consommée. Sinon, la connexion HGDC se fait dans le cadre ; si ID demande quelque chose
+ * (session expirée, consentement), il refuse d'être affiché dans un cadre et rien ne se passe : le
+ * clic fera la connexion habituelle. Pas sur une page prérendue, ni quand l'économie de données est
+ * demandée. Rend une fonction qui arrête la file.
+ *
+ * `current` : base du module ouvert. Donnée, rien ne part tant que ce module n'a pas de session : un
+ * visiteur de la démo, sans compte, n'a pas de session d'ID à reprendre, et chaque cadre partirait
+ * pour rien vers ID.
  */
-export function startSessionOpening(bases: ReadonlyArray<string>, doc: Document = document): () => void {
+export function startSessionOpening(
+  bases: ReadonlyArray<string>,
+  doc: Document = document,
+  current?: string,
+): () => void {
   const win = doc.defaultView
   const saveData = (win?.navigator as (Navigator & { connection?: { saveData?: boolean } }) | undefined)?.connection
     ?.saveData
-  if (saveData || (doc as Document & { prerendering?: boolean }).prerendering || openingPaused(win)) return () => {}
-  // Sans stockage, pas de limite par jour : rien ne part (sinon une connexion par module à chaque page).
-  const queue = bases.filter((base) =>
-    refreshDue(base, win, Date.now(), SESSION_OPEN_KEY_PREFIX, SESSION_OPEN_INTERVAL_MS, false),
-  )
+  if (!win || saveData || (doc as Document & { prerendering?: boolean }).prerendering || openingPaused(win))
+    return () => {}
   let stopped = false
-  const next = () => {
-    const base = queue.shift()
-    if (stopped || base === undefined) return
-    openHiddenFrame(doc, `${base}${SESSION_OPEN_PATH}`, next)
-  }
-  next()
+  // Relu avant chaque étape et après chaque lecture : une déconnexion pendant la file l'arrête.
+  const halted = () => stopped || openingPaused(win)
+  void (async () => {
+    if (current !== undefined && ((await readSession(win, current)) !== true || halted())) return
+    for (const base of bases) {
+      if (halted()) return
+      // Sans stockage, pas de limite par jour : rien ne part (sinon une connexion par module à chaque page).
+      if (!sessionOpenDue(win, base)) continue
+      const open = await readSession(win, base)
+      if (halted()) return
+      // Lecture en échec : rien à décider, la limite reste libre pour la prochaine page.
+      if (open === null) continue
+      // Marque la limite ; faux si un autre onglet vient de le faire, ou si le stockage refuse.
+      if (!refreshDue(base, win, Date.now(), SESSION_OPEN_KEY_PREFIX, SESSION_OPEN_INTERVAL_MS, false)) continue
+      if (open) continue
+      await new Promise<void>((resolve) => {
+        openHiddenFrame(doc, `${base}${SESSION_OPEN_PATH}`, resolve).setAttribute(SESSION_OPEN_FRAME_ATTRIBUTE, "")
+      })
+    }
+  })()
   return () => {
     stopped = true
+  }
+}
+
+/** Vrai si la limite du jour de ce module est libre, sans la marquer. Stockage refusé : faux. */
+function sessionOpenDue(win: Window, base: string): boolean {
+  try {
+    const last = Number(win.localStorage.getItem(`${SESSION_OPEN_KEY_PREFIX}${base || "/"}`))
+    const age = Date.now() - last
+    return !(Number.isFinite(last) && last > 0 && age >= 0 && age < SESSION_OPEN_INTERVAL_MS)
+  } catch {
+    return false
+  }
+}
+
+/** Session du module de `base` : ouverte, absente, ou `null` si la lecture échoue. */
+async function readSession(win: Window, base: string): Promise<boolean | null> {
+  try {
+    const response = await win.fetch(`${base}${SESSION_CHECK_PATH}`, { credentials: "include", cache: "no-store" })
+    if (!response.ok) return null
+    const body: unknown = await response.json()
+    if (body === null) return false
+    if (typeof body !== "object") return null
+    return "session" in body && Boolean(body.session)
+  } catch {
+    return null
   }
 }
 
@@ -286,19 +343,20 @@ export function useProductSwitch(enabled = true): void {
 /**
  * Dans la barre de Basalte (`ShellNavigation`) : ouvre la session des modules affichés servis sous
  * la même origine, `SESSION_OPEN_DELAY_MS` après l'affichage (ADR 0026). `bases` : clé stable
- * (les bases jointes), pour ne pas relancer la file à chaque rendu.
+ * (les bases jointes), pour ne pas relancer la file à chaque rendu. `current` : base du module ouvert
+ * (`startSessionOpening`) ; `null` (base inconnue) : rien ne part.
  */
-export function useSessionOpening(bases: ReadonlyArray<string>): void {
+export function useSessionOpening(bases: ReadonlyArray<string>, current?: string | null): void {
   const key = bases.join(" ")
   useEffect(() => {
-    if (!key) return
+    if (!key || current === null) return
     let stop = () => {}
     const timer = window.setTimeout(() => {
-      stop = startSessionOpening(key.split(" "))
+      stop = startSessionOpening(key.split(" "), document, current)
     }, SESSION_OPEN_DELAY_MS)
     return () => {
       window.clearTimeout(timer)
       stop()
     }
-  }, [key])
+  }, [key, current])
 }

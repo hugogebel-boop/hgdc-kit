@@ -9,6 +9,7 @@ export default defineConfig({
     // Chaque module et chaque app a sa propre config, lancée depuis son dossier (oxlint de la racine :
     // --disable-nested-config, sinon il lit celle des modules et refuse leur typeAware).
     "modules/**",
+    "internal/**",
     "apps/**",
     "packages/docs/example/**",
     "packages/docs/template/.astro/**",

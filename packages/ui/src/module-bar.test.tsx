@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { AccountMenu } from "./account-menu.tsx"
 import { AppShell, SidebarNav, SidebarNavItem } from "./app-shell.tsx"
 import { MODULE_BAR_KEY } from "./module-bar-store.ts"
-import { sessionBases } from "./module-bar.tsx"
+import { currentSessionBase, sessionBases } from "./module-bar.tsx"
 import type { ShellProductEntry } from "./products.ts"
 import type { FamilyProduct } from "./family-svg.ts"
 
@@ -292,5 +292,12 @@ describe("sessions ouvertes en arrière-plan (ADR 0026)", () => {
 
   it("un module masqué ou absent du projet n'ouvre rien", () => {
     expect(sessionBases(entries, ["host", "status"], "host")).toEqual(["/status"])
+  })
+
+  it("base du module ouvert : sous sa base seulement", () => {
+    expect(currentSessionBase([{ ...entry("host", "/host/"), current: true }, ...entries.slice(1)])).toBe("/host")
+    // Rendu serveur ou autre origine : l'entrée du module ouvert mène à « / ».
+    expect(currentSessionBase([{ ...entry("host", "/"), current: true }])).toBeNull()
+    expect(currentSessionBase(entries)).toBeNull()
   })
 })
