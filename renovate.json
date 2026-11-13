@@ -1,26 +1,5 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", ":semanticCommitTypeAll(chore)", "helpers:pinGitHubActionDigests"],
-  "timezone": "Europe/Zurich",
-  "schedule": ["before 6am on monday"],
-  "minimumReleaseAge": "3 days",
-  "rangeStrategy": "pin",
-  "customManagers": [
-    {
-      "description": "Versions exactes de la stack commune.",
-      "customType": "jsonata",
-      "fileFormat": "json",
-      "managerFilePatterns": ["/^packages/config/stack\\.json$/"],
-      "matchStrings": ["$each($, function($v, $k) { { \"depName\": $k, \"currentValue\": $v } })"],
-      "datasourceTemplate": "npm"
-    }
-  ],
-  "packageRules": [
-    {
-      "description": "Une seule PR pour toute la stack : stack.json et les dépendances du kit restent alignés (hgdc-stack check).",
-      "matchDatasources": ["npm"],
-      "groupName": "stack HGDC",
-      "addLabels": ["stack"]
-    }
-  ]
+  "description": "Copie du kit : les dépendances se mettent à jour dans le dépôt source, pas ici.",
+  "enabled": false
 }

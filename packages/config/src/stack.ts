@@ -53,18 +53,35 @@ export function loadStack(): Stack {
   return parseStack(readFileSync(new URL("../stack.json", import.meta.url), "utf8"))
 }
 
+export type StackOptions = {
+  /**
+   * Le produit vit dans le même dépôt que le kit (dépôt `basalte`) : chaque paquet `@hgdc/*`
+   * doit y être pris par `workspace:*`. Une version de npm y ferait tourner un second kit.
+   */
+  workspace?: boolean
+}
+
+const KIT_SCOPE = "@hgdc/"
+const WORKSPACE_VERSION = "workspace:*"
+
+/** Version attendue d'un paquet, ou `undefined` s'il n'est pas tenu par la stack. */
+function expectedVersion(name: string, current: string, stack: Stack, options: StackOptions): string | undefined {
+  if (options.workspace && name.startsWith(KIT_SCOPE)) return WORKSPACE_VERSION
+  if (isWorkspace(current)) return undefined
+  return stack[name]
+}
+
 /**
  * Écarts entre un manifeste et la stack. Un paquet absent du manifeste n'est pas un écart :
  * la stack fixe la version de ce qu'un produit utilise, pas la liste de ses dépendances.
  * `peerDependencies` est ignoré : une plage y est voulue. Une dépendance `workspace:` aussi :
  * c'est un paquet du même dépôt, l'épingler casse le lockfile (paquet en double).
  */
-export function findDrift(manifest: Manifest, stack: Stack): Drift[] {
+export function findDrift(manifest: Manifest, stack: Stack, options: StackOptions = {}): Drift[] {
   const drift: Drift[] = []
   for (const field of DEPENDENCY_FIELDS) {
     for (const [name, current] of Object.entries(manifest[field] ?? {})) {
-      if (isWorkspace(current)) continue
-      const expected = stack[name]
+      const expected = expectedVersion(name, current, stack, options)
       if (expected !== undefined && current !== expected) drift.push({ name, field, current, expected })
     }
   }
@@ -72,13 +89,13 @@ export function findDrift(manifest: Manifest, stack: Stack): Drift[] {
 }
 
 /** Copie du manifeste où chaque paquet de la stack est épinglé à sa version. */
-export function alignManifest(manifest: Manifest, stack: Stack): Manifest {
+export function alignManifest(manifest: Manifest, stack: Stack, options: StackOptions = {}): Manifest {
   const aligned: Manifest = { ...manifest }
   for (const field of DEPENDENCY_FIELDS) {
     const deps = manifest[field]
     if (!deps) continue
     aligned[field] = Object.fromEntries(
-      Object.entries(deps).map(([name, version]) => [name, isWorkspace(version) ? version : (stack[name] ?? version)]),
+      Object.entries(deps).map(([name, version]) => [name, expectedVersion(name, version, stack, options) ?? version]),
     )
   }
   return aligned

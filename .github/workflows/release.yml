@@ -1,23 +1,62 @@
-# Publication : changesets ouvre la PR « chore: release » ; sa fusion publie sur npm
-# par OIDC (trusted publishing, nom de ce fichier déclaré sur npmjs.com) puis aligne les produits
-# (propagate.yml) si @hgdc/config ou @hgdc/ui a changé.
+# Publication du kit. Ce dépôt est une copie : chaque commit sur main y est poussé par la CI de
+# basalte (`kit-mirror.yml`), où les versions sont montées par la PR « chore: release ». Ici, on
+# ne fait plus que publier sur npm ce qui n'y est pas encore, par OIDC (trusted publishing, nom de
+# ce fichier déclaré sur npmjs.com), puis aligner les produits (propagate.yml) si @hgdc/config ou
+# @hgdc/ui a changé.
 name: Release
 
 on:
   push:
     branches: [main]
+  # Relance après une publication échouée : sans risque, les versions déjà publiées sont sautées.
+  workflow_dispatch:
 
 concurrency: release
 
 permissions: {}
 
 jobs:
+  # Le check du commit copié passe avant toute publication.
+  check:
+    uses: ./.github/workflows/check.yml
+
+  # Seul un commit de la copie publie : il porte la ligne `Basalte-Commit: <sha>`.
+  origin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: commit de la copie
+        run: |
+          set -euo pipefail
+          if ! git log -1 --format=%B | grep -qE '^Basalte-Commit: [0-9a-f]{40}$'; then
+            echo "::error title=Commit hors copie::Ce dépôt ne reçoit que la copie du kit. Modifier le kit dans basalte."
+            exit 1
+          fi
+      - name: aucun changeset en attente
+        run: |
+          set -euo pipefail
+          # Les versions se montent dans basalte : un changeset ici ouvrirait une PR de release.
+          pending="$(find .changeset -maxdepth 1 -name '*.md' ! -name README.md)"
+          if [ -n "$pending" ]; then
+            echo "::error title=Changeset en attente::$pending"
+            exit 1
+          fi
+
   release:
+    needs: [check, origin]
+    if: github.repository == 'hugogebel-boop/hgdc-kit'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Environnement réservé à main, et déclaré dans le trusted publisher de chaque paquet sur
+    # npmjs.com : une autre branche qui lancerait ce fichier ne peut pas publier.
+    environment: npm
     permissions:
       contents: write
-      pull-requests: write
       id-token: write
     outputs:
       config-version: ${{ steps.versions.outputs.config }}
@@ -35,17 +74,16 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
       - run: bun install --frozen-lockfile
+      # Sans changeset en attente (contrôlé par `origin`), changesets/action passe directement à la
+      # publication : `bun run release` publie ce qui manque sur npm, puis l'action pousse les tags
+      # et crée les releases GitHub. Une version déjà publiée est sautée : aucune double publication.
       - id: changesets
         uses: changesets/action@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
-          version-script: bun run version
           publish-script: bun run release
-          commit-message: "chore: release"
-          pr-title: "chore: release"
-          # Jeton du bot et non GITHUB_TOKEN : une PR ouverte par GITHUB_TOKEN ne lance pas la CI,
-          # que la règle de main exige. Contents et Pull requests en écriture sur ce dépôt.
-          # v2 lit le jeton dans l'entrée `github-token`, et refuse un GITHUB_TOKEN différent dans l'environnement.
-          github-token: ${{ secrets.HGDC_BOT_TOKEN }}
+          # Jeton de l'action, plus celui du bot : sans PR à ouvrir, il suffit pour les tags et les
+          # releases, et la règle des tags ne laisse passer que l'app GitHub Actions et la clé de la copie.
+          github-token: ${{ github.token }}
       - id: versions
         if: steps.changesets.outputs.published == 'true'
         env:

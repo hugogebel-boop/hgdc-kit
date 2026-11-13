@@ -46,6 +46,38 @@ describe("alignManifest", () => {
     expect(findDrift(manifest, stack)).toEqual([])
   })
 
+  describe("dans le dépôt du kit (--workspace)", () => {
+    const kitStack = { ...stack, "@hgdc/ui": "0.74.0" }
+
+    it("exige workspace:* pour chaque paquet @hgdc/*, même absent de la stack", () => {
+      const manifest: Manifest = {
+        dependencies: { "@hgdc/ui": "0.74.0", "@hgdc/neuf": "0.1.0", react: "19.3.0" },
+        devDependencies: { "@hgdc/config": "workspace:*" },
+      }
+      expect(findDrift(manifest, kitStack, { workspace: true })).toEqual([
+        { name: "@hgdc/ui", field: "dependencies", current: "0.74.0", expected: "workspace:*" },
+        { name: "@hgdc/neuf", field: "dependencies", current: "0.1.0", expected: "workspace:*" },
+      ])
+      expect(alignManifest(manifest, kitStack, { workspace: true })).toEqual({
+        dependencies: { "@hgdc/ui": "workspace:*", "@hgdc/neuf": "workspace:*", react: "19.3.0" },
+        devDependencies: { "@hgdc/config": "workspace:*" },
+      })
+    })
+
+    it("refuse workspace:^ : une seule forme dans le dépôt", () => {
+      const manifest: Manifest = { dependencies: { "@hgdc/ui": "workspace:^" } }
+      expect(findDrift(manifest, kitStack, { workspace: true })).toHaveLength(1)
+    })
+
+    it("sans l'option, un consommateur externe garde ses versions exactes", () => {
+      const manifest: Manifest = { dependencies: { "@hgdc/ui": "0.74.0" } }
+      expect(findDrift(manifest, kitStack)).toEqual([])
+      expect(findDrift({ dependencies: { "@hgdc/ui": "0.73.0" } }, kitStack)).toEqual([
+        { name: "@hgdc/ui", field: "dependencies", current: "0.73.0", expected: "0.74.0" },
+      ])
+    })
+  })
+
   it("ne modifie pas le manifeste d'origine", () => {
     const manifest: Manifest = { dependencies: { react: "^19.2.0" } }
     alignManifest(manifest, stack)

@@ -6,6 +6,7 @@ Configuration partagée des produits de la H Collection : presets TypeScript, ox
 bun add --dev --exact @hgdc/config
 bunx hgdc-stack check   # échoue si une dépendance de la stack n'est pas à sa version
 bunx hgdc-stack sync    # réécrit package.json aux versions de la stack
+hgdc-stack check --workspace   # dans le dépôt basalte : chaque @hgdc/* en workspace:*
 ```
 
 | Export                                                     | Usage                               |

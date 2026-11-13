@@ -6,6 +6,10 @@ export default defineConfig({
   ignorePatterns: [
     ...(hgdc.ignorePatterns ?? []),
     "**/dist/**",
+    // Chaque module, paquet interne et app a sa propre config, lancée depuis son dossier.
+    "modules/**",
+    "internal/**",
+    "apps/**",
     "packages/docs/example/**",
     "packages/docs/template/.astro/**",
     "packages/docs/template/.build/**",

@@ -4,15 +4,17 @@ import { resolve } from "node:path"
 import { parseArgs } from "node:util"
 import { alignManifest, findDrift, loadStack, parseManifest } from "./stack.ts"
 
-const USAGE = `Usage : hgdc-stack <check|sync> [--cwd <dossier>]
+const USAGE = `Usage : hgdc-stack <check|sync> [--cwd <dossier>] [--workspace]
 
-  check  échoue si une dépendance de la stack n'est pas à sa version exacte
-  sync   réécrit package.json aux versions de la stack (lancer bun install ensuite)`
+  check        échoue si une dépendance de la stack n'est pas à sa version exacte
+  sync         réécrit package.json aux versions de la stack (lancer bun install ensuite)
+  --workspace  produit dans le dépôt du kit : chaque @hgdc/* doit être en workspace:*`
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
   options: {
     cwd: { type: "string", default: process.cwd() },
+    workspace: { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
   },
 })
@@ -29,7 +31,8 @@ if (command !== "check" && command !== "sync") {
 const manifestPath = resolve(values.cwd, "package.json")
 const manifest = parseManifest(readFileSync(manifestPath, "utf8"))
 const stack = loadStack()
-const drift = findDrift(manifest, stack)
+const options = { workspace: values.workspace }
+const drift = findDrift(manifest, stack, options)
 
 if (drift.length === 0) {
   console.log("Stack HGDC : à jour.")
@@ -45,5 +48,5 @@ if (command === "check") {
   process.exit(1)
 }
 
-writeFileSync(manifestPath, `${JSON.stringify(alignManifest(manifest, stack), null, 2)}\n`)
+writeFileSync(manifestPath, `${JSON.stringify(alignManifest(manifest, stack, options), null, 2)}\n`)
 console.log(`\nStack HGDC : ${drift.length} version(s) réalignée(s). Lancer « bun install ».`)

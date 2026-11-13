@@ -1,17 +1,100 @@
 ---
 owner: Hugo Gebel
-last_reviewed: 2026-10-25
+last_reviewed: 2026-11-12
 ---
 
 # Publier une version
 
+Deux dépôts (ADR 0021 de `site/`) : `basalte` (privé) est la source du kit et monte les versions ; `hgdc-kit` (public) en est la copie, écrite par la CI de `basalte` seulement, et publie sur npm. Les modules de `basalte` prennent le kit par `workspace:*` : ils n'attendent jamais une publication.
+
 ## Cas normal
 
-1. Chaque PR qui touche un paquet ajoute un changeset (`bun changeset`).
-2. Après fusion, `release.yml` ouvre ou met à jour la PR « chore: release » (versions, CHANGELOG).
-3. Attendre la CI de cette PR, puis la fusionner (`gh pr merge <n> --squash`). Elle est ouverte avec `HGDC_BOT_TOKEN`, qui doit couvrir `hgdc-kit` lui-même (_Contents_ et _Pull requests_ en écriture) : ouverte avec le `GITHUB_TOKEN` de l'action, elle ne lancerait pas la CI, et la règle de `main` bloquerait la fusion. Ensuite : `release.yml` publie sur npm par OIDC, avec provenance, crée les tags et les releases GitHub, puis `propagate.yml` ouvre une seule PR par dépôt si `@hgdc/config` ou `@hgdc/ui` a changé : `@hgdc/config` dans les produits (`HGDC_PRODUCTS`), `@hgdc/ui` dans les produits et le site hgdc.ch (`HGDC_UI_REPOS`). Fusion automatique quand la CI passe ; le site, sans fusion automatique, est fusionné par le workflow une fois son check « HGDC Host » vert.
+1. Chaque PR de `basalte` qui touche un paquet ajoute un changeset (`bun changeset`).
+2. Après fusion, `kit-version.yml` (`basalte`) ouvre ou met à jour la PR « chore: release » (versions, CHANGELOG, `packages/config/stack.json`). Elle est ouverte avec `HGDC_BOT_TOKEN`, qui doit couvrir `basalte` (_Contents_ et _Pull requests_ en écriture) : ouverte avec le `GITHUB_TOKEN` de l'action, elle ne lancerait pas la CI.
+3. Attendre la CI de cette PR, puis la fusionner (`gh pr merge <n> --squash --repo hugogebel-boop/basalte`).
+4. `kit-mirror.yml` (`basalte`) reconstruit l'arbre public (liste blanche de `scripts/kit-mirror.ts`, fichiers de `kit-public/`, `package.json` et `bun.lock` réduits au kit), le passe à gitleaks, puis le pousse en un commit sur `main` de `hgdc-kit` (ligne `Basalte-Commit: <sha>`). Chaque push de `main` qui touche l'arbre public est copié, même sans nouvelle version.
+5. Dans `hgdc-kit`, `release.yml` vérifie le commit (`check`, origine de la copie, aucun changeset en attente), publie sur npm par OIDC, avec provenance, ce qui n'y est pas encore (`scripts/publish.ts` saute toute version déjà publiée), crée les tags et les releases GitHub, puis `propagate.yml` ouvre une seule PR par dépôt si `@hgdc/config` ou `@hgdc/ui` a changé : `@hgdc/config` dans les produits (`HGDC_PRODUCTS`), `@hgdc/ui` dans les produits et le site hgdc.ch (`HGDC_UI_REPOS`). Fusion automatique quand la CI passe ; le site, sans fusion automatique, est fusionné par le workflow une fois son check « HGDC Host » vert.
 
 Vérifier : `npm view @hgdc/config version` et le badge « Provenance » sur npmjs.com.
+
+Voir ce que la copie enverrait, depuis `basalte` : `npx -y bun@1.3.10 scripts/kit-mirror.ts <dossier vide>`. Relancer une copie : `gh workflow run kit-mirror.yml --repo hugogebel-boop/basalte`.
+
+## Bascule vers la copie
+
+Une fois, dans cet ordre. Avant le dernier geste, rien ne tourne : `kit-mirror.yml` et `kit-version.yml` attendent `KIT_MIRROR=on`.
+
+**Gestes d'activation** (**[Hugo]** : lui seul peut le faire ; les autres se lancent depuis le poste, avec `gh`) :
+
+1. Geler `hgdc-kit` et fusionner les deux PR (étapes 1 et 2 ci-dessous).
+2. **[Hugo] github.com** : ajouter `basalte` aux dépôts du jeton `HGDC_BOT_TOKEN` (_Contents_ et _Pull requests_ en écriture).
+3. Environnements, secrets et clé de la copie (étape 3).
+4. **[Hugo] npmjs.com, bloquant** : dans le _Trusted Publisher_ de **chaque** paquet `@hgdc/*`, renseigner l'environnement `npm` (utilisateur `hugogebel-boop`, dépôt `hgdc-kit`, workflow `release.yml`). Sans lui, `release.yml` (job dans l'environnement `npm`) ne publie plus. Tant qu'il manque, ne pas aller plus loin.
+5. Règles de `hgdc-kit` (étape 4).
+6. `KIT_MIRROR=on` et première copie (étape 5).
+
+Détail :
+
+1. Geler `hgdc-kit` : plus de fusion. Dans `basalte`, `git fetch kit && git merge kit/main` si `kit/main` a des commits absents (`git log origin/main..kit/main`). Aucune PR « chore: release » ni changeset en attente dans `hgdc-kit`.
+2. Fusionner la PR de `basalte` qui apporte la copie, puis la PR `feat/mirror-of-basalte` de `hgdc-kit` (son `release.yml` refuse tout commit qui ne vient pas de la copie : l'échec de son job `origin` à cette fusion est attendu).
+3. Environnements réservés à `main`, secrets posés dedans, clé de la copie :
+
+   ```sh
+   # Un environnement par secret, chacun limité à la branche main.
+   for target in basalte/kit-mirror basalte/kit-version hgdc-kit/npm; do
+     repo="hugogebel-boop/${target%/*}"; env="${target#*/}"
+     printf '{"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}' \
+       | gh api -X PUT "repos/$repo/environments/$env" --input -
+     gh api -X POST "repos/$repo/environments/$env/deployment-branch-policies" -f name=main -f type=branch
+   done
+
+   ssh-keygen -t ed25519 -N "" -C "basalte kit-mirror" -f kit-mirror-key
+   gh repo deploy-key add kit-mirror-key.pub --repo hugogebel-boop/hgdc-kit --title "basalte kit-mirror" --allow-write
+   gh secret set KIT_MIRROR_KEY --repo hugogebel-boop/basalte --env kit-mirror < kit-mirror-key
+   doppler secrets set KIT_MIRROR_KEY --project hgdc --config prd < kit-mirror-key
+   trash kit-mirror-key kit-mirror-key.pub
+   doppler secrets get HGDC_BOT_TOKEN --project hgdc --config prd --plain \
+     | gh secret set HGDC_BOT_TOKEN --repo hugogebel-boop/basalte --env kit-version
+   ```
+
+4. Règles de `hgdc-kit`. L'exception vaut pour **toutes** les clés de déploiement : d'abord lister, et retirer toute autre clé en écriture (`gh repo deploy-key delete <id> -R hugogebel-boop/hgdc-kit`) :
+
+   ```sh
+   gh repo deploy-key list -R hugogebel-boop/hgdc-kit
+   ```
+
+   Puis toutes les branches (création, mise à jour, suppression, réécriture) : seule la clé de la copie écrit, plus personne à la main, ni PR, ni administrateur. Et tous les tags : la clé de la copie et l'app GitHub Actions (id 15368, tags et releases créés par `release.yml` avec son jeton).
+
+   ```sh
+   gh api -X PUT repos/hugogebel-boop/hgdc-kit/rulesets/25082022 --input - <<'EOF'
+   {
+     "name": "branches : copie seulement",
+     "target": "branch",
+     "enforcement": "active",
+     "conditions": { "ref_name": { "include": ["~ALL"], "exclude": [] } },
+     "rules": [{ "type": "creation" }, { "type": "update" }, { "type": "deletion" }, { "type": "non_fast_forward" }],
+     "bypass_actors": [{ "actor_id": null, "actor_type": "DeployKey", "bypass_mode": "always" }]
+   }
+   EOF
+   gh api -X POST repos/hugogebel-boop/hgdc-kit/rulesets --input - <<'EOF'
+   {
+     "name": "tags : copie et release",
+     "target": "tag",
+     "enforcement": "active",
+     "conditions": { "ref_name": { "include": ["~ALL"], "exclude": [] } },
+     "rules": [{ "type": "creation" }, { "type": "update" }, { "type": "deletion" }],
+     "bypass_actors": [
+       { "actor_id": null, "actor_type": "DeployKey", "bypass_mode": "always" },
+       { "actor_id": 15368, "actor_type": "Integration", "bypass_mode": "always" }
+     ]
+   }
+   EOF
+   ```
+
+5. `gh variable set KIT_MIRROR --repo hugogebel-boop/basalte --body on`, puis `gh workflow run kit-mirror.yml --repo hugogebel-boop/basalte` : attendu « hgdc-kit est déjà à jour », ou un commit `chore(mirror)` dont le `release.yml` passe au vert. Puis `gh workflow run kit-version.yml --repo hugogebel-boop/basalte` ouvre la PR « chore: release » des changesets en attente. Enfin, retirer le dépôt distant `kit` des clones de `basalte` (`git remote remove kit`) : on n'y fusionne plus rien.
+
+**Copie poussée, publication échouée** (npm indisponible, `E404`, check rouge) : relancer `release.yml` de `hgdc-kit` sur `main`, sans risque, puisque `publish.ts` saute les versions déjà publiées : `gh run rerun <id> --failed --repo hugogebel-boop/hgdc-kit`, ou `gh workflow run release.yml --repo hugogebel-boop/hgdc-kit --ref main`. Ne rien pousser à la main dans `hgdc-kit` : corriger dans `basalte`, la copie suivante repart.
+
+**Retour arrière** : `gh variable set KIT_MIRROR --repo hugogebel-boop/basalte --body off` ; supprimer la règle des tags et remettre l'ancienne règle de `hgdc-kit` (nom « main protégée », `include` : `~DEFAULT_BRANCH`, `rules` : `deletion`, `non_fast_forward`, `required_status_checks` sur `check / check` et `secrets / gitleaks` ; `bypass_actors` : `{"actor_id": 5, "actor_type": "RepositoryRole", "bypass_mode": "always"}`) ; dans `hgdc-kit`, par PR, reprendre `.github/workflows/release.yml` et les scripts `changeset` et `version` de `package.json` du commit qui précède la fusion de `feat/mirror-of-basalte` (`git checkout <sha> -- .github/workflows/release.yml`, scripts recopiés à la main), sans toucher aux paquets. Tout ce qui a été copié est déjà dans `hgdc-kit` : aucun commit perdu ; le kit s'y modifie de nouveau et revient dans `basalte` par `git merge kit/main`.
 
 ## Premier publish d'un nouveau paquet
 
@@ -52,7 +135,7 @@ Puis, sur npmjs.com, pour chacun :
 
 `npm login`, puis `bun run release` depuis `main` à jour, `git push --tags`, et les deux réglages ci-dessus pour le nouveau paquet. Les versions suivantes passent par la CI, avec provenance.
 
-Sans session npm (voie retenue le 2026-10-15, premier envoi de `@hgdc/domains`) : le jeton d'automatisation Doppler `hgdc/prd` `NPM_PUBLISH_TOKEN` (compte `smartflowdev`, sans 2FA), écrit dans un `.npmrc` temporaire, jamais affiché, effacé aussitôt :
+Sans session npm (voie retenue le 2026-10-15, premier envoi de `@hgdc/domains`) : un jeton d'automatisation rangé dans le coffre de secrets (Doppler `hgdc/prd` `NPM_PUBLISH_TOKEN`), écrit dans un `.npmrc` temporaire, jamais affiché, effacé aussitôt :
 
 ```sh
 umask 077 && rc="$(mktemp)"   && printf '//registry.npmjs.org/:_authToken=%s
