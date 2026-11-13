@@ -8,15 +8,16 @@ Web Crypto et fonctions pures seulement : tourne dans le runtime V8 de Convex (s
 bun add @hgdc/api
 ```
 
-| Sous-chemin            | Contenu                                                                                                                                                                                                                               |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@hgdc/api/keys`       | Clés `hgdc_<produit>_<corps>` : génération (dans une action), somme de contrôle vérifiable hors ligne, `hashKey` SHA-256, `keyPreview`, `classifyKey` (anciennes clés), scopes `<produit>:read\|write\|admin`, statut et `lastUsedAt` |
-| `@hgdc/api/bearer`     | `extractBearer`, `safeEqual` (temps constant), `unauthorized()` (401 ou 403 avec `WWW-Authenticate: Bearer resource_metadata="…"`, valeurs en ASCII : `asciiChallengeText`), document RFC 9728 et son adresse                         |
-| `@hgdc/api/errors`     | problem+json RFC 9457, catalogue de types stables, erreurs de champ Zod, dialectes `resend` et `vercel`                                                                                                                               |
-| `@hgdc/api/pagination` | Curseur opaque, enveloppe `{ data, next_cursor, has_more }` depuis `.paginate()` de Convex                                                                                                                                            |
-| `@hgdc/api/ratelimit`  | Préréglages pour `@convex-dev/rate-limiter`, en-têtes `RateLimit-Policy`, `RateLimit`, `Retry-After`, IP du client                                                                                                                    |
-| `@hgdc/api/mcp`        | Serveur MCP Streamable HTTP sans état (révisions 2026-07-28, 2025-11-25, 2025-06-18), outils dérivés d'un `ToolSet` de `@hgdc/assistant`, carte du serveur (SEP-2127)                                                                 |
-| `@hgdc/api/openapi`    | OpenAPI 3.1 depuis Zod 4, composants problem+json et pagination                                                                                                                                                                       |
+| Sous-chemin             | Contenu                                                                                                                                                                                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@hgdc/api/keys`        | Clés `hgdc_<produit>_<corps>` : génération (dans une action), somme de contrôle vérifiable hors ligne, `hashKey` SHA-256, `keyPreview`, `classifyKey` (anciennes clés), scopes `<produit>:read\|write\|admin`, statut et `lastUsedAt` |
+| `@hgdc/api/bearer`      | `extractBearer`, `safeEqual` (temps constant), `unauthorized()` (401 ou 403 avec `WWW-Authenticate: Bearer resource_metadata="…"`, valeurs en ASCII : `asciiChallengeText`), document RFC 9728 et son adresse                         |
+| `@hgdc/api/errors`      | problem+json RFC 9457, catalogue de types stables, erreurs de champ Zod, dialectes `resend` et `vercel`                                                                                                                               |
+| `@hgdc/api/pagination`  | Curseur opaque, enveloppe `{ data, next_cursor, has_more }` depuis `.paginate()` de Convex                                                                                                                                            |
+| `@hgdc/api/ratelimit`   | Préréglages pour `@convex-dev/rate-limiter`, en-têtes `RateLimit-Policy`, `RateLimit`, `Retry-After` (`rateLimitedHeaders` pour un corps de 429 propre, `tokenBucketHeaders` d'après `getValue`), IP du client                        |
+| `@hgdc/api/mcp`         | Serveur MCP Streamable HTTP sans état (révisions 2026-07-28, 2025-11-25, 2025-06-18), outils dérivés d'un `ToolSet` de `@hgdc/assistant`, carte du serveur (SEP-2127)                                                                 |
+| `@hgdc/api/deprecation` | Règle de versions et de dépréciation (`API_LIFECYCLE_POLICY`, préavis de 180 jours), en-têtes `Deprecation` (RFC 9745), `Sunset` (RFC 8594) et `Link` d'une route dépréciée (`withDeprecation`)                                       |
+| `@hgdc/api/openapi`     | OpenAPI 3.1 depuis Zod 4, composants problem+json et pagination, en-têtes de limite et de dépréciation, règle de versions dans `info`                                                                                                 |
 
 ## Exemple : serveur MCP dans un `httpAction` Convex
 

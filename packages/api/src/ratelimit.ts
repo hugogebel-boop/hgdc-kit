@@ -85,6 +85,45 @@ export function rateLimitHeaders(state: RateLimitState): Record<string, string> 
 }
 
 /**
+ * Les en-têtes d'un refus : `RateLimit-Policy`, `RateLimit` à zéro et `Retry-After`. Pour une
+ * route qui écrit son propre corps de 429 ; sinon `rateLimitedResponse`.
+ */
+export function rateLimitedHeaders(options: {
+  policy: string
+  config: RateLimitConfig
+  retryAfterMs: number
+}): Record<string, string> {
+  return {
+    ...rateLimitHeaders({ ...options, remaining: 0, resetMs: options.retryAfterMs }),
+    "Retry-After": String(retryAfterSeconds(options.retryAfterMs)),
+  }
+}
+
+/**
+ * Les en-têtes d'après la valeur d'un seau à jetons (`rateLimiter.getValue` du composant, jetons
+ * fractionnaires) : jetons restants et délai avant le seau plein ; sur un refus, `Retry-After` dit
+ * quand un jeton sera revenu.
+ */
+export function tokenBucketHeaders(options: {
+  policy: string
+  config: RateLimitConfig
+  tokens: number
+  refused?: boolean
+}): Record<string, string> {
+  const { config, tokens } = options
+  const perMs = config.rate / config.period
+  const capacity = config.capacity ?? config.rate
+  const headers = rateLimitHeaders({
+    policy: options.policy,
+    config,
+    remaining: tokens,
+    resetMs: (capacity - Math.max(0, tokens)) / perMs,
+  })
+  if (options.refused) headers["Retry-After"] = String(retryAfterSeconds((1 - Math.min(1, tokens)) / perMs))
+  return headers
+}
+
+/**
  * La réponse 429 d'une limite atteinte (`{ ok: false, retryAfter }` du composant) : problème
  * `rate_limited` dans le dialecte de la route, `Retry-After` et en-têtes RateLimit.
  */
@@ -95,15 +134,7 @@ export function rateLimitedResponse(options: {
   dialect?: Dialect
 }): Response {
   const seconds = retryAfterSeconds(options.retryAfterMs)
-  const headers = {
-    ...rateLimitHeaders({
-      policy: options.policy,
-      config: options.config,
-      remaining: 0,
-      resetMs: options.retryAfterMs,
-    }),
-    "Retry-After": String(seconds),
-  }
+  const headers = rateLimitedHeaders(options)
   const body = problem("rate_limited", {
     detail: `Limite atteinte. Réessayer dans ${seconds} s.`,
     extensions: { retry_after: seconds },

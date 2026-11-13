@@ -18,6 +18,9 @@ permissions: {}
 jobs:
   # Le check du commit copié passe avant toute publication.
   check:
+    # Le workflow appelé demande `contents: read` : sans lui, sous `permissions: {}`, le run échoue au démarrage.
+    permissions:
+      contents: read
     uses: ./.github/workflows/check.yml
 
   # Seul un commit de la copie publie : il porte la ligne `Basalte-Commit: <sha>`.
@@ -82,7 +85,7 @@ jobs:
         with:
           publish-script: bun run release
           # Jeton de l'action, plus celui du bot : sans PR à ouvrir, il suffit pour les tags et les
-          # releases, et la règle des tags ne laisse passer que l'app GitHub Actions et la clé de la copie.
+          # releases (la règle des tags interdit seulement de les déplacer ou de les supprimer).
           github-token: ${{ github.token }}
       - id: versions
         if: steps.changesets.outputs.published == 'true'

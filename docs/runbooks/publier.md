@@ -28,7 +28,7 @@ Une fois, dans cet ordre. Avant le dernier geste, rien ne tourne : `kit-mirror.y
 1. Geler `hgdc-kit` et fusionner les deux PR (étapes 1 et 2 ci-dessous).
 2. **[Hugo] github.com** : ajouter `basalte` aux dépôts du jeton `HGDC_BOT_TOKEN` (_Contents_ et _Pull requests_ en écriture).
 3. Environnements, secrets et clé de la copie (étape 3).
-4. **[Hugo] npmjs.com, bloquant** : dans le _Trusted Publisher_ de **chaque** paquet `@hgdc/*`, renseigner l'environnement `npm` (utilisateur `hugogebel-boop`, dépôt `hgdc-kit`, workflow `release.yml`). Sans lui, `release.yml` (job dans l'environnement `npm`) ne publie plus. Tant qu'il manque, ne pas aller plus loin.
+4. **[Hugo] npmjs.com, bloquant** : dans le _Trusted Publisher_ de **chaque** paquet `@hgdc/*`, renseigner l'environnement `npm` (utilisateur `hugogebel-boop`, dépôt `hgdc-kit`, workflow `release.yml`). Sans lui, `release.yml` (job dans l'environnement `npm`) ne publie plus. Tant qu'il manque, ne pas aller plus loin. En ligne de commande (npm 12, `npm login` puis 2FA confirmée dans le navigateur, depuis un vrai terminal) : `npm trust list <paquet>`, `npm trust revoke <paquet> --id=<id>` pour l'ancienne déclaration, puis `npm trust github <paquet> --repo hugogebel-boop/hgdc-kit --file release.yml --env npm --allow-publish`. Fait pour les onze paquets le 2026-11-13.
 5. Règles de `hgdc-kit` (étape 4).
 6. `KIT_MIRROR=on` et première copie (étape 5).
 
@@ -62,7 +62,7 @@ Détail :
    gh repo deploy-key list -R hugogebel-boop/hgdc-kit
    ```
 
-   Puis toutes les branches (création, mise à jour, suppression, réécriture) : seule la clé de la copie écrit, plus personne à la main, ni PR, ni administrateur. Et tous les tags : la clé de la copie et l'app GitHub Actions (id 15368, tags et releases créés par `release.yml` avec son jeton).
+   Puis toutes les branches (création, mise à jour, suppression, réécriture) : seule la clé de la copie écrit, plus personne à la main, ni PR, ni administrateur. Et tous les tags : ni déplacés ni supprimés, par personne. Leur création reste libre : `release.yml` les pousse avec le jeton de l'action, et sur un compte personnel GitHub refuse l'app GitHub Actions comme exception d'une règle (« must be part of the ruleset source or owner organization », essai du 2026-11-13). Un tag ne déclenche aucune publication : `release.yml` ne part que d'un push sur `main`.
 
    ```sh
    gh api -X PUT repos/hugogebel-boop/hgdc-kit/rulesets/25082022 --input - <<'EOF'
@@ -77,15 +77,12 @@ Détail :
    EOF
    gh api -X POST repos/hugogebel-boop/hgdc-kit/rulesets --input - <<'EOF'
    {
-     "name": "tags : copie et release",
+     "name": "tags : ni déplacés ni supprimés",
      "target": "tag",
      "enforcement": "active",
      "conditions": { "ref_name": { "include": ["~ALL"], "exclude": [] } },
-     "rules": [{ "type": "creation" }, { "type": "update" }, { "type": "deletion" }],
-     "bypass_actors": [
-       { "actor_id": null, "actor_type": "DeployKey", "bypass_mode": "always" },
-       { "actor_id": 15368, "actor_type": "Integration", "bypass_mode": "always" }
-     ]
+     "rules": [{ "type": "update" }, { "type": "deletion" }],
+     "bypass_actors": []
    }
    EOF
    ```

@@ -39,6 +39,10 @@
       "types": "./dist/ratelimit.d.ts",
       "default": "./dist/ratelimit.js"
     },
+    "./deprecation": {
+      "types": "./dist/deprecation.d.ts",
+      "default": "./dist/deprecation.js"
+    },
     "./mcp": {
       "types": "./dist/mcp.d.ts",
       "default": "./dist/mcp.js"

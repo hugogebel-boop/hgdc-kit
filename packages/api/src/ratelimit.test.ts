@@ -5,8 +5,10 @@ import {
   clientIp,
   policyOf,
   rateLimitHeaders,
+  rateLimitedHeaders,
   rateLimitedResponse,
   retryAfterSeconds,
+  tokenBucketHeaders,
 } from "./ratelimit.ts"
 
 describe("préréglages", () => {
@@ -56,6 +58,31 @@ describe("en-têtes RateLimit (draft-ietf-httpapi-ratelimit-headers-11)", () => 
       dialect: "resend",
     })
     expect(((await resend.json()) as Record<string, unknown>).name).toBe("rate_limit_exceeded")
+  })
+
+  it("en-têtes d'un refus pour un corps propre : Retry-After toujours là", () => {
+    expect(rateLimitedHeaders({ policy: "apiKeyWrite", config: API_RATE_LIMITS.apiKeyWrite, retryAfterMs: 0 })).toEqual(
+      {
+        "RateLimit-Policy": '"apikeywrite";q=30;w=60',
+        RateLimit: '"apikeywrite";r=0;t=0',
+        "Retry-After": "1",
+      },
+    )
+  })
+
+  it("seau à jetons lu par getValue : restants, délai avant plein, Retry-After sur refus", () => {
+    // 600 par minute = 10 par seconde, rafale de 120.
+    const config = { kind: "token bucket" as const, rate: 600, period: MINUTE, capacity: 120 }
+    expect(tokenBucketHeaders({ policy: "send", config, tokens: 120 })).toEqual({
+      "RateLimit-Policy": '"send";q=120;w=60',
+      RateLimit: '"send";r=120;t=0',
+    })
+    expect(tokenBucketHeaders({ policy: "send", config, tokens: 60.5 }).RateLimit).toBe('"send";r=60;t=6')
+    expect(tokenBucketHeaders({ policy: "send", config, tokens: -3, refused: true })).toMatchObject({
+      RateLimit: '"send";r=0;t=12',
+      "Retry-After": "1",
+    })
+    expect(tokenBucketHeaders({ policy: "send", config, tokens: 0.95 })).not.toHaveProperty("Retry-After")
   })
 })
 

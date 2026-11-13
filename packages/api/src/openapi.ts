@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { API_LIFECYCLE_POLICY, MIN_SUNSET_NOTICE_DAYS } from "./deprecation.ts"
 import { PROBLEM_MEDIA_TYPE, PROBLEMS } from "./errors.ts"
 
 /*
@@ -73,6 +74,30 @@ const STATUS_TITLES: Record<number, string> = Object.values(PROBLEMS).reduce<Rec
   {},
 )
 
+/** En-têtes de réponse communs (`components.headers`). */
+const HEADERS: Record<string, Schema> = {
+  "RateLimit-Policy": {
+    description:
+      "Politique de limite : quota (`q`) par fenêtre de `w` secondes (draft-ietf-httpapi-ratelimit-headers).",
+    schema: { type: "string" },
+  },
+  RateLimit: {
+    description: "Requêtes restantes (`r`) et secondes avant la remise à plein (`t`).",
+    schema: { type: "string" },
+  },
+  "Retry-After": {
+    description: "Secondes à attendre avant de réessayer.",
+    required: true,
+    schema: { type: "integer" },
+  },
+  Deprecation: { description: "Date de la dépréciation de la route (RFC 9745).", schema: { type: "string" } },
+  Sunset: { description: "Date de retrait de la route (RFC 8594).", schema: { type: "string" } },
+  Link: { description: 'Page de migration : `rel="deprecation"` et `rel="sunset"`.', schema: { type: "string" } },
+}
+
+const headerRefs = (names: string[]): Record<string, Schema> =>
+  Object.fromEntries(names.map((name) => [name, { $ref: `#/components/headers/${name}` }]))
+
 /** Nom du composant de réponse d'un statut d'erreur : `Problem401`. */
 function problemResponseName(status: number): string {
   return `Problem${status}`
@@ -100,6 +125,8 @@ export type OperationOptions = {
   status?: number
   /** Statuts d'erreur possibles, en plus de 400, 401 et 403 (si scopes), 429 et 500. */
   errors?: number[]
+  /** Route dépréciée : `deprecated: true`, et ses réponses portent `Deprecation`, `Sunset` et `Link`. */
+  deprecated?: boolean
 }
 
 /** Une opération OpenAPI : paramètres, corps et réponse depuis Zod, erreurs en problem+json. */
@@ -132,15 +159,22 @@ export function operation(options: OperationOptions): Schema {
     summary: options.summary,
     ...(options.description && { description: options.description }),
     ...(options.tags && { tags: options.tags }),
+    ...(options.deprecated && { deprecated: true }),
     ...(parameters.length > 0 && { parameters }),
     ...(options.body && {
       requestBody: { required: true, content: { "application/json": { schema: jsonSchema(options.body, "input") } } },
     }),
     ...(secured && { security: [{ bearer: options.scopes }] }),
     responses: {
-      [status]: responseSchema
-        ? { description: "Succès", content: { "application/json": { schema: responseSchema } } }
-        : { description: "Succès" },
+      [status]: {
+        description: "Succès",
+        headers: headerRefs([
+          "RateLimit-Policy",
+          "RateLimit",
+          ...(options.deprecated ? ["Deprecation", "Sunset", "Link"] : []),
+        ]),
+        ...(responseSchema && { content: { "application/json": { schema: responseSchema } } }),
+      },
       ...problemResponses(errors),
     },
   }
@@ -180,7 +214,8 @@ function requiredScopes(paths: DocumentOptions["paths"]): Set<string> {
 
 /**
  * Le document OpenAPI 3.1. Chaque statut d'erreur cité par une opération devient un composant de
- * réponse `ProblemNNN` en problem+json.
+ * réponse `ProblemNNN` en problem+json. `info.description` se termine par la règle de versions,
+ * de dépréciation et de limites de débit (`API_LIFECYCLE_POLICY`), reprise en `x-api-lifecycle`.
  */
 export function openApiDocument(options: DocumentOptions): Schema {
   const undeclared = [...requiredScopes(options.paths)].filter((scope) => !Object.hasOwn(options.scopes ?? {}, scope))
@@ -201,6 +236,7 @@ export function openApiDocument(options: DocumentOptions): Schema {
         problemResponseName(status),
         {
           description: STATUS_TITLES[status] ?? "Erreur",
+          ...(status === 429 && { headers: headerRefs(["Retry-After", "RateLimit-Policy", "RateLimit"]) }),
           content: { [PROBLEM_MEDIA_TYPE]: { schema: { $ref: "#/components/schemas/Problem" } } },
         },
       ]),
@@ -210,13 +246,25 @@ export function openApiDocument(options: DocumentOptions): Schema {
     info: {
       title: options.title,
       version: options.version,
-      ...(options.description && { description: options.description }),
+      description: options.description
+        ? `${options.description}
+
+${API_LIFECYCLE_POLICY}`
+        : API_LIFECYCLE_POLICY,
+      "x-api-lifecycle": {
+        versioning: "path",
+        "breaking-changes": "new-major-version",
+        "minimum-sunset-notice-days": MIN_SUNSET_NOTICE_DAYS,
+        "deprecation-headers": ["Deprecation", "Sunset", "Link"],
+        "rate-limit-headers": ["RateLimit-Policy", "RateLimit", "Retry-After"],
+      },
     },
     servers: options.servers,
     paths: options.paths,
     components: {
       schemas: { Problem: PROBLEM_SCHEMA, ...options.schemas },
       responses,
+      headers: HEADERS,
       securitySchemes: {
         bearer: {
           type: "http",

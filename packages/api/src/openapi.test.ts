@@ -30,8 +30,13 @@ describe("OpenAPI 3.1 depuis Zod 4", () => {
     expect(responses["404"]).toEqual({ $ref: "#/components/responses/Problem404" })
     expect(responses["200"]).toEqual({
       description: "Succès",
+      headers: {
+        "RateLimit-Policy": { $ref: "#/components/headers/RateLimit-Policy" },
+        RateLimit: { $ref: "#/components/headers/RateLimit" },
+      },
       content: { "application/json": { schema: paginatedSchema(jsonSchema(Domain)) } },
     })
+    expect(op).not.toHaveProperty("deprecated")
   })
 
   it("création : corps requis et 201 ; opération publique sans 401", () => {
@@ -85,6 +90,31 @@ describe("OpenAPI 3.1 depuis Zod 4", () => {
       "x-scopes": { "mail:read": "Lire", "mail:write": "Écrire" },
     })
     expect(components.securitySchemes!.bearer).not.toHaveProperty("x-resource-metadata")
+    expect(components.responses!.Problem429!.headers).toMatchObject({
+      "Retry-After": { $ref: "#/components/headers/Retry-After" },
+    })
+    expect(components.headers!["Retry-After"]).toMatchObject({ required: true })
+  })
+
+  it("règle de versions, de dépréciation et de limites dans info", () => {
+    const doc = openApiDocument({
+      title: "Mail",
+      version: "1.0.0",
+      description: "API d'envoi.",
+      servers: [{ url: "https://api.mail.hgdc.ch" }],
+      paths: {},
+    })
+    const info = doc.info as Record<string, unknown>
+    expect(info.description).toMatch(/^API d'envoi\.\n\n## Versions et dépréciation/)
+    expect(info.description).toContain("Retry-After")
+    expect(info["x-api-lifecycle"]).toMatchObject({ "minimum-sunset-notice-days": 180 })
+  })
+
+  it("opération dépréciée : drapeau et en-têtes Deprecation, Sunset, Link", () => {
+    const op = operation({ operationId: "old", summary: "Ancienne", response: Domain, deprecated: true })
+    expect(op.deprecated).toBe(true)
+    const success = (op.responses as Record<string, { headers: object }>)["200"]!
+    expect(Object.keys(success.headers)).toEqual(["RateLimit-Policy", "RateLimit", "Deprecation", "Sunset", "Link"])
   })
 
   const listDomains = (scopes: string[]) => ({
