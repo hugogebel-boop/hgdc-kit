@@ -45,7 +45,7 @@
         "@anthropic-ai/bedrock-sdk": "0.34.4",
         "@anthropic-ai/sdk": "0.134.0",
         "@edge-runtime/vm": "5.0.0",
-        "convex": "1.46.0",
+        "convex": "1.48.0",
         "convex-test": "0.0.61",
       },
       "peerDependencies": {
@@ -61,16 +61,16 @@
     },
     "packages/auth": {
       "name": "@hgdc/auth",
-      "version": "0.40.0",
+      "version": "0.44.2",
       "dependencies": {
         "zod": "^4.6.7",
       },
       "devDependencies": {
-        "@convex-dev/better-auth": "0.12.5",
+        "@convex-dev/better-auth": "0.12.7",
         "@types/react": "19.3.0",
         "@types/react-dom": "19.3.0",
         "better-auth": "1.6.33",
-        "convex": "1.46.0",
+        "convex": "1.48.0",
         "react": "19.3.0",
         "react-dom": "19.3.0",
       },
@@ -89,7 +89,7 @@
     },
     "packages/config": {
       "name": "@hgdc/config",
-      "version": "0.5.48",
+      "version": "0.5.58",
       "bin": {
         "hgdc-stack": "./dist/cli.js",
       },
@@ -136,7 +136,7 @@
     },
     "packages/errors": {
       "name": "@hgdc/errors",
-      "version": "0.1.0",
+      "version": "0.2.0",
     },
     "packages/status": {
       "name": "@hgdc/status",
@@ -150,7 +150,7 @@
     },
     "packages/ui": {
       "name": "@hgdc/ui",
-      "version": "0.72.0",
+      "version": "0.74.2",
       "dependencies": {
         "@base-ui/react": "^1.9.0",
         "@fontsource-variable/geist": "^5.3.0",
@@ -411,7 +411,7 @@
 
     "@clack/prompts": ["@clack/prompts@1.8.1", "", { "dependencies": { "@clack/core": "1.5.1", "fast-string-width": "^3.0.2", "fast-wrap-ansi": "^0.2.0", "sisteransi": "^1.0.5" } }, "sha512-dlT1m5e/0yUL0kRNcQn7yGLVThkgbB0Ga/1AmfDDC/8ik6AIiSf2QLQO2zPYvefsHP0aFgxO93cVLCCfDp7kzQ=="],
 
-    "@convex-dev/better-auth": ["@convex-dev/better-auth@0.12.5", "", { "dependencies": { "@better-fetch/fetch": "^1.1.18", "common-tags": "^1.8.2", "convex-helpers": "^0.1.95", "jose": "^6.1.0", "remeda": "^2.32.0", "semver": "^7.7.3", "type-fest": "^5.0.0", "zod": "^4.0.0" }, "peerDependencies": { "better-auth": ">=1.6.11 <1.7.0", "convex": "^1.25.0", "react": "^18.3.1 || ^19.0.0" } }, "sha512-YFUbGk04OlINno9FpOTNZN67AP+kSQsblfep5zs1f/WTgMWjD5FymU6rSSh3mu52gukmDNnBJTjC/lj4QRpjlQ=="],
+    "@convex-dev/better-auth": ["@convex-dev/better-auth@0.12.7", "", { "dependencies": { "@better-fetch/fetch": "^1.1.18", "common-tags": "^1.8.2", "convex-helpers": "^0.1.128", "jose": "^6.1.0", "remeda": "^2.32.0", "semver": "^7.7.3", "type-fest": "^5.0.0", "zod": "^4.0.0" }, "peerDependencies": { "better-auth": ">=1.6.11 <1.7.0", "convex": "^1.25.0", "react": "^18.3.1 || ^19.0.0" } }, "sha512-CV98QD7WzWkEwuPRh6Y8xpfXSQj0W6ifxl03P0D7aqhJpr+0meBAdf0sBmyIkjehK2pwJAh7Nh0Vfa8d+nDKyA=="],
 
     "@ctrl/tinycolor": ["@ctrl/tinycolor@4.2.2", "", {}, "sha512-9rQHijqB2Rq6qOEC/xHaA6aPlsKGi5kmCQW50O1asn9g63XFeD5NmBwysriistW5Xx0JPafyD/TA7yk2S3pXGQ=="],
 
@@ -1113,7 +1113,7 @@
 
     "convert-source-map": ["convert-source-map@2.0.0", "", {}, "sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg=="],
 
-    "convex": ["convex@1.46.0", "", { "dependencies": { "esbuild": "0.27.0", "prettier": "^3.0.0", "ws": "8.21.0" }, "peerDependencies": { "@auth0/auth0-react": "^2.0.1", "@clerk/clerk-react": "^4.12.8 || ^5.0.0", "@clerk/react": "^6.4.3", "react": "^18.0.0 || ^19.0.0-0 || ^19.0.0" }, "optionalPeers": ["@auth0/auth0-react", "@clerk/clerk-react", "@clerk/react", "react"], "bin": { "convex": "bin/main.js" } }, "sha512-dhBwDQTZDOhi5SUGAX17EWNehCdNq6/UFrSL0eLZuGfMkdsQbCVWVRZCzbZ5CF+/pgvoGxtApbEoTSipqL4JTw=="],
+    "convex": ["convex@1.48.0", "", { "dependencies": { "esbuild": "0.27.0", "prettier": "^3.0.0", "ws": "8.21.0" }, "peerDependencies": { "@auth0/auth0-react": "^2.0.1", "@clerk/clerk-react": "^4.12.8 || ^5.0.0", "@clerk/react": "^6.4.3", "react": "^18.0.0 || ^19.0.0-0 || ^19.0.0" }, "optionalPeers": ["@auth0/auth0-react", "@clerk/clerk-react", "@clerk/react", "react"], "bin": { "convex": "bin/main.js" } }, "sha512-M9jEgTvCN8ziP/VgQQUH+j0ijM7g+NmQd8tFlvETK8/HMC/aaqHZwcu4hBO30X5DV2VIyYK4mOoLQGIb1766ew=="],
 
     "convex-helpers": ["convex-helpers@0.1.133", "", { "peerDependencies": { "@standard-schema/spec": "^1.0.0", "convex": "^1.46.0", "hono": "^4.0.5", "prettier": "^3.0.0", "react": "^17.0.2 || ^18.0.0 || ^19.0.0", "typescript": "^5.5 || ^6.0.0 || ^7.0.0", "zod": "^3.25.0 || ^4.0.0" }, "optionalPeers": ["@standard-schema/spec", "hono", "prettier", "react", "typescript", "zod"], "bin": { "convex-helpers": "dist/bin.cjs" } }, "sha512-No6JKuAOESBsq1RZABU31QwdlfWRNwQKHP0A43u1j+/8Dqt9TJnw7XjkHlHoxRzveVy7PfFV/ZvuKXoh5s8phg=="],
 
