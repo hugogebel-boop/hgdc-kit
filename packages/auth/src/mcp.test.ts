@@ -55,10 +55,10 @@ async function sign(payload: Record<string, unknown>, header: Record<string, unk
 
 const claims = (overrides: Record<string, unknown> = {}) => ({
   iss: HGDC_ISSUER,
-  aud: "https://app.hgdc.ch/portal/mcp",
+  aud: "https://app.hgdc.ch/analytics/mcp",
   azp: "client-mcp",
   sub: "ada",
-  scope: "portal:read portal:write offline_access",
+  scope: "analytics:read analytics:write offline_access",
   org_id: "org-acme",
   sid: "session-1",
   iat,
@@ -67,7 +67,7 @@ const claims = (overrides: Record<string, unknown> = {}) => ({
 })
 
 const options = (overrides: Partial<VerifyMcpAccessTokenOptions> = {}): VerifyMcpAccessTokenOptions => ({
-  product: "portal",
+  product: "analytics",
   keys: { keys: [publicJwk] },
   now: NOW,
   ...overrides,
@@ -85,7 +85,7 @@ async function rejection(token: string, opts = options()): Promise<McpTokenRejec
 
 describe("produits, adresses et scopes", () => {
   it("une adresse canonique par produit, Account sur son domaine", () => {
-    expect(mcpResource("portal")).toBe("https://app.hgdc.ch/portal/mcp")
+    expect(mcpResource("analytics")).toBe("https://app.hgdc.ch/analytics/mcp")
     expect(mcpResource("account")).toBe("https://account.hgdc.ch/mcp")
     expect(MCP_RESOURCES).toHaveLength(MCP_PRODUCTS.length)
     for (const resource of MCP_RESOURCES) expect(resource).not.toMatch(/\/$/)
@@ -118,33 +118,33 @@ describe("produits, adresses et scopes", () => {
 
 describe("verifyMcpAccessToken", () => {
   it("accepte un jeton d'Account pour ce produit et ne rend que ses scopes", async () => {
-    const token = await sign(claims({ scope: "portal:read portal:write mail:write offline_access" }))
+    const token = await sign(claims({ scope: "analytics:read analytics:write mail:write offline_access" }))
     expect(await verifyMcpAccessToken(token, options())).toEqual({
-      product: "portal",
+      product: "analytics",
       userId: "ada",
       clientId: "client-mcp",
       organizationId: "org-acme",
-      scopes: ["portal:read", "portal:write"],
+      scopes: ["analytics:read", "analytics:write"],
       canWrite: true,
       expiresAt: (iat + 900) * 1000,
     })
   })
 
   it("accepte une audience en tableau d'un seul élément", async () => {
-    expect(await rejection(await sign(claims({ aud: ["https://app.hgdc.ch/portal/mcp"] })))).toBe("OK")
+    expect(await rejection(await sign(claims({ aud: ["https://app.hgdc.ch/analytics/mcp"] })))).toBe("OK")
   })
 
   it("refuse un jeton émis pour un autre produit (confused deputy)", async () => {
-    // Audience de Mail, même avec un scope Portal glissé dedans.
-    const mail = await sign(claims({ aud: "https://app.hgdc.ch/mail/mcp", scope: "mail:write portal:write" }))
+    // Audience de Mail, même avec un scope Analytics glissé dedans.
+    const mail = await sign(claims({ aud: "https://app.hgdc.ch/mail/mcp", scope: "mail:write analytics:write" }))
     expect(await rejection(mail)).toBe("wrong_audience")
-    // Audience changée vers Portal (GHSA-p2fr-6hmx-4528) sans scope Portal accordé : rien.
+    // Audience changée vers Analytics (GHSA-p2fr-6hmx-4528) sans scope Analytics accordé : rien.
     const swapped = await sign(claims({ scope: "mail:read mail:write offline_access" }))
     expect(await rejection(swapped)).toBe("insufficient_scope")
   })
 
   it("refuse une audience multiple, un id_token et un JWT Convex signés par la même clé", async () => {
-    const multi = await sign(claims({ aud: ["https://app.hgdc.ch/portal/mcp", "https://app.hgdc.ch/mail/mcp"] }))
+    const multi = await sign(claims({ aud: ["https://app.hgdc.ch/analytics/mcp", "https://app.hgdc.ch/mail/mcp"] }))
     expect(await rejection(multi)).toBe("wrong_audience")
     expect(await rejection(await sign(claims({ aud: "client-mcp" })))).toBe("wrong_audience")
     const convexJwt = await sign(claims({ iss: "https://actions.account.hgdc.ch", aud: "convex" }))
@@ -166,8 +166,8 @@ describe("verifyMcpAccessToken", () => {
   })
 
   it("refuse un payload modifié après signature", async () => {
-    const [head, , signature] = (await sign(claims({ scope: "portal:read" }))).split(".")
-    const forged = b64url(JSON.stringify(claims({ scope: "portal:write" })))
+    const [head, , signature] = (await sign(claims({ scope: "analytics:read" }))).split(".")
+    const forged = b64url(JSON.stringify(claims({ scope: "analytics:write" })))
     expect(await rejection(`${head}.${forged}.${signature}`)).toBe("bad_signature")
   })
 
@@ -205,7 +205,7 @@ describe("verifyMcpAccessToken", () => {
   })
 
   it("lecture seule : 403 pour une écriture", async () => {
-    const reader = await sign(claims({ scope: "portal:read" }))
+    const reader = await sign(claims({ scope: "analytics:read" }))
     expect(await rejection(reader)).toBe("OK")
     expect(await rejection(reader, options({ require: "write" }))).toBe("insufficient_scope")
     const error = await verifyMcpAccessToken(reader, options({ require: "write" })).catch((e: unknown) => e)
@@ -221,13 +221,16 @@ describe("verifyMcpAccessToken", () => {
       return mcpTokenChallenge(error as McpTokenError)
     }
     const noProductScope = await sign(claims({ scope: "openid status:read" }))
-    expect(await refusal(noProductScope)).toEqual({ error: "insufficient_scope", scope: "portal:read" })
+    expect(await refusal(noProductScope)).toEqual({ error: "insufficient_scope", scope: "analytics:read" })
     expect(await refusal(await sign(claims({ scope: undefined })))).toEqual({
       error: "insufficient_scope",
-      scope: "portal:read",
+      scope: "analytics:read",
     })
-    const reader = await sign(claims({ scope: "portal:read" }))
-    expect(await refusal(reader, { require: "write" })).toEqual({ error: "insufficient_scope", scope: "portal:write" })
+    const reader = await sign(claims({ scope: "analytics:read" }))
+    expect(await refusal(reader, { require: "write" })).toEqual({
+      error: "insufficient_scope",
+      scope: "analytics:write",
+    })
     expect(await refusal(await sign(claims({ iss: "https://evil.ch" })))).toEqual({ error: "invalid_token" })
     expect(mcpTokenChallenge(new McpTokenError("insufficient_scope", "x"))).toEqual({ error: "insufficient_scope" })
   })

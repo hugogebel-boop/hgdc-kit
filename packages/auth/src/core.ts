@@ -42,7 +42,7 @@ import {
 export const CORE_EVENTS_PATH = "/hgdc/v1/core-events"
 
 /** Les modules d'un projet, par mot technique. */
-export const CORE_MODULES = ["host", "mail", "status", "analytics", "id", "docs", "iassistant"] as const
+export const CORE_MODULES = ["host", "mail", "status", "analytics", "id", "docs"] as const
 export type CoreModule = (typeof CORE_MODULES)[number]
 
 /** `hosted` : servi par Déploiements. `external` : hébergé ailleurs, donc sans Déploiements. */

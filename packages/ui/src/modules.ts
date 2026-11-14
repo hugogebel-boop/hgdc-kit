@@ -5,7 +5,7 @@ import type { FamilyProduct } from "./family-svg.ts"
  * (`host`) reste dans les adresses, les clés et le code ; l'interface n'affiche que le nom du module.
  * Logique pure : la barre (`module-bar.tsx`) et son stockage (`module-bar-store.ts`) s'y appuient.
  */
-export type ModuleWord = Extract<FamilyProduct, "host" | "mail" | "status" | "analytics" | "id" | "docs" | "iassistant">
+export type ModuleWord = Extract<FamilyProduct, "host" | "mail" | "status" | "analytics" | "id" | "docs">
 
 export type BasalteModule = {
   word: ModuleWord
@@ -23,7 +23,6 @@ export const BASALTE_MODULES: ReadonlyArray<BasalteModule> = [
   { word: "analytics", name: "Statistiques", purpose: "Compter les visites" },
   { word: "id", name: "Connexion", purpose: "Connecter tes utilisateurs" },
   { word: "docs", name: "Documentation", purpose: "Publier une documentation" },
-  { word: "iassistant", name: "Assistant IA", purpose: "Répondre aux visiteurs" },
 ]
 
 /** Les modules montrés tant que la personne n'a rien choisi. */

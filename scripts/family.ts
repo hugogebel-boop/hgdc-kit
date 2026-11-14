@@ -28,18 +28,7 @@ import { Resvg } from "@resvg/resvg-js"
 
 const FAMILY = new URL("../packages/ui/family/", import.meta.url)
 const EMAIL = new URL("../packages/ui/email-icons/", import.meta.url)
-const PRODUCTS = [
-  "account",
-  "host",
-  "mail",
-  "portal",
-  "status",
-  "analytics",
-  "docs",
-  "iassistant",
-  "id",
-  "manager",
-] as const
+const PRODUCTS = ["account", "host", "mail", "status", "analytics", "docs", "id", "manager"] as const
 
 /** Marge du favicon, sans fond : le pictogramme le plus grand possible dans l'onglet. */
 const FAVICON_MARGIN = 0.04

@@ -284,16 +284,12 @@
   --product-host-to: #2b63f2;
   --product-mail-from: #fa3a58;
   --product-mail-to: #ec3052;
-  --product-portal-from: #8b5cff;
-  --product-portal-to: #7b4bf7;
   --product-status-from: #11ce8b;
   --product-status-to: #09b077;
   --product-analytics-from: #ffb020;
   --product-analytics-to: #e58309;
   --product-docs-from: #0ec1dc;
   --product-docs-to: #0aa3c1;
-  --product-iassistant-from: #d946ef;
-  --product-iassistant-to: #c026d3;
   --product-id-from: #ff2a2a;
   --product-id-to: #e60000;
   --product-manager-from: #ff6a3d;
@@ -912,11 +908,9 @@
 :root[data-hgdc-product="account"] [data-slot="shell-frame"] [data-product="account"],
 :root[data-hgdc-product="host"] [data-slot="shell-frame"] [data-product="host"],
 :root[data-hgdc-product="mail"] [data-slot="shell-frame"] [data-product="mail"],
-:root[data-hgdc-product="portal"] [data-slot="shell-frame"] [data-product="portal"],
 :root[data-hgdc-product="status"] [data-slot="shell-frame"] [data-product="status"],
 :root[data-hgdc-product="analytics"] [data-slot="shell-frame"] [data-product="analytics"],
 :root[data-hgdc-product="docs"] [data-slot="shell-frame"] [data-product="docs"],
-:root[data-hgdc-product="iassistant"] [data-slot="shell-frame"] [data-product="iassistant"],
 :root[data-hgdc-product="id"] [data-slot="shell-frame"] [data-product="id"],
 :root[data-hgdc-product="manager"] [data-slot="shell-frame"] [data-product="manager"] {
   display: contents;

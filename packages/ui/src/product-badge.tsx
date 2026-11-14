@@ -11,11 +11,9 @@ export const PRODUCT_GRADIENT: Readonly<Record<FamilyProduct, { from: string; to
   account: { from: "#ff6a3d", to: "#fc582e" },
   host: { from: "#3b7bff", to: "#2b63f2" },
   mail: { from: "#fa3a58", to: "#ec3052" },
-  portal: { from: "#8b5cff", to: "#7b4bf7" },
   status: { from: "#11ce8b", to: "#09b077" },
   analytics: { from: "#ffb020", to: "#e58309" },
   docs: { from: "#0ec1dc", to: "#0aa3c1" },
-  iassistant: { from: "#d946ef", to: "#c026d3" },
   id: { from: "#ff2a2a", to: "#e60000" },
   manager: { from: "#ff6a3d", to: "#fc582e" },
 }

@@ -1,8 +1,6 @@
 import Activity01Icon from "@hugeicons/core-free-icons/Activity01Icon"
 import Analytics01Icon from "@hugeicons/core-free-icons/Analytics01Icon"
 import BookOpen01Icon from "@hugeicons/core-free-icons/BookOpen01Icon"
-import BubbleChatIcon from "@hugeicons/core-free-icons/BubbleChatIcon"
-import Briefcase01Icon from "@hugeicons/core-free-icons/Briefcase01Icon"
 import Mail01Icon from "@hugeicons/core-free-icons/Mail01Icon"
 import Rocket01Icon from "@hugeicons/core-free-icons/Rocket01Icon"
 import UserGroupIcon from "@hugeicons/core-free-icons/UserGroupIcon"
@@ -187,8 +185,6 @@ export const HGDC_PRODUCTS: ReadonlyArray<HgdcCatalogProduct> = [
     "live",
     "E-mails",
   ),
-  // Masqué temporairement le 2026-11-03 ; la console reste en ligne.
-  product("Portal", "Un espace partagé où ton client suit son projet, signe et paie.", Briefcase01Icon, "soon"),
   product("Status", "La surveillance de tes sites et ta page de statut.", Activity01Icon, "live", "Surveillance"),
   product("Analytics", "Tes visiteurs mesurés, sans cookies ni bannière.", Analytics01Icon, "live", "Statistiques"),
   product(
@@ -197,13 +193,6 @@ export const HGDC_PRODUCTS: ReadonlyArray<HgdcCatalogProduct> = [
     BookOpen01Icon,
     "live",
     "Documentation",
-  ),
-  product(
-    "IAssistant",
-    "Une bulle de chat IA sur ton site, qui répond à tes visiteurs.",
-    BubbleChatIcon,
-    "preview",
-    "Assistant IA",
   ),
   id(),
   HGDC_MANAGER,

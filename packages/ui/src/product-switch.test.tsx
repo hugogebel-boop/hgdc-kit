@@ -191,27 +191,27 @@ describe("ouverture des sessions des autres modules (ADR 0026)", () => {
 
   describe("selon la session du module ouvert", () => {
     it("session ouverte : la file part, après avoir lu la session du module ouvert", async () => {
-      const fetch = sessions({ "/iassistant": open() })
-      startSessionOpening(["/mail"], document, "/iassistant")
+      const fetch = sessions({ "/docs": open() })
+      startSessionOpening(["/mail"], document, "/docs")
       await settle()
-      expect(fetch).toHaveBeenCalledWith(`/iassistant${SESSION_CHECK_PATH}`, expect.anything())
+      expect(fetch).toHaveBeenCalledWith(`/docs${SESSION_CHECK_PATH}`, expect.anything())
       expect(frames()).toEqual([`/mail${SESSION_OPEN_PATH}`])
     })
 
     it("démo sans session : rien ne part, et la limite par jour n'est pas consommée", async () => {
-      startSessionOpening(["/mail", "/status"], document, "/iassistant")
+      startSessionOpening(["/mail", "/status"], document, "/docs")
       await settle()
       expect(frames()).toEqual([])
       expect(localStorage.getItem(`${SESSION_OPEN_KEY_PREFIX}/mail`)).toBeNull()
     })
 
     it("lecture en échec : rien ne part", async () => {
-      sessions({ "/iassistant": new Response(null, { status: 500 }) })
-      startSessionOpening(["/mail"], document, "/iassistant")
+      sessions({ "/docs": new Response(null, { status: 500 }) })
+      startSessionOpening(["/mail"], document, "/docs")
       await settle()
       expect(frames()).toEqual([])
-      sessions({ "/iassistant": new Error("réseau") })
-      startSessionOpening(["/mail"], document, "/iassistant")
+      sessions({ "/docs": new Error("réseau") })
+      startSessionOpening(["/mail"], document, "/docs")
       await settle()
       expect(frames()).toEqual([])
     })

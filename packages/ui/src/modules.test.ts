@@ -21,7 +21,8 @@ describe("modules de Basalte", () => {
 
   it("reconnaît un mot de module, rien d'autre", () => {
     expect(isModuleWord("mail")).toBe(true)
-    for (const value of ["manager", "portal", "Mail", 3, null, undefined]) expect(isModuleWord(value)).toBe(false)
+    for (const value of ["manager", "portal", "iassistant", "Mail", 3, null, undefined])
+      expect(isModuleWord(value)).toBe(false)
   })
 
   it("trouve un module par son mot, refuse un mot inconnu", () => {
@@ -64,11 +65,7 @@ describe("shownModules", () => {
 
 describe("hiddenModules", () => {
   it("rend les absents dans l'ordre par défaut, quel que soit l'ordre de la barre", () => {
-    expect(hiddenModules(["iassistant", "host", "analytics", "mail"]).map((item) => item.word)).toEqual([
-      "status",
-      "id",
-      "docs",
-    ])
+    expect(hiddenModules(["docs", "host", "analytics", "mail"]).map((item) => item.word)).toEqual(["status", "id"])
   })
 
   it("rend tout pour une barre vide, rien pour une barre complète", () => {

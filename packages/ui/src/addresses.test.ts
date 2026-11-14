@@ -29,7 +29,7 @@ describe("adresses d'un produit (@hgdc/ui/addresses)", () => {
 
   it("un produit hors d'app.hgdc.ch reste à la racine de son hôte", () => {
     expect(productAddresses("Account")).toMatchObject({ basePath: "", appUrl: "https://account.hgdc.ch" })
-    expect(productAddresses("portal").convexUrl).toBe("https://convex.portal.hgdc.ch")
+    expect(productAddresses("exemple").convexUrl).toBe("https://convex.exemple.hgdc.ch")
   })
 
   it("dans l'app : la base vient du build, un Convex de dev de .env.local", () => {
@@ -64,7 +64,8 @@ describe("adresses d'un produit (@hgdc/ui/addresses)", () => {
     expect(Object.keys(PRODUCT_ORIGINS)).toEqual([...APP_PRODUCTS])
     expect(PRODUCT_ORIGINS["docs"]).toEqual({ origin: "https://app.hgdc.ch", basePath: "/docs" })
     expect(isAppProduct("Status")).toBe(true)
-    expect(isAppProduct("portal")).toBe(true)
+    expect(isAppProduct("portal")).toBe(false)
+    expect(isAppProduct("iassistant")).toBe(false)
     expect(isAppProduct("account")).toBe(false)
   })
 })
@@ -91,7 +92,8 @@ describe("vues d'un produit (ADR 0014)", () => {
 
   it("liste fermée des origines des consoles", () => {
     expect(CONSOLE_ORIGINS).toContain("https://app.hgdc.ch")
-    expect(CONSOLE_ORIGINS).toContain("https://iassistant.hgdc.ch")
+    expect(CONSOLE_ORIGINS).toContain("https://manager.hgdc.ch")
+    expect(CONSOLE_ORIGINS).not.toContain("https://iassistant.hgdc.ch")
     expect(CONSOLE_ORIGINS).not.toContain("https://account.hgdc.ch")
     expect(CONSOLE_ORIGINS).toHaveLength(APP_PRODUCTS.length + 1)
   })

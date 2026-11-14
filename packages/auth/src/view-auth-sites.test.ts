@@ -16,7 +16,7 @@ describe("viewAuthSites (ADR 0014)", () => {
   })
 
   it("même origine que soloOrigin de @hgdc/ui", () => {
-    for (const product of ["analytics", "mail", "host", "portal", "iassistant"])
+    for (const product of ["analytics", "mail", "host", "manager"])
       expect(viewAuthSites(product, { siteUrl: "https://app.hgdc.ch", basePath: `/${product}` }).solo.baseURL).toBe(
         soloOrigin(product),
       )

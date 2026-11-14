@@ -96,21 +96,21 @@ import {
 
 const keys = createHgdcJwks() // une fois par module
 const challenge = {
-  resourceMetadata: protectedResourceMetadataUrl(mcpResource("portal")),
-  scope: "portal:read portal:write",
+  resourceMetadata: protectedResourceMetadataUrl(mcpResource("mail")),
+  scope: "mail:read mail:write",
 }
 
-// GET /.well-known/oauth-protected-resource/portal/mcp
-protectedResourceMetadataResponse(mcpProtectedResourceMetadata("portal", { resourceName: "Portal" }))
+// GET /.well-known/oauth-protected-resource/mail/mcp
+protectedResourceMetadataResponse(mcpProtectedResourceMetadata("mail", { resourceName: "Mail" }))
 
 // Chaque requête MCP
 const token = extractBearer(request)
 if (!token) return unauthorized(challenge)
 try {
-  const access = await verifyMcpAccessToken(token, { product: "portal", keys, require: "read" })
+  const access = await verifyMcpAccessToken(token, { product: "mail", keys, require: "read" })
   // access.userId, access.organizationId : vérifier encore que la personne est membre de l'organisation.
 } catch (error) {
-  // 401 invalid_token, ou 403 insufficient_scope avec le scope qui manque (`portal:read`, `portal:write`)
+  // 401 invalid_token, ou 403 insufficient_scope avec le scope qui manque (`mail:read`, `mail:write`)
   if (error instanceof McpTokenError) return unauthorized({ ...challenge, ...mcpTokenChallenge(error) })
   throw error
 }

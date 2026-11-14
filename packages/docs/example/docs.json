@@ -136,11 +136,6 @@
             "icon": "/images/famille/mail.svg"
           },
           {
-            "label": "Portal",
-            "href": "https://portal.hgdc.ch",
-            "icon": "/images/famille/portal.svg"
-          },
-          {
             "label": "Status",
             "href": "https://status.hgdc.ch",
             "icon": "/images/famille/status.svg"

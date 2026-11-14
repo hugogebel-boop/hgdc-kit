@@ -33,7 +33,7 @@ export function ConfirmationCodeEmail({ code }: { code: string }): ReactElement 
   )
 }
 
-/** HGDC Portal : rejoindre l'espace d'un client. */
+/** Manager : rejoindre l'organisation d'un client. */
 export function InvitationEmail({
   inviter,
   organization,
@@ -44,13 +44,11 @@ export function InvitationEmail({
   url: string
 }): ReactElement {
   return (
-    <EmailLayout product="Portal" preview={`${inviter} t'invite à rejoindre ${organization} sur Portal.`}>
+    <EmailLayout product="Manager" preview={`${inviter} t'invite à rejoindre ${organization}.`}>
       <EmailHeading>
         {inviter} t&apos;invite dans {organization}
       </EmailHeading>
-      <EmailText>
-        Tu pourras suivre l&apos;avancement du projet, signer les documents et payer les factures au même endroit.
-      </EmailText>
+      <EmailText>Tu retrouveras ses projets et son équipe au même endroit.</EmailText>
       <EmailDetails
         items={[
           { label: "Organisation", value: organization },
@@ -142,7 +140,7 @@ export const SHOWCASE: Readonly<Record<string, ReactElement>> = {
     <InvitationEmail
       inviter="Claire Dupont"
       organization="Atelier Dupont"
-      url="https://portal.hgdc.ch/invitations/8fK2pQ7v?source=email&lang=fr"
+      url="https://manager.hgdc.ch/invitations/8fK2pQ7v?source=email&lang=fr"
     />
   ),
   "alerte-de-panne": (

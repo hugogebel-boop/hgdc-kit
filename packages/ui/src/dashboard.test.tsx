@@ -28,7 +28,6 @@ const MODULE_NAMES: Record<string, string> = {
   Status: "Surveillance",
   Analytics: "Statistiques",
   Docs: "Documentation",
-  IAssistant: "Assistant IA",
   ID: "Connexion",
   // Le compte commun garde le mot `account` dans ses adresses, mais s’affiche ID.
   Account: "ID",
@@ -36,17 +35,7 @@ const MODULE_NAMES: Record<string, string> = {
 
 describe("catalogue des produits", () => {
   it("décrit chaque produit par son mot, son sous-domaine et son état", () => {
-    expect(HGDC_PRODUCTS.map((p) => p.word)).toEqual([
-      "Host",
-      "Mail",
-      "Portal",
-      "Status",
-      "Analytics",
-      "Docs",
-      "IAssistant",
-      "ID",
-      "Manager",
-    ])
+    expect(HGDC_PRODUCTS.map((p) => p.word)).toEqual(["Host", "Mail", "Status", "Analytics", "Docs", "ID", "Manager"])
     for (const product of [HGDC_ACCOUNT, ...HGDC_PRODUCTS]) {
       // Un module de Basalte s'affiche sous son nom de fonction ; les autres par leur mot.
       expect(product.name).toBe(MODULE_NAMES[product.word] ?? product.word)
@@ -65,11 +54,10 @@ describe("catalogue des produits", () => {
       "Surveillance",
       "Statistiques",
       "Documentation",
-      "Assistant IA",
       "Connexion",
     ])
     expect(entries.find((e) => e.current)?.name).toBe("E-mails")
-    expect(entries.filter((e) => e.hint !== undefined).map((e) => e.name)).toEqual(["Assistant IA"])
+    expect(entries.filter((e) => e.hint !== undefined).map((e) => e.name)).toEqual([])
   })
 
   it("envoie chaque produit vers son entrée connectée, ID vers sa racine", () => {
@@ -82,7 +70,6 @@ describe("catalogue des produits", () => {
       Surveillance: "https://app.hgdc.ch/status/auth/hgdc?refresh=background&next=/",
       Statistiques: "https://app.hgdc.ch/analytics/auth/hgdc?refresh=background&next=/",
       Documentation: "https://app.hgdc.ch/docs/auth/hgdc?refresh=background&next=/",
-      "Assistant IA": "https://app.hgdc.ch/iassistant/auth/hgdc?refresh=background&next=/",
       Connexion: "https://id.hgdc.ch",
     })
     expect(HGDC_ACCOUNT.entryHref).toBe(HGDC_ACCOUNT.href)

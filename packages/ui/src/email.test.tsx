@@ -65,8 +65,8 @@ describe("EmailLayout", () => {
   it("prend l'accent du catalogue, ou celui du client, avec un texte lisible dessus", async () => {
     const button = (accent?: string) =>
       renderEmail(
-        <EmailLayout product="Portal" preview="x" accent={accent}>
-          <EmailButton href="https://portal.hgdc.ch">Ouvrir</EmailButton>
+        <EmailLayout product="Manager" preview="x" accent={accent}>
+          <EmailButton href="https://manager.hgdc.ch">Ouvrir</EmailButton>
         </EmailLayout>,
       )
     expect((await button()).html).toContain(`background-color:${HGDC_EMAIL_ACCENT.light}`)
@@ -118,9 +118,9 @@ describe("EmailLayout", () => {
 
 describe("liens", () => {
   it("garde le lien tel quel : ni redirection, ni paramètre ajouté", async () => {
-    const url = "https://portal.hgdc.ch/invitations/8fK2?source=email&lang=fr#haut"
+    const url = "https://manager.hgdc.ch/invitations/8fK2?source=email&lang=fr#haut"
     const { html, text } = await renderEmail(
-      <EmailLayout product="Portal" preview="x">
+      <EmailLayout product="Manager" preview="x">
         <EmailButton href={url}>Voir l&apos;invitation</EmailButton>
         <EmailText>
           Ou <EmailLink href="mailto:aide@hgdc.ch">écris-nous</EmailLink>.

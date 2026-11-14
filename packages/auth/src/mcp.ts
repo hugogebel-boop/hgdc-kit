@@ -26,17 +26,7 @@ import { acceptedIssuers, HGDC_ISSUER } from "./index.ts"
  */
 
 /** Produits qui servent un MCP protégé par Account, en minuscules. */
-export const MCP_PRODUCTS = [
-  "account",
-  "analytics",
-  "docs",
-  "host",
-  "iassistant",
-  "mail",
-  "manager",
-  "portal",
-  "status",
-] as const
+export const MCP_PRODUCTS = ["account", "analytics", "docs", "host", "mail", "manager", "status"] as const
 
 export type McpProduct = (typeof MCP_PRODUCTS)[number]
 
@@ -84,7 +74,7 @@ export function mcpScopes(product: McpProduct): [string, string] {
 /** Tous les scopes de produit qu'un client MCP peut recevoir. */
 export const MCP_SCOPES: readonly string[] = MCP_PRODUCTS.flatMap(mcpScopes)
 
-/** `portal:write` donne `{ product: "portal", right: "write" }` ; tout autre texte `null`. */
+/** `mail:write` donne `{ product: "mail", right: "write" }` ; tout autre texte `null`. */
 export function parseMcpScope(scope: string): { product: McpProduct; right: McpRight } | null {
   const [product, right, ...rest] = scope.split(":")
   if (rest.length > 0 || product === undefined || right === undefined) return null
