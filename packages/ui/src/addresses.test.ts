@@ -45,11 +45,13 @@ describe("adresses d'un produit (@hgdc/ui/addresses)", () => {
   })
 
   it("base du build : /<mot> pour vite build, racine pour vite dev, surcharge d'abord", () => {
-    expect(productBasePath("analytics", { command: "build" })).toBe("/analytics")
-    expect(productBasePath("analytics")).toBe("/analytics")
-    expect(productBasePath("analytics", { command: "serve" })).toBe("")
+    expect(productBasePath("mail", { command: "build" })).toBe("/mail")
+    expect(productBasePath("mail")).toBe("/mail")
+    expect(productBasePath("mail", { command: "serve" })).toBe("")
     expect(productBasePath("status", { override: "/", command: "build" })).toBe("")
-    expect(productBasePath("analytics", { override: "/analytics/", command: "serve" })).toBe("/analytics")
+    expect(productBasePath("mail", { override: "/mail/", command: "serve" })).toBe("/mail")
+    // Statistiques vit dans Manager depuis le 2026-11-14 : plus de base à lui.
+    expect(productBasePath("analytics", { command: "build" })).toBe("")
     expect(productBasePath("account", { command: "build" })).toBe("")
     expect(productBasePath("status", { override: "", command: "build" })).toBe("/status")
   })

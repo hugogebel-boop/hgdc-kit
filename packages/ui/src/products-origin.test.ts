@@ -52,15 +52,17 @@ describe("barre des produits sous une origine partagée (ADR 0020)", () => {
   })
 
   it("depuis app.hgdc.ch : liens relatifs et marqués pour les produits servis là, absolus ailleurs", () => {
-    const { products, account } = shellProductEntries({ current: "analytics", pageOrigin: APP })
+    const { products, account } = shellProductEntries({ current: "docs", pageOrigin: APP })
     const by = Object.fromEntries(products.map((entry) => [entry.badge, entry]))
     expect(by.mail).toMatchObject({ href: "/mail/auth/hgdc?refresh=background&next=/", sameOrigin: true })
     expect(by.host).toMatchObject({ href: "/host/auth/hgdc?refresh=background&next=/", sameOrigin: true })
     expect(by.status).toMatchObject({ href: "/status/auth/hgdc?refresh=background&next=/", sameOrigin: true })
     expect(by.portal).toBeUndefined()
     // Le produit courant : sa racine sous sa base, sans détour par l'entrée, jamais marqué.
-    expect(by.analytics).toMatchObject({ href: "/analytics/", current: true })
-    expect(by.analytics?.sameOrigin).toBeUndefined()
+    expect(by.docs).toMatchObject({ href: "/docs/", current: true })
+    expect(by.docs?.sameOrigin).toBeUndefined()
+    // Statistiques vit dans Manager : son entrée passe par son ancien nom, que la passerelle renvoie.
+    expect(by.analytics).toMatchObject({ href: "https://analytics.hgdc.ch/auth/hgdc?refresh=background&next=/" })
     expect(account).toMatchObject({
       name: "Manager",
       href: "/manager/auth/hgdc?refresh=background&next=/",
@@ -69,11 +71,11 @@ describe("barre des produits sous une origine partagée (ADR 0020)", () => {
   })
 
   it("dernière organisation connue : l'entrée mène droit à /o/<organisation>, Manager garde l'accueil", () => {
-    const { products, account } = shellProductEntries({ current: "analytics", pageOrigin: APP, organization: "hgdc" })
+    const { products, account } = shellProductEntries({ current: "docs", pageOrigin: APP, organization: "hgdc" })
     const by = Object.fromEntries(products.map((entry) => [entry.badge, entry]))
     expect(by.mail).toMatchObject({ href: "/mail/auth/hgdc?refresh=background&next=%2Fo%2Fhgdc", sameOrigin: true })
     expect(by.host?.href).toBe("/host/auth/hgdc?refresh=background&next=%2Fo%2Fhgdc")
-    expect(by.analytics).toMatchObject({ href: "/analytics/", current: true })
+    expect(by.docs).toMatchObject({ href: "/docs/", current: true })
     expect(account.href).toBe("/manager/auth/hgdc?refresh=background&next=/")
   })
 

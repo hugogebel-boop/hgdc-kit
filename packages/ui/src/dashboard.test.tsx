@@ -68,7 +68,7 @@ describe("catalogue des produits", () => {
       Déploiements: "https://app.hgdc.ch/host/auth/hgdc?refresh=background&next=/",
       "E-mails": "https://app.hgdc.ch/mail/auth/hgdc?refresh=background&next=/",
       Surveillance: "https://app.hgdc.ch/status/auth/hgdc?refresh=background&next=/",
-      Statistiques: "https://app.hgdc.ch/analytics/auth/hgdc?refresh=background&next=/",
+      Statistiques: "https://analytics.hgdc.ch/auth/hgdc?refresh=background&next=/",
       Documentation: "https://app.hgdc.ch/docs/auth/hgdc?refresh=background&next=/",
       Connexion: "https://id.hgdc.ch",
     })
