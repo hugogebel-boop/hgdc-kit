@@ -54,13 +54,15 @@ function DialogContent({
   ...props
 }: DialogPrimitive.Popup.Props & { showClose?: boolean }): React.JSX.Element {
   const sheet = React.useContext(SheetContext)
+  // `[&>form]:contents` (ici et plus bas) : un `<form>` qui enveloppe en-tête, corps et pied les
+  // laisse dans la grille, avec son écart ; sans ça, la description touchait le premier champ.
   if (sheet) {
     return (
       <DrawerContent {...(props as DrawerPrimitive.Popup.Props)}>
         <div
           data-slot="dialog-content"
           className={cn(
-            "grid min-h-0 flex-1 grid-cols-1 content-start gap-4 overflow-y-auto overscroll-contain px-5 pt-3 pb-5",
+            "grid min-h-0 flex-1 grid-cols-1 content-start gap-4 overflow-y-auto overscroll-contain px-5 pt-3 pb-5 [&>form]:contents",
             sheetClasses(className),
           )}
         >
@@ -86,7 +88,7 @@ function DialogContent({
           // fermée pendant son ouverture repart de là où elle en est. Elle
           // monte de 0.97 à 1 sur la courbe iOS, centrée — une boîte modale
           // n'a pas d'ancre dont partir.
-          "fixed z-50 grid gap-4 overflow-y-auto bg-popover text-popover-foreground shadow-2xl shadow-black/10 outline-none",
+          "fixed z-50 grid gap-4 overflow-y-auto bg-popover text-popover-foreground shadow-2xl shadow-black/10 outline-none [&>form]:contents",
           // Écran large seulement : sous `lg`, c'est la feuille ci-dessus.
           "lg:top-1/2 lg:left-1/2 lg:max-h-[calc(100dvh-2rem)] lg:w-[calc(100%-2rem)] lg:max-w-lg lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-3xl lg:p-6 lg:transition-[opacity,scale] lg:duration-(--duration-slow) lg:ease-ios lg:data-ending-style:scale-[0.97] lg:data-ending-style:opacity-0 lg:data-ending-style:duration-(--duration-base) lg:data-starting-style:scale-[0.97] lg:data-starting-style:opacity-0",
           className,

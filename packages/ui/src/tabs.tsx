@@ -29,6 +29,12 @@ function useOverflowEdges(forwarded: React.Ref<HTMLDivElement> | undefined): Rea
       node.toggleAttribute("data-overflow-start", max > 1 && node.scrollLeft > 1)
       node.toggleAttribute("data-overflow-end", max > 1 && node.scrollLeft < max - 1)
     }
+    // L'onglet ouvert reste visible à l'arrivée : sans ça, sur téléphone, la page « Réglages » d'une
+    // rangée trop longue s'ouvrait avec son propre onglet caché hors du bord.
+    const active = node.querySelector<HTMLElement>("[data-active]")
+    if (active && node.scrollWidth > node.clientWidth) {
+      node.scrollLeft = Math.max(0, active.offsetLeft - (node.clientWidth - active.offsetWidth) / 2)
+    }
     update()
     node.addEventListener("scroll", update, { passive: true })
     const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(update)

@@ -49,7 +49,7 @@ export function SecretReveal({
   return (
     <div data-slot="secret-reveal" data-state="shown" className={cn("grid gap-3", className)}>
       <Alert tone="warning" title="Copie-la maintenant">
-        Tu ne pourras plus la revoir une fois cette fenêtre fermée.
+        Tu ne pourras plus la revoir après « C'est copié », ni si tu quittes la page.
       </Alert>
       <div className="grid gap-2">
         <p id={id} className="text-sm font-medium">
