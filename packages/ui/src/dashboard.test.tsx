@@ -23,12 +23,13 @@ afterEach(() => {
 })
 
 const MODULE_NAMES: Record<string, string> = {
+  Manager: "Organisation",
   Host: "Déploiements",
   Mail: "E-mails",
   Status: "Surveillance",
   Analytics: "Statistiques",
   Docs: "Documentation",
-  ID: "Connexion",
+  ID: "Compte",
   // Le compte commun garde le mot `account` dans ses adresses, mais s’affiche ID.
   Account: "ID",
 }
@@ -48,13 +49,13 @@ describe("catalogue des produits", () => {
   it("ne met au menu que Manager puis les produits ouverts, sans Account, avec le produit courant coché", () => {
     const entries = productMenuEntries({ current: "mail" })
     expect(entries.map((e) => e.name)).toEqual([
-      "Manager",
+      "Organisation",
       "Déploiements",
       "E-mails",
       "Surveillance",
       "Statistiques",
       "Documentation",
-      "Connexion",
+      "Compte",
     ])
     expect(entries.find((e) => e.current)?.name).toBe("E-mails")
     expect(entries.filter((e) => e.hint !== undefined).map((e) => e.name)).toEqual([])
@@ -64,13 +65,13 @@ describe("catalogue des produits", () => {
     expect(PRODUCT_ENTRY_PATH).toBe(HGDC_ENTRY_PATH)
     const entries = productMenuEntries({ current: "Host" })
     expect(Object.fromEntries(entries.map((e) => [e.name, e.href]))).toEqual({
-      Manager: "https://app.hgdc.ch/manager/auth/hgdc?refresh=background&next=/",
+      Organisation: "https://app.hgdc.ch/manager/auth/hgdc?refresh=background&next=/",
       Déploiements: "https://app.hgdc.ch/host/auth/hgdc?refresh=background&next=/",
       "E-mails": "https://app.hgdc.ch/mail/auth/hgdc?refresh=background&next=/",
       Surveillance: "https://app.hgdc.ch/status/auth/hgdc?refresh=background&next=/",
       Statistiques: "https://analytics.hgdc.ch/auth/hgdc?refresh=background&next=/",
       Documentation: "https://app.hgdc.ch/docs/auth/hgdc?refresh=background&next=/",
-      Connexion: "https://id.hgdc.ch",
+      Compte: "https://id.hgdc.ch",
     })
     expect(HGDC_ACCOUNT.entryHref).toBe(HGDC_ACCOUNT.href)
     for (const product of HGDC_PRODUCTS) expect(product.href).toBe(`https://${product.subdomain}`)
@@ -81,17 +82,17 @@ describe("catalogue des produits", () => {
     expect(productMenuEntries({ accountHref: "https://account.hgdc.ch" })[0]?.href).toBe(productMenuEntries()[0]?.href)
     // Depuis le renommage, les consoles passent l'adresse d'ID : ce n'est pas un Manager local.
     expect(productMenuEntries({ accountHref: "https://id.hgdc.ch" })[0]?.href).toBe(productMenuEntries()[0]?.href)
-    expect(productMenuEntries()[0]?.name).toBe("Manager")
+    expect(productMenuEntries()[0]?.name).toBe("Organisation")
     expect(productMenuEntries()[0]?.href).not.toContain("account.hgdc.ch")
   })
 
   it("sépare Manager des modules de la barre, sans Account ni doublon", () => {
     const { products, account } = shellProductEntries({ current: "host" })
-    expect(account.name).toBe("Manager")
+    expect(account.name).toBe("Organisation")
     expect(account.href).toBe("https://app.hgdc.ch/manager/auth/hgdc?refresh=background&next=/")
-    expect(products.map((e) => e.name)).not.toContain("Manager")
+    expect(products.map((e) => e.name)).not.toContain("Organisation")
     expect(products.map((e) => e.name)).not.toContain("Account")
-    expect(products.map((e) => e.name)).toContain("Connexion")
+    expect(products.map((e) => e.name)).toContain("Compte")
   })
 })
 
@@ -104,7 +105,7 @@ describe("AccountMenu et le catalogue", () => {
     const mail = await screen.findByRole("menuitem", { name: "E-mails" })
     expect(mail.getAttribute("href")).toBe("https://app.hgdc.ch/mail/auth/hgdc?refresh=background&next=/")
     expect(screen.queryByRole("menuitem", { name: "Account" })).toBeNull()
-    expect(screen.getByRole("menuitem", { name: "Manager" }).getAttribute("href")).toBe(
+    expect(screen.getByRole("menuitem", { name: "Organisation" }).getAttribute("href")).toBe(
       "https://app.hgdc.ch/manager/auth/hgdc?refresh=background&next=/",
     )
     expect(screen.getByLabelText("Produit ouvert")).toBeDefined()

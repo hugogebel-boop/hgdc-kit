@@ -64,7 +64,7 @@ describe("barre des produits sous une origine partagée (ADR 0020)", () => {
     // Statistiques vit dans Manager : son entrée passe par son ancien nom, que la passerelle renvoie.
     expect(by.analytics).toMatchObject({ href: "https://analytics.hgdc.ch/auth/hgdc?refresh=background&next=/" })
     expect(account).toMatchObject({
-      name: "Manager",
+      name: "Organisation",
       href: "/manager/auth/hgdc?refresh=background&next=/",
       sameOrigin: true,
     })

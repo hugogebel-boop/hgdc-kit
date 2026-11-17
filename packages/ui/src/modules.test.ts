@@ -65,7 +65,7 @@ describe("shownModules", () => {
 
 describe("hiddenModules", () => {
   it("rend les absents dans l'ordre par défaut, quel que soit l'ordre de la barre", () => {
-    expect(hiddenModules(["docs", "host", "analytics", "mail"]).map((item) => item.word)).toEqual(["status", "id"])
+    expect(hiddenModules(["docs", "host", "analytics", "mail"]).map((item) => item.word)).toEqual(["status"])
   })
 
   it("rend tout pour une barre vide, rien pour une barre complète", () => {

@@ -79,10 +79,10 @@ describe("barre de Basalte, niveau des onglets", () => {
       </AppShell>,
     )
     expect(container.querySelector("[data-slot=app-shell]")?.hasAttribute("data-module-bar")).toBe(true)
-    expect(aside().getByRole("link", { name: "Manager" }).getAttribute("href")).toBe("http://localhost:3000")
+    expect(aside().getByRole("link", { name: "Organisation" }).getAttribute("href")).toBe("http://localhost:3000")
     expect(container.querySelector("[data-slot=shell-module-title]")?.textContent).toBe("E-mails")
     const text = screen.getByRole("complementary", { name: "Barre latérale" }).textContent ?? ""
-    const positions = ["Manager", "Retour aux modules", "E-mails", "Domaines"].map((label) => text.indexOf(label))
+    const positions = ["Organisation", "Retour aux modules", "E-mails", "Domaines"].map((label) => text.indexOf(label))
     expect(positions.every((position) => position >= 0)).toBe(true)
     expect(positions).toEqual([...positions].sort((a, b) => a - b))
     expect(aside().queryByRole("navigation", { name: "Modules" })).toBeNull()
@@ -211,7 +211,7 @@ describe("barre de Basalte, menu du compte", () => {
     )
     expect(screen.getByRole("menuitem", { name: "Ouvrir seul" })).toBeDefined()
     expect(screen.queryByText("Produits")).toBeNull()
-    expect(screen.queryByRole("menuitem", { name: "Manager" })).toBeNull()
+    expect(screen.queryByRole("menuitem", { name: "Organisation" })).toBeNull()
   })
 
   it("`status: false` retire l'entrée du menu", async () => {
@@ -238,7 +238,7 @@ describe("barre de Basalte, menu du compte", () => {
         .map((link) => link.textContent),
     ).toEqual(["Documentation", "Réglages", "État du service"])
     fireEvent.click(aside().getByRole("button", { name: "Compte de Hugo Gebel" }))
-    await screen.findByRole("menuitem", { name: "Manager" })
+    await screen.findByRole("menuitem", { name: "Organisation" })
     expect(screen.getByText("Produits")).toBeDefined()
     // « Documentation » ici est le module du catalogue, pas l'aide du produit restée au-dessus du compte.
     expect(screen.getByRole("menuitem", { name: "Documentation" }).getAttribute("href")).not.toBe(

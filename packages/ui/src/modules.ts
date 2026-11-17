@@ -3,9 +3,10 @@ import type { FamilyProduct } from "./family-svg.ts"
 /**
  * Les modules de Basalte, un produit unique (organisation, projets, modules). Le mot technique
  * (`host`) reste dans les adresses, les clés et le code ; l'interface n'affiche que le nom du module.
+ * Le compte (ID) n'est pas un module : le module Connexion pour les applications tierces est retiré (fin du lot 5).
  * Logique pure : la barre (`module-bar.tsx`) et son stockage (`module-bar-store.ts`) s'y appuient.
  */
-export type ModuleWord = Extract<FamilyProduct, "host" | "mail" | "status" | "analytics" | "id" | "docs">
+export type ModuleWord = Extract<FamilyProduct, "host" | "mail" | "status" | "analytics" | "docs">
 
 export type BasalteModule = {
   word: ModuleWord
@@ -21,7 +22,6 @@ export const BASALTE_MODULES: ReadonlyArray<BasalteModule> = [
   { word: "mail", name: "E-mails", purpose: "Envoyer des e-mails" },
   { word: "status", name: "Surveillance", purpose: "Surveiller un site" },
   { word: "analytics", name: "Statistiques", purpose: "Compter les visites" },
-  { word: "id", name: "Connexion", purpose: "Connecter tes utilisateurs" },
   { word: "docs", name: "Documentation", purpose: "Publier une documentation" },
 ]
 

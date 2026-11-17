@@ -166,12 +166,17 @@ const account = product(
 )
 export const HGDC_ACCOUNT: HgdcCatalogProduct = { ...account, entryHref: account.href }
 
-/** Manager : les organisations, leurs membres et leurs rôles. En tête du menu et de la barre des produits. */
+/**
+ * Les réglages de l'organisation (membres, rôles, projets, personnalisation), affichés « Organisation » : Basalte
+ * n'a plus de produit « Manager » (fin du lot 5). Le mot technique, l'adresse et la pastille gardent `manager`.
+ * En tête du menu et de la barre des produits.
+ */
 export const HGDC_MANAGER: HgdcCatalogProduct = product(
   "Manager",
-  "Tes organisations, leurs membres et leurs rôles.",
+  "Ton organisation : membres, rôles, projets et personnalisation.",
   UserGroupIcon,
   "live",
+  "Organisation",
 )
 
 /** Les produits de la famille, dans leur ordre d'affichage. Account n'en fait pas partie (`HGDC_ACCOUNT`). */
@@ -198,9 +203,12 @@ export const HGDC_PRODUCTS: ReadonlyArray<HgdcCatalogProduct> = [
   HGDC_MANAGER,
 ]
 
-/** ID, le compte de connexion ouvert aux applications tierces : pas d'entrée `/auth/hgdc`, sa racine. */
+/**
+ * ID, le compte de la personne, affiché « Compte » (profil, sécurité, appareils) : le module Connexion pour les
+ * applications tierces est retiré (fin du lot 5). Pas d'entrée `/auth/hgdc`, sa racine.
+ */
 function id(): HgdcCatalogProduct {
-  const item = product("ID", "Ton compte pour te connecter à tes applications.", UserCircleIcon, "live", "Connexion")
+  const item = product("ID", "Ton compte : profil, sécurité et appareils.", UserCircleIcon, "live", "Compte")
   return { ...item, entryHref: item.href }
 }
 
