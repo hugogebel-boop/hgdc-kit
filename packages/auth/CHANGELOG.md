@@ -1,5 +1,15 @@
 # @hgdc/auth
 
+## 0.45.0
+
+### Minor Changes
+
+- ba0080f: Basalte n'a plus de produit « Manager » ni de module « Connexion ». `@hgdc/ui/products` : l'entrée `Manager` s'affiche « Organisation » (membres, rôles, projets, personnalisation) et `ID` s'affiche « Compte » (profil, sécurité, appareils) ; mots techniques, adresses et pastilles inchangés. `@hgdc/ui/modules` : `id` sort de `BASALTE_MODULES` et de `ModuleWord`, le compte n'est pas un module. `@hgdc/auth/core` : `id` sort de `CORE_MODULES`, un projet ne peut plus activer ce module.
+- 7fe6f67: Assistant IA (`iassistant`) et Portal (`portal`) retirés de la famille (2026-11-14).
+  
+  - `@hgdc/ui` : retirés d'`APP_PRODUCTS` (et donc de `PRODUCT_ORIGINS` et `CONSOLE_ORIGINS`), de `HGDC_PRODUCTS`, de `BASALTE_MODULES` et `ModuleWord`, de `FAMILY_PRODUCTS` (`FamilyProduct`, `PRODUCT_BADGE_SVG`, `EMAIL_ICON_VERSION`, `PRODUCT_GRADIENT`), des jetons `--product-<mot>-*` de `styles.css` ; fichiers `family/<mot>(-dark).svg`, `family/tile/<mot>.svg`, `family/app/<mot>/` et `email-icons/<mot>.png` supprimés.
+  - `@hgdc/auth` : retirés de `MCP_PRODUCTS` (scopes et audiences acceptés), d'`ACCOUNT_EVENT_AUDIENCES` et de `CORE_MODULES`.
+
 ## 0.44.2
 
 ### Patch Changes

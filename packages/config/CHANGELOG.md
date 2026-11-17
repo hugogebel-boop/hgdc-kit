@@ -1,5 +1,11 @@
 # @hgdc/config
 
+## 0.7.1
+
+### Patch Changes
+
+- Stack : versions exactes des paquets `@hgdc/*` de cette release.
+
 ## 0.7.0
 
 ### Minor Changes
